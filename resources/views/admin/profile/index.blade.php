@@ -16,7 +16,9 @@
     <div class="admin-sidebar">
         <div class="sidebar-header">
             <div class="logo">
+                <!-- LOGO IS HERE 
                 <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="admin-logo">
+                -->                
                 <span class="logo-text">SkillsXchange Admin</span>
             </div>
         </div>
