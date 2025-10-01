@@ -43,6 +43,9 @@ class SecurityHeaders
             'display-capture=(self)'
         );
         
+        // Get the current domain for form-action
+        $currentDomain = $request->getSchemeAndHttpHost();
+        
         // Comprehensive Content Security Policy
         $csp = "default-src 'self'; " .
                "script-src 'self' 'unsafe-inline' 'unsafe-eval' " .
@@ -86,7 +89,7 @@ class SecurityHeaders
                "frame-src 'self' https://*.pusher.com; " .
                "object-src 'none'; " .
                "base-uri 'self'; " .
-               "form-action 'self'; " .
+               "form-action 'self' " . $currentDomain . " https://*.onrender.com; " .
                "frame-ancestors 'self'; " .
                "upgrade-insecure-requests;";
         
@@ -114,9 +117,10 @@ class SecurityHeaders
         // Additional security headers
         $response->headers->set('X-Download-Options', 'noopen');
         $response->headers->set('X-Permitted-Cross-Domain-Policies', 'none');
-        $response->headers->set('Cross-Origin-Embedder-Policy', 'require-corp');
+        // Relaxed COEP to allow external fonts and resources
+        $response->headers->set('Cross-Origin-Embedder-Policy', 'unsafe-none');
         $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
-        $response->headers->set('Cross-Origin-Resource-Policy', 'same-origin');
+        $response->headers->set('Cross-Origin-Resource-Policy', 'cross-origin');
 
         return $response;
     }
