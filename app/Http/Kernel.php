@@ -21,6 +21,7 @@ class Kernel extends HttpKernel
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        \App\Http\Middleware\DDoSProtectionMiddleware::class,
         \App\Http\Middleware\SecurityHeaders::class,
     ];
 
@@ -39,6 +40,7 @@ class Kernel extends HttpKernel
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\SessionExpirationMiddleware::class,
             \App\Http\Middleware\ErrorHandlingMiddleware::class,
+            \App\Http\Middleware\RateLimitMiddleware::class,
         ],
 
         'api' => [
@@ -68,5 +70,7 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'admin' => \App\Http\Middleware\AdminMiddleware::class,
         'user.only' => \App\Http\Middleware\UserOnlyMiddleware::class,
+        'rate.limit' => \App\Http\Middleware\RateLimitMiddleware::class,
+        'ddos.protection' => \App\Http\Middleware\DDoSProtectionMiddleware::class,
     ];
 }

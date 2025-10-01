@@ -92,6 +92,34 @@ Route::get('/health', function () {
     return response()->json(['status' => 'ok'], 200);
 });
 
+Route::get('/security-test', function () {
+    // Security test endpoint to verify headers and configuration
+    return response()->json([
+        'status' => 'secure',
+        'message' => 'SkillsXchange Security Test',
+        'timestamp' => now()->toISOString(),
+        'security_headers' => [
+            'x_content_type_options' => 'nosniff',
+            'x_frame_options' => 'SAMEORIGIN',
+            'x_xss_protection' => '1; mode=block',
+            'referrer_policy' => 'strict-origin-when-cross-origin',
+            'strict_transport_security' => 'max-age=31536000; includeSubDomains; preload',
+        ],
+        'application_info' => [
+            'name' => 'SkillsXchange',
+            'type' => 'Educational Platform',
+            'purpose' => 'Skill Learning and Exchange',
+            'version' => '1.0.0',
+        ],
+        'features' => [
+            'video_calling' => 'Firebase WebRTC',
+            'real_time_chat' => 'Pusher',
+            'skill_trading' => 'Laravel',
+            'task_management' => 'Laravel',
+        ]
+    ], 200);
+});
+
 Route::get('/ping', function () {
     // Even simpler - just return text
     return 'pong';

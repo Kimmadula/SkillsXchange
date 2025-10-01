@@ -22,6 +22,11 @@ curl -s https://skillsxchange-13vk.onrender.com/debug
 echo.
 echo.
 
+echo 🔍 Testing security endpoint...
+curl -s https://skillsxchange-13vk.onrender.com/security-test
+echo.
+echo.
+
 echo ✅ Deployment testing complete!
 echo.
 echo 🌐 Your SkillsXchange application is live at:
