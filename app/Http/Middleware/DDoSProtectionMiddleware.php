@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -49,8 +51,8 @@ class DDoSProtectionMiddleware
             ], 429);
         }
         
-        // Check for bot-like behavior
-        if ($this->isBotLikeBehavior($request)) {
+        // Check for bot-like behavior (but allow health checks and legitimate requests)
+        if ($this->isBotLikeBehavior($request) && !$this->isLegitimateRequest($request)) {
             Log::info('Bot-like behavior detected', [
                 'ip' => $ip,
                 'user_agent' => $userAgent,
@@ -192,5 +194,48 @@ class DDoSProtectionMiddleware
         
         // If more than 2 browser headers are missing, likely a bot
         return $missingHeaders > 2;
+    }
+    
+    /**
+     * Check if the request is legitimate (health checks, etc.).
+     */
+    protected function isLegitimateRequest(Request $request)
+    {
+        $path = $request->path();
+        $userAgent = $request->userAgent();
+        
+        // Allow health checks and monitoring endpoints
+        $legitimatePaths = [
+            'health',
+            'ping',
+            'security-test',
+            'test-db',
+            'debug'
+        ];
+        
+        foreach ($legitimatePaths as $legitimatePath) {
+            if (str_contains($path, $legitimatePath)) {
+                return true;
+            }
+        }
+        
+        // Allow requests from Render's internal IPs (health checks)
+        $ip = $request->ip();
+        if ($ip === '127.0.0.1' || $ip === '10.209.27.179') {
+            return true;
+        }
+        
+        // Allow requests with proper browser user agents
+        if ($userAgent && (
+            str_contains($userAgent, 'Mozilla') ||
+            str_contains($userAgent, 'Chrome') ||
+            str_contains($userAgent, 'Safari') ||
+            str_contains($userAgent, 'Firefox') ||
+            str_contains($userAgent, 'Edge')
+        )) {
+            return true;
+        }
+        
+        return false;
     }
 }

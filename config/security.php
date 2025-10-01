@@ -151,8 +151,12 @@ return [
             'decay_minutes' => 15,
         ],
         'general' => [
-            'max_attempts' => 200,
-            'decay_minutes' => 15,
+            'max_attempts' => 300, // Increased for general web requests
+            'decay_minutes' => 1,  // Reduced decay time
+        ],
+        'login' => [
+            'max_attempts' => 20,  // Separate limit for login attempts
+            'decay_minutes' => 5,  // Longer decay for failed logins
         ],
     ],
 

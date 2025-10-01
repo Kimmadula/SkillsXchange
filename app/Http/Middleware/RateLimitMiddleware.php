@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Log;
 
@@ -71,9 +73,9 @@ class RateLimitMiddleware
             return 60; // 60 requests per hour
         }
         
-        // Authentication endpoints - very restrictive
+        // Authentication endpoints - moderate restriction
         if (in_array($path, ['login', 'register', 'password/reset'])) {
-            return 5; // 5 attempts per 15 minutes
+            return 20; // 20 attempts per 5 minutes
         }
         
         // Video call endpoints - moderate
@@ -87,7 +89,7 @@ class RateLimitMiddleware
         }
         
         // General web requests - more lenient
-        return 200; // 200 requests per 15 minutes
+        return 300; // 300 requests per 1 minute
     }
     
     /**
@@ -97,9 +99,9 @@ class RateLimitMiddleware
     {
         $path = $request->path();
         
-        // Authentication endpoints - longer decay
+        // Authentication endpoints - shorter decay
         if (in_array($path, ['login', 'register', 'password/reset'])) {
-            return 15; // 15 minutes
+            return 5; // 5 minutes
         }
         
         // API and video call endpoints - moderate decay
@@ -107,7 +109,7 @@ class RateLimitMiddleware
             return 15; // 15 minutes
         }
         
-        // General requests - shorter decay
-        return 15; // 15 minutes
+        // General requests - much shorter decay
+        return 1; // 1 minute
     }
 }
