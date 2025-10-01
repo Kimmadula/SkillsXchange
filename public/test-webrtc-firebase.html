@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test WebRTC Firebase Signaling</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .primary { background: #007bff; color: white; }
+        .danger { background: #dc3545; color: white; }
+        .success { background: #28a745; color: white; }
+        
+        .video-container {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        video {
+            width: 300px;
+            height: 200px;
+            border: 2px solid #007bff;
+            background: #000;
+        }
+        
+        .local-video { border-color: #28a745; }
+        .remote-video { border-color: #dc3545; }
+    </style>
+</head>
+<body>
+    <h1>Test WebRTC Firebase Signaling</h1>
+    
+    <div id="test-results"></div>
+    
+    <button id="test-functions-btn" class="primary">Test Functions</button>
+    <button id="test-firebase-btn" class="primary">Test Firebase Connection</button>
+    <button id="start-call-btn" class="success">Start Call</button>
+    <button id="answer-call-btn" class="primary">Answer Call</button>
+    <button id="end-call-btn" class="danger">End Call</button>
+    
+    <div class="video-container">
+        <div>
+            <h3>Local Video (You)</h3>
+            <video id="local-video" class="local-video" autoplay muted style="display: none;"></video>
+        </div>
+        <div>
+            <h3>Remote Video (Partner)</h3>
+            <video id="remote-video" class="remote-video" autoplay style="display: none;"></video>
+        </div>
+    </div>
+    
+    <div id="call-status">Ready to start call</div>
+    
+    <script>
+        const testResults = document.getElementById('test-results');
+        const callStatus = document.getElementById('call-status');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            console.log(logMessage);
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.textContent = logMessage;
+            testResults.appendChild(resultDiv);
+            testResults.scrollTop = testResults.scrollHeight;
+        }
+        
+        // Test function availability
+        function testFunctions() {
+            log('🔧 Testing WebRTC functions...', 'info');
+            
+            const functions = [
+                'openVideoChat',
+                'closeVideoChat', 
+                'startVideoCall',
+                'endVideoCall',
+                'webrtcSignaling'
+            ];
+            
+            functions.forEach(funcName => {
+                if (typeof window[funcName] === 'function') {
+                    log(`✅ ${funcName} is available`, 'success');
+                } else {
+                    log(`❌ ${funcName} is NOT available`, 'error');
+                }
+            });
+        }
+        
+        // Test Firebase connection
+        function testFirebase() {
+            log('🔧 Testing Firebase connection...', 'info');
+            
+            if (typeof firebase !== 'undefined' && firebase.database) {
+                log('✅ Firebase is available', 'success');
+                
+                try {
+                    const database = firebase.database();
+                    log('✅ Firebase database initialized', 'success');
+                    
+                    // Test write permission
+                    database.ref('test').set({
+                        message: 'Firebase test',
+                        timestamp: Date.now()
+                    }).then(() => {
+                        log('✅ Firebase write test successful', 'success');
+                        
+                        // Clean up test data
+                        database.ref('test').remove();
+                    }).catch(error => {
+                        log(`❌ Firebase write test failed: ${error.message}`, 'error');
+                    });
+                    
+                } catch (error) {
+                    log(`❌ Firebase database error: ${error.message}`, 'error');
+                }
+            } else {
+                log('❌ Firebase not available', 'error');
+            }
+        }
+        
+        // Start call
+        async function startCall() {
+            log('🚀 Starting WebRTC call...', 'info');
+            callStatus.textContent = 'Starting call...';
+            
+            try {
+                if (window.webrtcSignaling) {
+                    const partnerId = 'test_partner_' + Math.random().toString(36).substr(2, 9);
+                    const success = await window.webrtcSignaling.startCall(partnerId);
+                    
+                    if (success) {
+                        log('✅ WebRTC call started successfully', 'success');
+                        callStatus.textContent = 'Call started - waiting for answer...';
+                        
+                        // Listen for answer
+                        window.webrtcSignaling.listenForAnswer();
+                    } else {
+                        log('❌ Failed to start WebRTC call', 'error');
+                        callStatus.textContent = 'Failed to start call';
+                    }
+                } else {
+                    log('❌ WebRTC signaling not available', 'error');
+                    callStatus.textContent = 'WebRTC signaling not available';
+                }
+            } catch (error) {
+                log(`❌ Error starting call: ${error.message}`, 'error');
+                callStatus.textContent = 'Error starting call';
+            }
+        }
+        
+        // Answer call
+        async function answerCall() {
+            log('📞 Answering WebRTC call...', 'info');
+            callStatus.textContent = 'Answering call...';
+            
+            try {
+                if (window.webrtcSignaling) {
+                    // For testing, use a dummy call ID
+                    const callId = 'test_call_' + Date.now();
+                    const success = await window.webrtcSignaling.answerCall(callId);
+                    
+                    if (success) {
+                        log('✅ WebRTC call answering setup complete', 'success');
+                        callStatus.textContent = 'Ready to answer call';
+                    } else {
+                        log('❌ Failed to setup call answering', 'error');
+                        callStatus.textContent = 'Failed to setup call answering';
+                    }
+                } else {
+                    log('❌ WebRTC signaling not available', 'error');
+                    callStatus.textContent = 'WebRTC signaling not available';
+                }
+            } catch (error) {
+                log(`❌ Error answering call: ${error.message}`, 'error');
+                callStatus.textContent = 'Error answering call';
+            }
+        }
+        
+        // End call
+        function endCall() {
+            log('🛑 Ending WebRTC call...', 'info');
+            callStatus.textContent = 'Ending call...';
+            
+            if (window.webrtcSignaling) {
+                window.webrtcSignaling.endCall();
+                log('✅ WebRTC call ended', 'success');
+                callStatus.textContent = 'Call ended';
+            } else {
+                log('❌ WebRTC signaling not available', 'error');
+                callStatus.textContent = 'WebRTC signaling not available';
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('test-functions-btn').addEventListener('click', testFunctions);
+        document.getElementById('test-firebase-btn').addEventListener('click', testFirebase);
+        document.getElementById('start-call-btn').addEventListener('click', startCall);
+        document.getElementById('answer-call-btn').addEventListener('click', answerCall);
+        document.getElementById('end-call-btn').addEventListener('click', endCall);
+        
+        // Auto-run tests when page loads
+        window.addEventListener('load', function() {
+            log('Page loaded, running initial tests...', 'info');
+            testFunctions();
+            testFirebase();
+        });
+    </script>
+</body>
+</html>

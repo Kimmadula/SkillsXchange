@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Video Call Status Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .status-demo {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .call-status {
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+            padding: 10px 20px;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            animation: pulse 2s infinite;
+            display: inline-block;
+            margin: 10px;
+        }
+        
+        .call-status.calling {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+        
+        .call-status.answering {
+            background: linear-gradient(45deg, #4ecdc4, #6dd5ed);
+            color: white;
+            box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4);
+        }
+        
+        .call-status.waiting {
+            background: linear-gradient(45deg, #ffd93d, #ffed4e);
+            color: #333;
+            box-shadow: 0 4px 15px rgba(255, 217, 61, 0.4);
+        }
+        
+        .call-status.connected {
+            background: linear-gradient(45deg, #51cf66, #69db7c);
+            color: white;
+            box-shadow: 0 4px 15px rgba(81, 207, 102, 0.4);
+            animation: none;
+        }
+        
+        .call-status.failed {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+        
+        .call-status.lost {
+            background: linear-gradient(45deg, #ffa726, #ffb74d);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 167, 38, 0.4);
+        }
+        
+        .call-status.ended {
+            background: linear-gradient(45deg, #78909c, #90a4ae);
+            color: white;
+            box-shadow: 0 4px 15px rgba(120, 144, 156, 0.4);
+            animation: none;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .demo-controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .demo-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 16px;
+        }
+        
+        .demo-button:hover {
+            background: #2563eb;
+        }
+        
+        .status-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .status-item {
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .status-item h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .status-item p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 Dynamic Video Call Status Demo</h1>
+        
+        <div class="status-demo">
+            <div id="current-status" class="call-status calling">📞 Calling...</div>
+        </div>
+        
+        <div class="demo-controls">
+            <button class="demo-button" onclick="simulateCallFlow()">Simulate Full Call Flow</button>
+            <button class="demo-button" onclick="resetStatus()">Reset</button>
+        </div>
+        
+        <h2>Available Status States:</h2>
+        <div class="status-list">
+            <div class="status-item">
+                <h3>📞 Calling...</h3>
+                <p>Red gradient with pulse animation</p>
+            </div>
+            <div class="status-item">
+                <h3>📱 Answering...</h3>
+                <p>Teal gradient with pulse animation</p>
+            </div>
+            <div class="status-item">
+                <h3>⏳ Waiting for answer...</h3>
+                <p>Yellow gradient with pulse animation</p>
+            </div>
+            <div class="status-item">
+                <h3>✅ Connected</h3>
+                <p>Green gradient, no animation</p>
+            </div>
+            <div class="status-item">
+                <h3>❌ Connection failed</h3>
+                <p>Red gradient with pulse animation</p>
+            </div>
+            <div class="status-item">
+                <h3>⚠️ Connection lost</h3>
+                <p>Orange gradient with pulse animation</p>
+            </div>
+            <div class="status-item">
+                <h3>📴 Call ended</h3>
+                <p>Gray gradient, no animation</p>
+            </div>
+        </div>
+        
+        <h2>Real-time Status Updates:</h2>
+        <div id="status-log" style="background: #f8f9fa; padding: 15px; border-radius: 5px; max-height: 200px; overflow-y: auto;">
+            <p>Click "Simulate Full Call Flow" to see dynamic status changes...</p>
+        </div>
+    </div>
+
+    <script>
+        const statusElement = document.getElementById('current-status');
+        const logElement = document.getElementById('status-log');
+        
+        function updateStatus(status) {
+            statusElement.textContent = status;
+            statusElement.className = 'call-status';
+            
+            // Add timestamp to log
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('p');
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${status}`;
+            logElement.appendChild(logEntry);
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            switch (status.toLowerCase()) {
+                case 'calling...':
+                    statusElement.className += ' calling';
+                    statusElement.innerHTML = '📞 ' + status;
+                    break;
+                case 'answering...':
+                    statusElement.className += ' answering';
+                    statusElement.innerHTML = '📱 ' + status;
+                    break;
+                case 'waiting for answer...':
+                    statusElement.className += ' waiting';
+                    statusElement.innerHTML = '⏳ ' + status;
+                    break;
+                case 'connected':
+                case 'video connected':
+                case 'connection established':
+                    statusElement.className += ' connected';
+                    statusElement.innerHTML = '✅ ' + status;
+                    break;
+                case 'connection failed':
+                    statusElement.className += ' failed';
+                    statusElement.innerHTML = '❌ ' + status;
+                    break;
+                case 'connection lost':
+                    statusElement.className += ' lost';
+                    statusElement.innerHTML = '⚠️ ' + status;
+                    break;
+                case 'call ended':
+                    statusElement.className += ' ended';
+                    statusElement.innerHTML = '📴 ' + status;
+                    break;
+                default:
+                    statusElement.innerHTML = '🔄 ' + status;
+            }
+        }
+        
+        async function simulateCallFlow() {
+            const statuses = [
+                'Initializing...',
+                'Getting camera access...',
+                'Setting up connection...',
+                'Creating offer...',
+                'Calling...',
+                'Waiting for answer...',
+                'Establishing connection...',
+                'Checking connection...',
+                'Connected',
+                'Video connected'
+            ];
+            
+            for (let i = 0; i < statuses.length; i++) {
+                updateStatus(statuses[i]);
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
+            
+            // Simulate call ending after 5 seconds
+            setTimeout(() => {
+                updateStatus('Call ended');
+            }, 5000);
+        }
+        
+        function resetStatus() {
+            statusElement.className = 'call-status calling';
+            statusElement.innerHTML = '📞 Calling...';
+            logElement.innerHTML = '<p>Status reset. Click "Simulate Full Call Flow" to see dynamic status changes...</p>';
+        }
+        
+        // Auto-start demo
+        setTimeout(() => {
+            updateStatus('Ready to start call...');
+        }, 1000);
+    </script>
+</body>
+</html>

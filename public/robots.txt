@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /api/
+Disallow: /debug/
+Disallow: /test/
+
+# SkillsXchangee - Legitimate Skill Exchange Platform
+# This is an educational platform for skill sharing and learning
+# Contact: admin@skillsxchangee.com

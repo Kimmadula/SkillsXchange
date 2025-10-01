@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Auth Endpoint</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .test { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>Test Broadcasting Auth Endpoint</h1>
+    
+    <div class="test">
+        <h3>Test 1: Direct Auth Endpoint (with auth)</h3>
+        <button onclick="testDirectAuth()">Test Direct Auth</button>
+        <div id="direct-result" class="result"></div>
+    </div>
+    
+    <div class="test">
+        <h3>Test 1b: Test Auth Endpoint (no auth)</h3>
+        <button onclick="testDirectAuthNoAuth()">Test Direct Auth (No Auth)</button>
+        <div id="direct-no-auth-result" class="result"></div>
+    </div>
+    
+    <div class="test">
+        <h3>Test 2: Check CSRF Token</h3>
+        <button onclick="getCsrfToken()">Get CSRF Token</button>
+        <div id="csrf-result" class="result"></div>
+    </div>
+    
+    <div class="test">
+        <h3>Test 3: Test with Different Channels</h3>
+        <button onclick="testChannels()">Test Channels</button>
+        <div id="channels-result" class="result"></div>
+    </div>
+    
+    <div class="test">
+        <h3>Console Log</h3>
+        <div id="console-log" style="background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; max-height: 300px; overflow-y: auto;"></div>
+    </div>
+
+    <script>
+        // Override console.log to show in our test interface
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        function logToInterface(...args) {
+            const logDiv = document.getElementById('console-log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<div>[${timestamp}] ${args.join(' ')}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            logToInterface(...args);
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            logToInterface('❌', ...args);
+        };
+        
+        async function testDirectAuth() {
+            try {
+                console.log('🧪 Testing direct auth endpoint...');
+                
+                const response = await fetch('/broadcasting/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        socket_id: 'test-socket-' + Date.now(),
+                        channel_name: 'private-trade.1'
+                    })
+                });
+                
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                const responseText = await response.text();
+                console.log('📡 Response body:', responseText);
+                
+                if (response.ok) {
+                    try {
+                        const data = JSON.parse(responseText);
+                        document.getElementById('direct-result').innerHTML = '<div class="success">✅ Auth endpoint working: ' + JSON.stringify(data) + '</div>';
+                        console.log('✅ Auth endpoint working:', data);
+                    } catch (parseError) {
+                        document.getElementById('direct-result').innerHTML = '<div class="error">❌ Invalid JSON: ' + responseText + '</div>';
+                        console.error('❌ Invalid JSON response:', responseText);
+                    }
+                } else {
+                    document.getElementById('direct-result').innerHTML = '<div class="error">❌ Auth failed: ' + response.status + ' - ' + responseText + '</div>';
+                    console.error('❌ Auth failed:', response.status, responseText);
+                }
+            } catch (error) {
+                document.getElementById('direct-result').innerHTML = '<div class="error">❌ Error: ' + error.message + '</div>';
+                console.error('❌ Error testing auth:', error);
+            }
+        }
+        
+        async function testDirectAuthNoAuth() {
+            try {
+                console.log('🧪 Testing direct auth endpoint (no auth)...');
+                
+                const response = await fetch('/test-broadcasting-auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        socket_id: 'test-socket-' + Date.now(),
+                        channel_name: 'private-trade.1'
+                    })
+                });
+                
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                const responseText = await response.text();
+                console.log('📡 Response body:', responseText);
+                
+                if (response.ok) {
+                    try {
+                        const data = JSON.parse(responseText);
+                        document.getElementById('direct-no-auth-result').innerHTML = '<div class="success">✅ Test auth endpoint working: ' + JSON.stringify(data) + '</div>';
+                        console.log('✅ Test auth endpoint working:', data);
+                    } catch (parseError) {
+                        document.getElementById('direct-no-auth-result').innerHTML = '<div class="error">❌ Invalid JSON: ' + responseText + '</div>';
+                        console.error('❌ Invalid JSON response:', responseText);
+                    }
+                } else {
+                    document.getElementById('direct-no-auth-result').innerHTML = '<div class="error">❌ Test auth failed: ' + response.status + ' - ' + responseText + '</div>';
+                    console.error('❌ Test auth failed:', response.status, responseText);
+                }
+            } catch (error) {
+                document.getElementById('direct-no-auth-result').innerHTML = '<div class="error">❌ Error: ' + error.message + '</div>';
+                console.error('❌ Error testing test auth:', error);
+            }
+        }
+        
+        async function getCsrfToken() {
+            try {
+                console.log('🧪 Getting CSRF token...');
+                
+                const response = await fetch('/');
+                const html = await response.text();
+                
+                const csrfMatch = html.match(/name="csrf-token" content="([^"]+)"/);
+                const csrfToken = csrfMatch ? csrfMatch[1] : 'Not found';
+                
+                document.getElementById('csrf-result').innerHTML = '<div class="info">ℹ️ CSRF Token: ' + csrfToken + '</div>';
+                console.log('📡 CSRF Token:', csrfToken);
+                
+            } catch (error) {
+                document.getElementById('csrf-result').innerHTML = '<div class="error">❌ Error getting CSRF: ' + error.message + '</div>';
+                console.error('❌ Error getting CSRF:', error);
+            }
+        }
+        
+        async function testChannels() {
+            try {
+                console.log('🧪 Testing different channels...');
+                
+                const channels = [
+                    'private-trade.1',
+                    'private-trade.2',
+                    'trade.1',
+                    'trade.2'
+                ];
+                
+                let results = '';
+                
+                for (const channel of channels) {
+                    try {
+                        const response = await fetch('/broadcasting/auth', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({
+                                socket_id: 'test-socket-' + Date.now(),
+                                channel_name: channel
+                            })
+                        });
+                        
+                        const responseText = await response.text();
+                        results += `<div>Channel ${channel}: ${response.status} - ${responseText}</div>`;
+                        console.log(`📡 Channel ${channel}: ${response.status} - ${responseText}`);
+                        
+                    } catch (error) {
+                        results += `<div>Channel ${channel}: Error - ${error.message}</div>`;
+                        console.error(`❌ Channel ${channel} error:`, error);
+                    }
+                }
+                
+                document.getElementById('channels-result').innerHTML = '<div class="info">ℹ️ Channel test results:<br>' + results + '</div>';
+                
+            } catch (error) {
+                document.getElementById('channels-result').innerHTML = '<div class="error">❌ Error: ' + error.message + '</div>';
+                console.error('❌ Error testing channels:', error);
+            }
+        }
+        
+        // Auto-start when page loads
+        window.addEventListener('load', function() {
+            console.log('🚀 Page loaded, ready for testing...');
+        });
+    </script>
+</body>
+</html>

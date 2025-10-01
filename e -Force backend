@@ -1,0 +1,664 @@
+[33mafb5a19[m Still Fixing Video Call while raining
+[1mdiff --git a/resources/views/websocket-video-call.js b/resources/views/websocket-video-call.js[m
+[1mindex c58b843..7e8784a 100644[m
+[1m--- a/resources/views/websocket-video-call.js[m
+[1m+++ b/resources/views/websocket-video-call.js[m
+[36m@@ -281,6 +281,16 @@[m [mclass WebSocketVideoCallManager {[m
+             });[m
+             [m
+             this.log('Media access granted', 'success');[m
+[32m+[m[41m            [m
+[32m+[m[32m            // Display local stream in video element[m
+[32m+[m[32m            const localVideo = document.getElementById('local-video');[m
+[32m+[m[32m            if (localVideo) {[m
+[32m+[m[32m                localVideo.srcObject = this.localStream;[m
+[32m+[m[32m                this.log('Local video stream displayed', 'success');[m
+[32m+[m[32m            } else {[m
+[32m+[m[32m                this.log('Local video element not found!', 'error');[m
+[32m+[m[32m            }[m
+[32m+[m[41m            [m
+             return true;[m
+             [m
+         } catch (error) {[m
+[36m@@ -349,6 +359,13 @@[m [mclass WebSocketVideoCallManager {[m
+         // Handle incoming tracks[m
+         this.peerConnection.ontrack = (event) => {[m
+             this.log('Received remote stream', 'success');[m
+[32m+[m[32m            this.log(`Stream tracks: ${event.streams[0].getTracks().length}`, 'info');[m
+[32m+[m[41m            [m
+[32m+[m[32m            // Log track details[m
+[32m+[m[32m            event.streams[0].getTracks().forEach((track, index) => {[m
+[32m+[m[32m                this.log(`Track ${index}: ${track.kind} - enabled: ${track.enabled}, muted: ${track.muted}`, 'info');[m
+[32m+[m[32m            });[m
+[32m+[m[41m            [m
+             this.remoteStream = event.streams[0];[m
+             this.updateRemoteVideo();[m
+             this.updateConnectionStatus('connected');[m
+[36m@@ -502,8 +519,12 @@[m [mclass WebSocketVideoCallManager {[m
+             this.otherUserId = data.fromUserId;[m
+             this.isInitiator = false;[m
+             [m
+[31m-            // Show incoming call notification[m
+[31m-            const acceptCall = confirm(`Incoming video call. Do you want to accept?`);[m
+[32m+[m[32m            // Show incoming call notification using the notification service[m
+[32m+[m[32m            this.showIncomingCallNotification(data.fromUserId);[m
+[32m+[m[41m            [m
+[32m+[m[32m            // Auto-accept for now (you can modify this behavior)[m
+[32m+[m[32m            // In a real app, you'd want to show a proper UI with accept/decline buttons[m
+[32m+[m[32m            const acceptCall = true; // For debugging - auto-accept[m
+             [m
+             if (acceptCall) {[m
+                 // Initialize media and peer connection[m
+[36m@@ -517,9 +538,15 @@[m [mclass WebSocketVideoCallManager {[m
+                 await this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));[m
+                 [m
+                 // Create and send answer[m
+[32m+[m[32m                this.log('Creating answer...', 'info');[m
+                 const answer = await this.peerConnection.createAnswer();[m
+[32m+[m[32m                this.log('Answer created successfully', 'success');[m
+[32m+[m[41m                [m
+                 await this.peerConnection.setLocalDescription(answer);[m
+[32m+[m[32m                this.log('Local description set for answer', 'success');[m
+[32m+[m[41m                [m
+                 this.sendAnswer(answer);[m
+[32m+[m[32m                this.log('Answer sent via WebSocket', 'success');[m
+                 [m
+                 // Update UI[m
+                 this.updateCallUI('connected');[m
+[36m@@ -539,11 +566,18 @@[m [mclass WebSocketVideoCallManager {[m
+     [m
+     async handleAnswer(data) {[m
+         try {[m
+[31m-            this.log('Handling call answer', 'info');[m
+[32m+[m[32m            this.log(`📞 Received answer from: ${data.fromUserId}`, 'info');[m
+[32m+[m[32m            this.log(`Answer data: ${JSON.stringify(data.answer, null, 2)}`, 'info');[m
+[32m+[m[41m            [m
+             await this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));[m
+[31m-            this.log('Call answer processed', 'success');[m
+[32m+[m[32m            this.log('✅ Call answer processed successfully', 'success');[m
+[32m+[m[41m            [m
+[32m+[m[32m            // Update UI to show connection[m
+[32m+[m[32m            this.updateCallUI('connected');[m
+[32m+[m[41m            [m
+         } catch (error) {[m
+[31m-            this.log(`Error handling call answer: ${error.message}`, 'error');[m
+[32m+[m[32m            this.log(`❌ Error handling call answer: ${error.message}`, 'error');[m
+[32m+[m[32m            this.showError('Failed to process call answer. Please try again.');[m
+         }[m
+     }[m
+     [m
+[36m@@ -716,9 +750,41 @@[m [mclass WebSocketVideoCallManager {[m
+         const remoteVideo = document.getElementById('remote-video');[m
+         if (remoteVideo && this.remoteStream) {[m
+             remoteVideo.srcObject = this.remoteStream;[m
+[32m+[m[32m            this.log('Remote video stream displayed', 'success');[m
+[32m+[m[41m            [m
+[32m+[m[32m            // Add event listeners for debugging[m
+[32m+[m[32m            remoteVideo.onloadedmetadata = () => {[m
+[32m+[m[32m                this.log('Remote video metadata loaded', 'success');[m
+[32m+[m[32m            };[m
+[32m+[m[41m            [m
+[32m+[m[32m            remoteVideo.oncanplay = () => {[m
+[32m+[m[32m                this.log('Remote video can start playing', 'success');[m
+[32m+[m[32m            };[m
+[32m+[m[41m            [m
+[32m+[m[32m            remoteVideo.onerror = (error) => {[m
+[32m+[m[32m                this.log(`Remote video error: ${error}`, 'error');[m
+[32m+[m[32m            };[m
+[32m+[m[32m        } else {[m
+[32m+[m[32m            this.log(`Remote video setup failed - Element: ${!!remoteVideo}, Stream: ${!!this.remoteStream}`, 'error');[m
+         }[m
+     }[m
+     [m
+[32m+[m[32m    showIncomingCallNotification(fromUserId) {[m
+[32m+[m[32m        this.log(`📞 Incoming call from: ${fromUserId}`, 'info');[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Show notification using the notification service if available[m
+[32m+[m[32m        if (window.notificationService) {[m
+[32m+[m[32m            window.notificationService.showIncomingCallNotification([m
+[32m+[m[32m                `User ${fromUserId}`,[m
+[32m+[m[32m                fromUserId,[m
+[32m+[m[32m                this.currentCallId[m
+[32m+[m[32m            );[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Also show a simple alert for debugging[m
+[32m+[m[32m        alert(`📞 Incoming video call from User ${fromUserId}\n\nThis call will be auto-accepted for testing.`);[m
+[32m+[m[32m    }[m
+[32m+[m
+     showError(message) {[m
+         const statusElement = document.getElementById('video-status');[m
+         if (statusElement) {[m
+[1mdiff --git a/test-answer-exchange.html b/test-answer-exchange.html[m
+[1mnew file mode 100644[m
+[1mindex 0000000..a7c4a2d[m
+[1m--- /dev/null[m
+[1m+++ b/test-answer-exchange.html[m
+[36m@@ -0,0 +1,206 @@[m
+[32m+[m[32m<!DOCTYPE html>[m
+[32m+[m[32m<html lang="en">[m
+[32m+[m[32m<head>[m
+[32m+[m[32m    <meta charset="UTF-8">[m
+[32m+[m[32m    <meta name="viewport" content="width=device-width, initial-scale=1.0">[m
+[32m+[m[32m    <title>Answer Exchange Test</title>[m
+[32m+[m[32m    <style>[m
+[32m+[m[32m        body {[m
+[32m+[m[32m            font-family: Arial, sans-serif;[m
+[32m+[m[32m            max-width: 800px;[m
+[32m+[m[32m            margin: 0 auto;[m
+[32m+[m[32m            padding: 20px;[m
+[32m+[m[32m            background-color: #f5f5f5;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        .container {[m
+[32m+[m[32m            background: white;[m
+[32m+[m[32m            padding: 20px;[m
+[32m+[m[32m            border-radius: 8px;[m
+[32m+[m[32m            box-shadow: 0 2px 10px rgba(0,0,0,0.1);[m
+[32m+[m[32m            margin: 20px 0;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        .status {[m
+[32m+[m[32m            padding: 10px;[m
+[32m+[m[32m            margin: 10px 0;[m
+[32m+[m[32m            border-radius: 4px;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        .success { background-color: #d4edda; color: #155724; }[m
+[32m+[m[32m        .error { background-color: #f8d7da; color: #721c24; }[m
+[32m+[m[32m        .info { background-color: #d1ecf1; color: #0c5460; }[m
+[32m+[m[32m        .warning { background-color: #fff3cd; color: #856404; }[m
+[32m+[m[32m        button {[m
+[32m+[m[32m            background: #007bff;[m
+[32m+[m[32m            color: white;[m
+[32m+[m[32m            border: none;[m
+[32m+[m[32m            padding: 10px 20px;[m
+[32m+[m[32m            border-radius: 4px;[m
+[32m+[m[32m            cursor: pointer;[m
+[32m+[m[32m            margin: 5px;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        button:hover { background: #0056b3; }[m
+[32m+[m[32m        .log {[m
+[32m+[m[32m            background: #f8f9fa;[m
+[32m+[m[32m            border: 1px solid #dee2e6;[m
+[32m+[m[32m            padding: 15px;[m
+[32m+[m[32m            height: 300px;[m
+[32m+[m[32m            overflow-y: auto;[m
+[32m+[m[32m            font-family: monospace;[m
+[32m+[m[32m            font-size: 12px;[m
+[32m+[m[32m            border-radius: 5px;[m
+[32m+[m[32m        }[m
+[32m+[m[32m    </style>[m
+[32m+[m[32m</head>[m
+[32m+[m[32m<body>[m
+[32m+[m[32m    <div class="container">[m
+[32m+[m[32m        <h1>📞 Answer Exchange Test</h1>[m
+[32m+[m[32m        <p>This page tests the WebRTC answer exchange process to ensure both sides can communicate properly.</p>[m
+[32m+[m[41m        [m
+[32m+[m[32m        <div class="status info">[m
+[32m+[m[32m            <strong>Instructions:</strong><br>[m
+[32m+[m[32m            1. Open this page in two different browser tabs/windows<br>[m
+[32m+[m[32m            2. Set different User IDs in each tab<br>[m
+[32m+[m[32m            3. Click "Start Call" in one tab<br>[m
+[32m+[m[32m            4. Check if the other tab receives the call and sends an answer<br>[m
+[32m+[m[32m            5. Monitor the logs for answer exchange[m
+[32m+[m[32m        </div>[m
+[32m+[m[41m        [m
+[32m+[m[32m        <div class="container">[m
+[32m+[m[32m            <h3>🔧 Setup</h3>[m
+[32m+[m[32m            <div>[m
+[32m+[m[32m                <label for="userId">User ID:</label>[m
+[32m+[m[32m                <input type="text" id="userId" value="user1" placeholder="Enter your user ID">[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m            <div>[m
+[32m+[m[32m                <label for="tradeId">Trade ID:</label>[m
+[32m+[m[32m                <input type="text" id="tradeId" value="trade1" placeholder="Enter trade ID">[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m            <div>[m
+[32m+[m[32m                <label for="partnerId">Partner ID:</label>[m
+[32m+[m[32m                <input type="text" id="partnerId" value="user2" placeholder="Enter partner user ID">[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m            <button onclick="setupTest()">Setup Test</button>[m
+[32m+[m[32m        </div>[m
+[32m+[m[41m        [m
+[32m+[m[32m        <div class="container">[m
+[32m+[m[32m            <h3>🎥 Video Call Test</h3>[m
+[32m+[m[32m            <div id="video-container" style="display: none;">[m
+[32m+[m[32m                <div style="display: flex; gap: 20px;">[m
+[32m+[m[32m                    <div style="flex: 1;">[m
+[32m+[m[32m                        <h4>Local Video</h4>[m
+[32m+[m[32m                        <video id="local-video" autoplay muted playsinline style="width: 100%; max-width: 300px; height: auto; background: #000;"></video>[m
+[32m+[m[32m                    </div>[m
+[32m+[m[32m                    <div style="flex: 1;">[m
+[32m+[m[32m                        <h4>Remote Video</h4>[m
+[32m+[m[32m                        <video id="remote-video" autoplay playsinline style="width: 100%; max-width: 300px; height: auto; background: #000;"></video>[m
+[32m+[m[32m                    </div>[m
+[32m+[m[32m                </div>[m
+[32m+[m[32m                <div style="text-align: center; margin: 20px 0;">[m
+[32m+[m[32m                    <button id="start-call-btn" onclick="startCall()">Start Call</button>[m
+[32m+[m[32m                    <button id="end-call-btn" onclick="endCall()" style="display: none;">End Call</button>[m
+[32m+[m[32m                </div>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[41m        [m
+[32m+[m[32m        <div class="container">[m
+[32m+[m[32m            <h3>📊 Test Log</h3>[m
+[32m+[m[32m            <div id="test-log" class="log">Test log will appear here...\n</div>[m
+[32m+[m[32m            <button onclick="clearLog()">Clear Log</button>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m
+[32m+[m[32m    <!-- Include the WebSocket video call manager -->[m
+[32m+[m[32m    <script src="resources/views/websocket-video-call.js"></script>[m
+[32m+[m
+[32m+[m[32m    <script>[m
+[32m+[m[32m        let videoCallManager = null;[m
+[32m+[m[41m        [m
+[32m+[m[32m        function log(message, type = 'info') {[m
+[32m+[m[32m            const timestamp = new Date().toLocaleTimeString();[m
+[32m+[m[32m            const logMessage = `[${timestamp}] ${message}`;[m
+[32m+[m[41m            [m
+[32m+[m[32m            console.log(logMessage);[m
+[32m+[m[41m            [m
+[32m+[m[32m            const logElement = document.getElementById('test-log');[m
+[32m+[m[32m            if (logElement) {[m
+[32m+[m[32m                const logEntry = document.createElement('div');[m
+[32m+[m[32m                logEntry.textContent = logMessage;[m
+[32m+[m[32m                logEntry.style.color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : type === 'warning' ? '#ffc107' : '#333';[m
+[32m+[m[32m                logElement.appendChild(logEntry);[m
+[32m+[m[32m                logElement.scrollTop = logElement.scrollHeight;[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+[32m+[m[32m        function clearLog() {[m
+[32m+[m[32m            document.getElementById('test-log').innerHTML = '';[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+[32m+[m[32m        function setupTest() {[m
+[32m+[m[32m            const userId = document.getElementById('userId').value;[m
+[32m+[m[32m            const tradeId = document.getElementById('tradeId').value;[m
+[32m+[m[32m            const partnerId = document.getElementById('partnerId').value;[m
+[32m+[m[41m            [m
+[32m+[m[32m            if (!userId || !tradeId || !partnerId) {[m
+[32m+[m[32m                alert('Please fill in all fields');[m
+[32m+[m[32m                return;[m
+[32m+[m[32m            }[m
+[32m+[m[41m            [m
+[32m+[m[32m            // Set global variables for the video call manager[m
+[32m+[m[32m            window.userId = userId;[m
+[32m+[m[32m            window.tradeId = tradeId;[m
+[32m+[m[32m            window.partnerId = partnerId;[m
+[32m+[m[41m            [m
+[32m+[m[32m            // Show video container[m
+[32m+[m[32m            document.getElementById('video-container').style.display = 'block';[m
+[32m+[m[41m            [m
+[32m+[m[32m            // Initialize video call manager[m
+[32m+[m[32m            if (typeof WebSocketVideoCallManager !== 'undefined') {[m
+[32m+[m[32m                videoCallManager = new WebSocketVideoCallManager();[m
+[32m+[m[32m                log(`✅ Test setup complete for User: ${userId}, Partner: ${partnerId}`, 'success');[m
+[32m+[m[32m            } else {[m
+[32m+[m[32m                log('❌ WebSocketVideoCallManager not loaded', 'error');[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+[32m+[m[32m        function startCall() {[m
+[32m+[m[32m            if (videoCallManager) {[m
+[32m+[m[32m                log('🚀 Starting video call...', 'info');[m
+[32m+[m[32m                videoCallManager.startCall();[m
+[32m+[m[41m                [m
+[32m+[m[32m                // Update UI[m
+[32m+[m[32m                document.getElementById('start-call-btn').style.display = 'none';[m
+[32m+[m[32m                document.getElementById('end-call-btn').style.display = 'inline-block';[m
+[32m+[m[32m            } else {[m
+[32m+[m[32m                log('❌ Video call manager not initialized', 'error');[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+[32m+[m[32m        function endCall() {[m
+[32m+[m[32m            if (videoCallManager) {[m
+[32m+[m[32m                log('🛑 Ending video call...', 'info');[m
+[32m+[m[32m                videoCallManager.endCall();[m
+[32m+[m[41m                [m
+[32m+[m[32m                // Update UI[m
+[32m+[m[32m                document.getElementById('start-call-btn').style.display = 'inline-block';[m
+[32m+[m[32m                document.getElementById('end-call-btn').style.display = 'none';[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Override the WebSocketVideoCallManager log method to use our custom log[m
+[32m+[m[32m        document.addEventListener('DOMContentLoaded', function() {[m
+[32m+[m[32m            if (typeof WebSocketVideoCallManager !== 'undefined') {[m
+[32m+[m[32m                const originalLog = WebSocketVideoCallManager.prototype.log;[m
+[32m+[m[32m                WebSocketVideoCallManager.prototype.log = function(message, type) {[m
+[32m+[m[32m                    originalLog.call(this, message, type);[m
+[32m+[m[32m                    log(message, type);[m
+[32m+[m[32m                };[m
+[32m+[m[32m            }[m
+[32m+[m[32m        });[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Auto-setup on page load[m
+[32m+[m[32m        window.addEventListener('load', function() {[m
+[32m+[m[32m            log('🚀 Answer Exchange Test loaded', 'info');[m
+[32m+[m[32m            log('📋 Please set up your test parameters and click "Setup Test"', 'info');[m
+[32m+[m[32m        });[m
+[32m+[m[32m    </script>[m
+[32m+[m[32m</body>[m
+[32m+[m[32m</html>[m
+[1mdiff --git a/test-video-call-debug.html b/test-video-call-debug.html[m
+[1mnew file mode 100644[m
+[1mindex 0000000..7074386[m
+[1m--- /dev/null[m
+[1m+++ b/test-video-call-debug.html[m
+[36m@@ -0,0 +1,315 @@[m
+[32m+[m[32m<!DOCTYPE html>[m
+[32m+[m[32m<html lang="en">[m
+[32m+[m[32m<head>[m
+[32m+[m[32m    <meta charset="UTF-8">[m
+[32m+[m[32m    <meta name="viewport" content="width=device-width, initial-scale=1.0">[m
+[32m+[m[32m    <title>Video Call Debug Test</title>[m
+[32m+[m[32m    <style>[m
+[32m+[m[32m        body {[m
+[32m+[m[32m            font-family: Arial, sans-serif;[m
+[32m+[m[32m            max-width: 1200px;[m
+[32m+[m[32m            margin: 0 auto;[m
+[32m+[m[32m            padding: 20px;[m
+[32m+[m[32m            background-color: #f5f5f5;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        .container {[m
+[32m+[m[32m            background: white;[m
+[32m+[m[32m            padding: 20px;[m
+[32m+[m[32m            border-radius: 8px;[m
+[32m+[m[32m            box-shadow: 0 2px 10px rgba(0,0,0,0.1);[m
+[32m+[m[32m            margin: 20px 0;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        .video-container {[m
+[32m+[m[32m            display: flex;[m
+[32m+[m[32m            gap: 20px;[m
+[32m+[m[32m            margin: 20px 0;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        .video-wrapper {[m
+[32m+[m[32m            flex: 1;[m
+[32m+[m[32m            border: 2px solid #ddd;[m
+[32m+[m[32m            border-radius: 10px;[m
+[32m+[m[32m            padding: 10px;[m
+[32m+[m[32m            text-align: center;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        video {[m
+[32m+[m[32m            width: 100%;[m
+[32m+[m[32m            max-width: 300px;[m
+[32m+[m[32m            height: auto;[m
+[32m+[m[32m            border-radius: 5px;[m
+[32m+[m[32m            background: #000;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        .status {[m
+[32m+[m[32m            padding: 10px;[m
+[32m+[m[32m            margin: 10px 0;[m
+[32m+[m[32m            border-radius: 4px;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        .success { background-color: #d4edda; color: #155724; }[m
+[32m+[m[32m        .error { background-color: #f8d7da; color: #721c24; }[m
+[32m+[m[32m        .info { background-color: #d1ecf1; color: #0c5460; }[m
+[32m+[m[32m        .warning { background-color: #fff3cd; color: #856404; }[m
+[32m+[m[32m        button {[m
+[32m+[m[32m            background: #007bff;[m
+[32m+[m[32m            color: white;[m
+[32m+[m[32m            border: none;[m
+[32m+[m[32m            padding: 10px 20px;[m
+[32m+[m[32m            border-radius: 4px;[m
+[32m+[m[32m            cursor: pointer;[m
+[32m+[m[32m            margin: 5px;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        button:hover { background: #0056b3; }[m
+[32m+[m[32m        .log {[m
+[32m+[m[32m            background: #f8f9fa;[m
+[32m+[m[32m            border: 1px solid #dee2e6;[m
+[32m+[m[32m            padding: 15px;[m
+[32m+[m[32m            height: 300px;[m
+[32m+[m[32m            overflow-y: auto;[m
+[32m+[m[32m            font-family: monospace;[m
+[32m+[m[32m            font-size: 12px;[m
+[32m+[m[32m            border-radius: 5px;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        .test-grid {[m
+[32m+[m[32m            display: grid;[m
+[32m+[m[32m            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));[m
+[32m+[m[32m            gap: 15px;[m
+[32m+[m[32m            margin: 20px 0;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        .test-item {[m
+[32m+[m[32m            border: 1px solid #ddd;[m
+[32m+[m[32m            padding: 15px;[m
+[32m+[m[32m            border-radius: 5px;[m
+[32m+[m[32m            text-align: center;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        .test-item.pass { border-color: #28a745; background-color: #d4edda; }[m
+[32m+[m[32m        .test-item.fail { border-color: #dc3545; background-color: #f8d7da; }[m
+[32m+[m[32m        .test-item.pending { border-color: #ffc107; background-color: #fff3cd; }[m
+[32m+[m[32m    </style>[m
+[32m+[m[32m</head>[m
+[32m+[m[32m<body>[m
+[32m+[m[32m    <div class="container">[m
+[32m+[m[32m        <h1>🎥 Video Call Debug Test</h1>[m
+[32m+[m[32m        <p>This page helps debug video call issues by testing each component step by step.</p>[m
+[32m+[m[41m        [m
+[32m+[m[32m        <div class="test-grid">[m
+[32m+[m[32m            <div class="test-item pending" id="test-media">[m
+[32m+[m[32m                <h4>Media Access</h4>[m
+[32m+[m[32m                <p id="media-result">Testing...</p>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m            <div class="test-item pending" id="test-webrtc">[m
+[32m+[m[32m                <h4>WebRTC Support</h4>[m
+[32m+[m[32m                <p id="webrtc-result">Testing...</p>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m            <div class="test-item pending" id="test-elements">[m
+[32m+[m[32m                <h4>Video Elements</h4>[m
+[32m+[m[32m                <p id="elements-result">Testing...</p>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m            <div class="test-item pending" id="test-streams">[m
+[32m+[m[32m                <h4>Stream Display</h4>[m
+[32m+[m[32m                <p id="streams-result">Testing...</p>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[41m        [m
+[32m+[m[32m        <div class="video-container">[m
+[32m+[m[32m            <div class="video-wrapper">[m
+[32m+[m[32m                <h4>Local Video</h4>[m
+[32m+[m[32m                <video id="local-video" autoplay muted playsinline></video>[m
+[32m+[m[32m                <p id="local-status">Not started</p>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m            <div class="video-wrapper">[m
+[32m+[m[32m                <h4>Remote Video (Simulated)</h4>[m
+[32m+[m[32m                <video id="remote-video" autoplay playsinline></video>[m
+[32m+[m[32m                <p id="remote-status">Not connected</p>[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[41m        [m
+[32m+[m[32m        <div style="text-align: center;">[m
+[32m+[m[32m            <button onclick="startDebugTest()">Start Debug Test</button>[m
+[32m+[m[32m            <button onclick="testMediaAccess()">Test Media Access</button>[m
+[32m+[m[32m            <button onclick="testStreamDisplay()">Test Stream Display</button>[m
+[32m+[m[32m            <button onclick="clearLog()">Clear Log</button>[m
+[32m+[m[32m        </div>[m
+[32m+[m[41m        [m
+[32m+[m[32m        <div class="container">[m
+[32m+[m[32m            <h3>📊 Debug Log</h3>[m
+[32m+[m[32m            <div id="debug-log" class="log">Debug log will appear here...\n</div>[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m    </div>[m
+[32m+[m
+[32m+[m[32m    <script>[m
+[32m+[m[32m        let localStream = null;[m
+[32m+[m[32m        let peerConnection = null;[m
+[32m+[m[41m        [m
+[32m+[m[32m        function log(message, type = 'info') {[m
+[32m+[m[32m            const timestamp = new Date().toLocaleTimeString();[m
+[32m+[m[32m            const logMessage = `[${timestamp}] ${message}`;[m
+[32m+[m[41m            [m
+[32m+[m[32m            console.log(logMessage);[m
+[32m+[m[41m            [m
+[32m+[m[32m            const logElement = document.getElementById('debug-log');[m
+[32m+[m[32m            if (logElement) {[m
+[32m+[m[32m                const logEntry = document.createElement('div');[m
+[32m+[m[32m                logEntry.textContent = logMessage;[m
+[32m+[m[32m                logEntry.style.color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : type === 'warning' ? '#ffc107' : '#333';[m
+[32m+[m[32m                logElement.appendChild(logEntry);[m
+[32m+[m[32m                logElement.scrollTop = logElement.scrollHeight;[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+[32m+[m[32m        function clearLog() {[m
+[32m+[m[32m            document.getElementById('debug-log').innerHTML = '';[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+[32m+[m[32m        function updateTestResult(testId, result, passed) {[m
+[32m+[m[32m            const testElement = document.getElementById(testId);[m
+[32m+[m[32m            const resultElement = document.getElementById(testId.replace('test-', '') + '-result');[m
+[32m+[m[41m            [m
+[32m+[m[32m            testElement.className = `test-item ${passed ? 'pass' : 'fail'}`;[m
+[32m+[m[32m            resultElement.textContent = result;[m
+[32m+[m[32m            resultElement.style.color = passed ? '#28a745' : '#dc3545';[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+[32m+[m[32m        async function startDebugTest() {[m
+[32m+[m[32m            log('🚀 Starting comprehensive debug test...', 'info');[m
+[32m+[m[32m            clearLog();[m
+[32m+[m[41m            [m
+[32m+[m[32m            // Test 1: WebRTC Support[m
+[32m+[m[32m            if (window.RTCPeerConnection) {[m
+[32m+[m[32m                updateTestResult('test-webrtc', '✅ Supported', true);[m
+[32m+[m[32m                log('✅ WebRTC is supported', 'success');[m
+[32m+[m[32m            } else {[m
+[32m+[m[32m                updateTestResult('test-webrtc', '❌ Not Supported', false);[m
+[32m+[m[32m                log('❌ WebRTC is not supported', 'error');[m
+[32m+[m[32m                return;[m
+[32m+[m[32m            }[m
+[32m+[m[41m            [m
+[32m+[m[32m            // Test 2: Video Elements[m
+[32m+[m[32m            const localVideo = document.getElementById('local-video');[m
+[32m+[m[32m            const remoteVideo = document.getElementById('remote-video');[m
+[32m+[m[41m            [m
+[32m+[m[32m            if (localVideo && remoteVideo) {[m
+[32m+[m[32m                updateTestResult('test-elements', '✅ Found', true);[m
+[32m+[m[32m                log('✅ Video elements found', 'success');[m
+[32m+[m[41m                [m
+[32m+[m[32m                // Check attributes[m
+[32m+[m[32m                const localAttrs = {[m
+[32m+[m[32m                    autoplay: localVideo.hasAttribute('autoplay'),[m
+[32m+[m[32m                    muted: localVideo.hasAttribute('muted'),[m
+[32m+[m[32m                    playsinline: localVideo.hasAttribute('playsinline')[m
+[32m+[m[32m                };[m
+[32m+[m[41m                [m
+[32m+[m[32m                const remoteAttrs = {[m
+[32m+[m[32m                    autoplay: remoteVideo.hasAttribute('autoplay'),[m
+[32m+[m[32m                    playsinline: remoteVideo.hasAttribute('playsinline')[m
+[32m+[m[32m                };[m
+[32m+[m[41m                [m
+[32m+[m[32m                log(`Local video attributes: ${JSON.stringify(localAttrs)}`, 'info');[m
+[32m+[m[32m                log(`Remote video attributes: ${JSON.stringify(remoteAttrs)}`, 'info');[m
+[32m+[m[41m                [m
+[32m+[m[32m            } else {[m
+[32m+[m[32m                updateTestResult('test-elements', '❌ Missing', false);[m
+[32m+[m[32m                log('❌ Video elements not found', 'error');[m
+[32m+[m[32m                return;[m
+[32m+[m[32m            }[m
+[32m+[m[41m            [m
+[32m+[m[32m            // Test 3: Media Access[m
+[32m+[m[32m            await testMediaAccess();[m
+[32m+[m[41m            [m
+[32m+[m[32m            // Test 4: Stream Display[m
+[32m+[m[32m            await testStreamDisplay();[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+[32m+[m[32m        async function testMediaAccess() {[m
+[32m+[m[32m            log('🎥 Testing media access...', 'info');[m
+[32m+[m[41m            [m
+[32m+[m[32m            try {[m
+[32m+[m[32m                localStream = await navigator.mediaDevices.getUserMedia({[m
+[32m+[m[32m                    video: {[m
+[32m+[m[32m                        width: { ideal: 1280, max: 1920 },[m
+[32m+[m[32m                        height: { ideal: 720, max: 1080 },[m
+[32m+[m[32m                        frameRate: { ideal: 30, max: 60 }[m
+[32m+[m[32m                    },[m
+[32m+[m[32m                    audio: {[m
+[32m+[m[32m                        echoCancellation: true,[m
+[32m+[m[32m                        noiseSuppression: true,[m
+[32m+[m[32m                        autoGainControl: true,[m
+[32m+[m[32m                        sampleRate: 48000[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                });[m
+[32m+[m[41m                [m
+[32m+[m[32m                updateTestResult('test-media', '✅ Access Granted', true);[m
+[32m+[m[32m                log('✅ Media access granted', 'success');[m
+[32m+[m[41m                [m
+[32m+[m[32m                // Log stream details[m
+[32m+[m[32m                const tracks = localStream.getTracks();[m
+[32m+[m[32m                log(`Stream tracks: ${tracks.length}`, 'info');[m
+[32m+[m[41m                [m
+[32m+[m[32m                tracks.forEach((track, index) => {[m
+[32m+[m[32m                    log(`Track ${index}: ${track.kind} - enabled: ${track.enabled}, muted: ${track.muted}`, 'info');[m
+[32m+[m[32m                });[m
+[32m+[m[41m                [m
+[32m+[m[32m            } catch (error) {[m
+[32m+[m[32m                updateTestResult('test-media', '❌ Access Denied', false);[m
+[32m+[m[32m                log(`❌ Media access failed: ${error.message}`, 'error');[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+[32m+[m[32m        async function testStreamDisplay() {[m
+[32m+[m[32m            log('📺 Testing stream display...', 'info');[m
+[32m+[m[41m            [m
+[32m+[m[32m            if (!localStream) {[m
+[32m+[m[32m                log('❌ No local stream available', 'error');[m
+[32m+[m[32m                updateTestResult('test-streams', '❌ No Stream', false);[m
+[32m+[m[32m                return;[m
+[32m+[m[32m            }[m
+[32m+[m[41m            [m
+[32m+[m[32m            const localVideo = document.getElementById('local-video');[m
+[32m+[m[32m            const remoteVideo = document.getElementById('remote-video');[m
+[32m+[m[41m            [m
+[32m+[m[32m            try {[m
+[32m+[m[32m                // Test local video display[m
+[32m+[m[32m                localVideo.srcObject = localStream;[m
+[32m+[m[32m                log('✅ Local stream assigned to video element', 'success');[m
+[32m+[m[41m                [m
+[32m+[m[32m                // Add event listeners for debugging[m
+[32m+[m[32m                localVideo.onloadedmetadata = () => {[m
+[32m+[m[32m                    log('✅ Local video metadata loaded', 'success');[m
+[32m+[m[32m                };[m
+[32m+[m[41m                [m
+[32m+[m[32m                localVideo.oncanplay = () => {[m
+[32m+[m[32m                    log('✅ Local video can start playing', 'success');[m
+[32m+[m[32m                    updateTestResult('test-streams', '✅ Working', true);[m
+[32m+[m[32m                };[m
+[32m+[m[41m                [m
+[32m+[m[32m                localVideo.onerror = (error) => {[m
+[32m+[m[32m                    log(`❌ Local video error: ${error}`, 'error');[m
+[32m+[m[32m                    updateTestResult('test-streams', '❌ Error', false);[m
+[32m+[m[32m                };[m
+[32m+[m[41m                [m
+[32m+[m[32m                // Test remote video (simulate with local stream)[m
+[32m+[m[32m                remoteVideo.srcObject = localStream.clone();[m
+[32m+[m[32m                log('✅ Remote video stream assigned (simulated)', 'success');[m
+[32m+[m[41m                [m
+[32m+[m[32m                // Update status[m
+[32m+[m[32m                document.getElementById('local-status').textContent = 'Active';[m
+[32m+[m[32m                document.getElementById('remote-status').textContent = 'Simulated';[m
+[32m+[m[41m                [m
+[32m+[m[32m            } catch (error) {[m
+[32m+[m[32m                log(`❌ Stream display error: ${error.message}`, 'error');[m
+[32m+[m[32m                updateTestResult('test-streams', '❌ Error', false);[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Auto-run tests on page load[m
+[32m+[m[32m        window.addEventListener('load', function() {[m
+[32m+[m[32m            log('🚀 Video Call Debug Test loaded', 'info');[m
+[32m+[m[32m            startDebugTest();[m
+[32m+[m[32m        });[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Cleanup on page unload[m
+[32m+[m[32m        window.addEventListener('beforeunload', () => {[m
+[32m+[m[32m            if (localStream) {[m
+[32m+[m[32m                localStream.getTracks().forEach(track => track.stop());[m
+[32m+[m[32m            }[m
+[32m+[m[32m        });[m
+[32m+[m[32m    </script>[m
+[32m+[m[32m</body>[m
+[32m+[m[32m</html>[m

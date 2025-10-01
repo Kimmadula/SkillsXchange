@@ -1,0 +1,10 @@
+[33m5f0d4b5[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m fixes turn servers
+[33m6bb1c52[m removing duplicate error in video call feature
+[33mc3d86c3[m Add comprehensive Metered TURN usage testing
+[33m0c42e0f[m Fix video call connection and event listening issues
+[33mf2ad69c[m Fix connection issues and improve event listening
+[33m2f52959[m fixing connection pt2
+[33m092e33a[m fixing the connection
+[33m7c6d111[m fixing still
+[33m47af66b[m Video call connection might be fixed
+[33m4efa6c1[m chat is working but video call is not

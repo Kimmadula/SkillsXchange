@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Skills Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; border: 1px solid #ccc; }
+        select { width: 100%; padding: 10px; margin: 5px 0; }
+        .skills-container { border: 1px solid #ddd; padding: 10px; margin: 10px 0; min-height: 100px; }
+    </style>
+</head>
+<body>
+    <h1>Skills Debug Test</h1>
+    
+    <div class="debug">
+        <h3>Debug Information</h3>
+        <p>This page tests if skills data is being loaded correctly.</p>
+    </div>
+
+    <div>
+        <label for="skill_category">Skill Category:</label>
+        <select id="skill_category">
+            <option value="">Select a category</option>
+            <!-- Categories will be populated by JavaScript -->
+        </select>
+    </div>
+
+    <div>
+        <label>Skills Container:</label>
+        <div id="skills-container" class="skills-container">
+            <p>Please select a category first to choose skills.</p>
+        </div>
+    </div>
+
+    <div class="debug">
+        <h3>Console Output:</h3>
+        <div id="console-output"></div>
+    </div>
+
+    <script>
+        // Mock skills data (replace with actual data from your database)
+        const mockSkills = [
+            {skill_id: 1, category: "It", name: "Web Development"},
+            {skill_id: 2, category: "Design", name: "Graphic Design"},
+            {skill_id: 3, category: "Culinary", name: "Cooking"},
+            {skill_id: 4, category: "Arts", name: "Photography"},
+            {skill_id: 5, category: "Arts", name: "Music Production"},
+            {skill_id: 6, category: "Education", name: "Language Learning"},
+            {skill_id: 7, category: "Health", name: "Fitness Training"},
+            {skill_id: 8, category: "Business", name: "Digital Marketing"},
+            {skill_id: 9, category: "Media", name: "Video Editing"},
+            {skill_id: 10, category: "Communication", name: "Writing"}
+        ];
+
+        function log(message) {
+            console.log(message);
+            document.getElementById('console-output').innerHTML += '<p>' + message + '</p>';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            log('Page loaded');
+            log('Mock skills count: ' + mockSkills.length);
+            
+            const categorySelect = document.getElementById('skill_category');
+            const skillsContainer = document.getElementById('skills-container');
+            
+            // Get unique categories
+            const categories = [...new Set(mockSkills.map(skill => skill.category))];
+            log('Categories found: ' + categories.join(', '));
+            
+            // Populate category dropdown
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                categorySelect.appendChild(option);
+            });
+            
+            // Handle category selection
+            categorySelect.addEventListener('change', function() {
+                const selectedCategory = this.value;
+                log('Selected category: ' + selectedCategory);
+                
+                if (!selectedCategory) {
+                    skillsContainer.innerHTML = '<p>Please select a category first to choose skills.</p>';
+                    return;
+                }
+
+                // Filter skills by category
+                const categorySkills = mockSkills.filter(skill => skill.category === selectedCategory);
+                log('Skills in category "' + selectedCategory + '": ' + categorySkills.length);
+                
+                if (categorySkills.length === 0) {
+                    skillsContainer.innerHTML = '<p>No skills found for this category.</p>';
+                    return;
+                }
+                
+                // Create skill checkboxes
+                let skillsHTML = '<div><p><strong>Select your skills from ' + selectedCategory + ':</strong></p>';
+                categorySkills.forEach(skill => {
+                    skillsHTML += `
+                        <label style="display: block; margin: 5px 0;">
+                            <input type="checkbox" value="${skill.skill_id}" data-skill-name="${skill.name}">
+                            ${skill.name}
+                        </label>
+                    `;
+                });
+                skillsHTML += '</div>';
+                
+                skillsContainer.innerHTML = skillsHTML;
+                log('Skills HTML generated and displayed');
+            });
+        });
+    </script>
+</body>
+</html>

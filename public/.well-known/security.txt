@@ -1,0 +1,10 @@
+Contact: mailto:admin@skillsxchangee.com
+Expires: 2025-12-31T23:59:59.000Z
+Encryption: https://skillsxchangee.onrender.com/pgp-key.txt
+Preferred-Languages: en
+Canonical: https://skillsxchangee.onrender.com/.well-known/security.txt
+Policy: https://skillsxchangee.onrender.com/security-policy
+
+# SkillsXchangee Security Policy
+# This is a legitimate educational platform for skill exchange
+# We take security seriously and follow industry best practices

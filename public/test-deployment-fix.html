@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deployment Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Deployment Fix Test</h1>
+        <p>This page tests if the Vite manifest error has been fixed.</p>
+        
+        <button onclick="testNotificationService()">Test Notification Service</button>
+        <button onclick="testViteAssets()">Test Vite Assets</button>
+        <button onclick="testVideoCallSetup()">Test Video Call Setup</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <!-- Include the notification service -->
+    <script src="js/notification-service.js"></script>
+
+    <script>
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+            resultsDiv.appendChild(statusDiv);
+        }
+        
+        function testNotificationService() {
+            if (window.notificationService) {
+                addResult('✅ Notification service loaded successfully', 'success');
+                addResult('🔔 Testing notification functionality...', 'info');
+                
+                // Test basic functionality
+                try {
+                    window.notificationService.showIncomingCallNotification(
+                        'Test User',
+                        123,
+                        456
+                    );
+                    addResult('✅ Notification system working correctly', 'success');
+                } catch (error) {
+                    addResult(`❌ Notification error: ${error.message}`, 'error');
+                }
+            } else {
+                addResult('❌ Notification service not loaded', 'error');
+            }
+        }
+        
+        function testViteAssets() {
+            addResult('🔄 Testing Vite asset loading...', 'info');
+            
+            // Check if Vite assets are accessible
+            const testAssets = [
+                '/build/assets/app-4ed993c7.js',
+                '/build/assets/js-d0be043b.js',
+                '/build/assets/style-84ac4312.css'
+            ];
+            
+            let loadedCount = 0;
+            
+            testAssets.forEach(asset => {
+                fetch(asset, { method: 'HEAD' })
+                    .then(response => {
+                        if (response.ok) {
+                            loadedCount++;
+                            addResult(`✅ ${asset} - Loaded successfully`, 'success');
+                        } else {
+                            addResult(`❌ ${asset} - Failed to load (${response.status})`, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        addResult(`❌ ${asset} - Error: ${error.message}`, 'error');
+                    });
+            });
+            
+            setTimeout(() => {
+                if (loadedCount === testAssets.length) {
+                    addResult('✅ All Vite assets loaded successfully', 'success');
+                } else {
+                    addResult(`⚠️ Only ${loadedCount}/${testAssets.length} assets loaded`, 'error');
+                }
+            }, 2000);
+        }
+        
+        function testVideoCallSetup() {
+            addResult('🎥 Testing video call setup...', 'info');
+            
+            // Test TURN credentials
+            const METERED_API_KEY = '511852cda421697270ed9af8b089038b39a7';
+            const METERED_API_URL = 'https://skillxchange.metered.live/api/v1/turn/credentials';
+            
+            fetch(`${METERED_API_URL}?apiKey=${METERED_API_KEY}`)
+                .then(response => {
+                    if (response.ok) {
+                        addResult('✅ TURN server credentials accessible', 'success');
+                        return response.json();
+                    } else {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                })
+                .then(data => {
+                    addResult(`✅ TURN servers configured: ${data.length} servers`, 'success');
+                    addResult('✅ Video call setup is ready for deployment', 'success');
+                })
+                .catch(error => {
+                    addResult(`❌ TURN server error: ${error.message}`, 'error');
+                });
+        }
+        
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            addResult('🚀 Deployment fix test loaded', 'info');
+            addResult('Click the test buttons above to verify everything is working', 'info');
+        });
+    </script>
+</body>
+</html>

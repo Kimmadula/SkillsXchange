@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test CSP Firebase Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>🔧 CSP Firebase Fix Test</h1>
+    
+    <div id="status" class="status info">
+        Testing Firebase script loading with updated CSP...
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const resultsDiv = document.getElementById('results');
+        
+        function updateStatus(message, type = 'info') {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+        
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            resultsDiv.appendChild(div);
+        }
+        
+        // Test Firebase script loading
+        async function testFirebaseScriptLoading() {
+            try {
+                updateStatus('🔄 Loading Firebase scripts...', 'info');
+                
+                // Test loading Firebase scripts
+                const firebaseAppScript = document.createElement('script');
+                firebaseAppScript.src = 'https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js';
+                
+                firebaseAppScript.onload = () => {
+                    addResult('✅ Firebase App script loaded successfully', 'success');
+                    
+                    // Test Firebase Database script
+                    const firebaseDbScript = document.createElement('script');
+                    firebaseDbScript.src = 'https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js';
+                    
+                    firebaseDbScript.onload = () => {
+                        addResult('✅ Firebase Database script loaded successfully', 'success');
+                        
+                        // Test Firebase initialization
+                        if (typeof firebase !== 'undefined') {
+                            addResult('✅ Firebase SDK is available globally', 'success');
+                            
+                            // Test Firebase config
+                            const firebaseConfig = {
+                                apiKey: "AIzaSyDlx5VjhobiTlqtv69SciHifC7p_xgHELs",
+                                authDomain: "skillsxchange-c2604.firebaseapp.com",
+                                databaseURL: "https://skillsxchange-c2604-default-rtdb.asia-southeast1.firebaseio.com",
+                                projectId: "skillsxchange-c2604",
+                                storageBucket: "skillsxchange-c2604.firebasestorage.app",
+                                messagingSenderId: "478530945561",
+                                appId: "1:478530945561:web:646441ceeb5d5c71c02088"
+                            };
+                            
+                            try {
+                                const app = firebase.initializeApp(firebaseConfig);
+                                addResult('✅ Firebase app initialized successfully', 'success');
+                                
+                                const database = firebase.database();
+                                addResult('✅ Firebase Realtime Database initialized successfully', 'success');
+                                
+                                updateStatus('🎉 All Firebase tests passed! CSP fix is working.', 'success');
+                                
+                            } catch (error) {
+                                addResult(`❌ Firebase initialization failed: ${error.message}`, 'error');
+                                updateStatus('❌ Firebase initialization failed', 'error');
+                            }
+                        } else {
+                            addResult('❌ Firebase SDK not available after script loading', 'error');
+                            updateStatus('❌ Firebase SDK not available', 'error');
+                        }
+                    };
+                    
+                    firebaseDbScript.onerror = (error) => {
+                        addResult('❌ Firebase Database script failed to load', 'error');
+                        updateStatus('❌ Firebase Database script loading failed', 'error');
+                    };
+                    
+                    document.head.appendChild(firebaseDbScript);
+                };
+                
+                firebaseAppScript.onerror = (error) => {
+                    addResult('❌ Firebase App script failed to load', 'error');
+                    updateStatus('❌ Firebase App script loading failed', 'error');
+                };
+                
+                document.head.appendChild(firebaseAppScript);
+                
+            } catch (error) {
+                addResult(`❌ Test failed: ${error.message}`, 'error');
+                updateStatus('❌ Test failed', 'error');
+            }
+        }
+        
+        // Start the test
+        testFirebaseScriptLoading();
+    </script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Chat JavaScript</title>
+</head>
+<body>
+    <h1>Chat JavaScript Debugger</h1>
+    
+    <div id="debug-info"></div>
+    
+    <script>
+    // Test if we can access the chat page
+    async function testChatAccess() {
+        const debugDiv = document.getElementById('debug-info');
+        
+        try {
+            // Test 1: Can we access the chat page?
+            debugDiv.innerHTML += '<h3>Test 1: Accessing Chat Page</h3>';
+            const chatResponse = await fetch('https://skillsxchangee.onrender.com/chat/2');
+            debugDiv.innerHTML += `<p>Chat page status: ${chatResponse.status}</p>`;
+            
+            // Test 2: Can we get messages?
+            debugDiv.innerHTML += '<h3>Test 2: Getting Messages</h3>';
+            const messagesResponse = await fetch('https://skillsxchangee.onrender.com/chat/2/messages');
+            const messagesData = await messagesResponse.json();
+            debugDiv.innerHTML += `<p>Messages status: ${messagesResponse.status}</p>`;
+            debugDiv.innerHTML += `<p>Messages data: ${JSON.stringify(messagesData, null, 2)}</p>`;
+            
+            // Test 3: Check if CSRF token is available
+            debugDiv.innerHTML += '<h3>Test 3: CSRF Token</h3>';
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            if (csrfMeta) {
+                debugDiv.innerHTML += `<p>CSRF token found: ${csrfMeta.content.substring(0, 10)}...</p>`;
+            } else {
+                debugDiv.innerHTML += '<p style="color: red;">CSRF token NOT found!</p>';
+            }
+            
+        } catch (error) {
+            debugDiv.innerHTML += `<p style="color: red;">Error: ${error.message}</p>`;
+        }
+    }
+    
+    // Run tests when page loads
+    testChatAccess();
+    </script>
+    
+    <h2>Instructions:</h2>
+    <p>This page will test if the chat endpoints are accessible and if CSRF tokens are working.</p>
+</body>
+</html>

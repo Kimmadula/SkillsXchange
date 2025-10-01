@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broadcasting Auth Test with User</title>
+    <meta name="csrf-token" content="test-csrf-token">
+    <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.3/dist/echo.iife.js"></script>
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+</head>
+<body>
+    <h1>🔐 Broadcasting Auth Test with User Authentication</h1>
+    <div id="status">Initializing...</div>
+    <div id="logs"></div>
+    <button onclick="testWithAuth()">Test with Authentication</button>
+    <button onclick="testWithoutAuth()">Test without Authentication</button>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const logsDiv = document.getElementById('logs');
+        
+        function log(message) {
+            console.log(message);
+            logsDiv.innerHTML += '<div>' + new Date().toISOString() + ': ' + message + '</div>';
+        }
+        
+        // Test configuration
+        const PUSHER_KEY = '5c02e54d01ca577ae77e';
+        const PUSHER_CLUSTER = 'ap1';
+        const TEST_TRADE_ID = 1;
+        
+        log('🔧 Testing Broadcasting Authentication with User...');
+        
+        // Test with authentication (simulate logged in user)
+        async function testWithAuth() {
+            log('🧪 Testing with authentication...');
+            
+            try {
+                // First, try to get a CSRF token by visiting the main page
+                const csrfResponse = await fetch('/');
+                const csrfText = await csrfResponse.text();
+                const csrfMatch = csrfText.match(/name="csrf-token" content="([^"]+)"/);
+                const csrfToken = csrfMatch ? csrfMatch[1] : 'test-csrf-token';
+                
+                log('🔑 CSRF Token: ' + csrfToken);
+                
+                // Test auth endpoint with proper headers
+                const response = await fetch('/broadcasting/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin', // Include cookies for session
+                    body: JSON.stringify({
+                        socket_id: '123.456',
+                        channel_name: 'private-trade.1'
+                    })
+                });
+                
+                log('📡 Auth endpoint response status: ' + response.status);
+                const responseText = await response.text();
+                log('📡 Auth endpoint response: ' + responseText);
+                
+                if (response.status === 401) {
+                    log('⚠️ User not authenticated - this is expected for the test');
+                    log('💡 In a real application, the user would be logged in');
+                } else if (response.status === 200) {
+                    log('✅ Authentication successful!');
+                    try {
+                        const responseJson = JSON.parse(responseText);
+                        log('✅ Valid JSON response: ' + JSON.stringify(responseJson));
+                    } catch (e) {
+                        log('❌ Invalid JSON response: ' + e.message);
+                    }
+                }
+                
+            } catch (error) {
+                log('❌ Test failed: ' + error.message);
+            }
+        }
+        
+        // Test without authentication (should fail)
+        async function testWithoutAuth() {
+            log('🧪 Testing without authentication (should fail)...');
+            
+            try {
+                const response = await fetch('/broadcasting/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        socket_id: '123.456',
+                        channel_name: 'private-trade.1'
+                    })
+                });
+                
+                log('📡 Response status: ' + response.status);
+                const responseText = await response.text();
+                log('📡 Response: ' + responseText);
+                
+                if (response.status === 401) {
+                    log('✅ Correctly returned 401 Unauthorized');
+                } else {
+                    log('❌ Unexpected response status: ' + response.status);
+                }
+                
+            } catch (error) {
+                log('❌ Test failed: ' + error.message);
+            }
+        }
+        
+        // Test Echo connection (this will fail without auth, but let's see what happens)
+        function testEchoConnection() {
+            log('🧪 Testing Echo connection...');
+            
+            try {
+                window.Echo = new Echo({
+                    broadcaster: 'pusher',
+                    key: PUSHER_KEY,
+                    cluster: PUSHER_CLUSTER,
+                    forceTLS: false,
+                    enabledTransports: ['ws', 'wss'],
+                    authEndpoint: '/broadcasting/auth',
+                    auth: {
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Accept': 'application/json'
+                        }
+                    }
+                });
+                
+                log('✅ Echo initialized');
+                
+                // Test connection
+                window.Echo.connector.pusher.connection.bind('connected', () => {
+                    log('✅ Pusher connected');
+                });
+                
+                window.Echo.connector.pusher.connection.bind('error', (error) => {
+                    log('❌ Pusher connection error: ' + JSON.stringify(error));
+                });
+                
+                // Try to subscribe to a channel
+                const channelName = `trade.${TEST_TRADE_ID}`;
+                log('📡 Attempting to subscribe to: ' + channelName);
+                
+                const channel = window.Echo.private(channelName);
+                
+                channel.listen('video-call-offer', (data) => {
+                    log('📞 Received video-call-offer: ' + JSON.stringify(data));
+                })
+                .error((error) => {
+                    log('❌ Channel subscription error: ' + JSON.stringify(error));
+                    if (error.type === 'AuthError') {
+                        log('🔍 AuthError details: ' + error.error);
+                        log('🔍 This is expected because user is not authenticated');
+                    }
+                });
+                
+            } catch (error) {
+                log('❌ Echo initialization failed: ' + error.message);
+            }
+        }
+        
+        // Auto-start tests
+        setTimeout(() => {
+            testWithoutAuth();
+            setTimeout(() => {
+                testWithAuth();
+                setTimeout(() => {
+                    testEchoConnection();
+                }, 1000);
+            }, 1000);
+        }, 1000);
+        
+    </script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #status {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f0f0f0;
+        }
+        #logs {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</body>
+</html>

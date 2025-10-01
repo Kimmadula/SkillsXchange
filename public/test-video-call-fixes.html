@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Call Fixes Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .log { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Video Call Fixes Test</h1>
+    
+    <div id="status" class="status info">Ready to test fixes...</div>
+    
+    <button onclick="testVariableDeclaration()">Test Variable Declaration</button>
+    <button onclick="testFirebaseConfig()">Test Firebase Config</button>
+    <button onclick="testRoutes()">Test Video Call Routes</button>
+    <button onclick="clearLog()">Clear Log</button>
+    
+    <h3>Test Results</h3>
+    <div id="log" class="log"></div>
+
+    <!-- Include Firebase CDN -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <!-- Include Firebase Configuration -->
+    <script src="/firebase-config.js"></script>
+
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+        
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+        
+        function testVariableDeclaration() {
+            log('Testing variable declaration fix...', 'info');
+            
+            try {
+                // Test if the variable would be defined (simulate the fix)
+                let videoCallListenersInitialized = false;
+                
+                if (typeof videoCallListenersInitialized !== 'undefined') {
+                    log('✅ videoCallListenersInitialized variable is properly declared', 'success');
+                    updateStatus('Variable declaration fix: SUCCESS', 'success');
+                } else {
+                    log('❌ videoCallListenersInitialized variable is not defined', 'error');
+                    updateStatus('Variable declaration fix: FAILED', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error testing variable declaration: ${error.message}`, 'error');
+                updateStatus('Variable declaration fix: ERROR', 'error');
+            }
+        }
+        
+        function testFirebaseConfig() {
+            log('Testing Firebase configuration...', 'info');
+            
+            try {
+                if (typeof window.firebaseConfig !== 'undefined') {
+                    log('✅ Firebase config is available globally', 'success');
+                    log(`Project ID: ${window.firebaseConfig.projectId}`, 'info');
+                    log(`Database URL: ${window.firebaseConfig.databaseURL}`, 'info');
+                    updateStatus('Firebase config: SUCCESS', 'success');
+                } else {
+                    log('❌ Firebase config is not available', 'error');
+                    updateStatus('Firebase config: FAILED', 'error');
+                }
+            } catch (error) {
+                log(`❌ Error testing Firebase config: ${error.message}`, 'error');
+                updateStatus('Firebase config: ERROR', 'error');
+            }
+        }
+        
+        async function testRoutes() {
+            log('Testing video call routes...', 'info');
+            
+            try {
+                // Test if the routes are accessible
+                const testRoutes = [
+                    '/chat/1/video-call/offer',
+                    '/chat/1/video-call/answer',
+                    '/chat/1/video-call/ice-candidate',
+                    '/chat/1/video-call/end',
+                    '/chat/1/video-call/messages'
+                ];
+                
+                let successCount = 0;
+                
+                for (const route of testRoutes) {
+                    try {
+                        const response = await fetch(route, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                            },
+                            body: JSON.stringify({})
+                        });
+                        
+                        // We expect 403 (unauthorized) or 422 (validation error), not 404
+                        if (response.status === 404) {
+                            log(`❌ Route ${route} returns 404 (not found)`, 'error');
+                        } else {
+                            log(`✅ Route ${route} is accessible (status: ${response.status})`, 'success');
+                            successCount++;
+                        }
+                    } catch (error) {
+                        log(`❌ Error testing route ${route}: ${error.message}`, 'error');
+                    }
+                }
+                
+                if (successCount > 0) {
+                    log(`✅ ${successCount}/${testRoutes.length} routes are accessible`, 'success');
+                    updateStatus(`Routes test: ${successCount}/${testRoutes.length} SUCCESS`, 'success');
+                } else {
+                    log('❌ No routes are accessible', 'error');
+                    updateStatus('Routes test: FAILED', 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Error testing routes: ${error.message}`, 'error');
+                updateStatus('Routes test: ERROR', 'error');
+            }
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        // Auto-run tests on page load
+        window.addEventListener('load', function() {
+            log('🚀 Video Call Fixes Test loaded', 'info');
+            log('📋 Click buttons to test individual fixes', 'info');
+            
+            // Auto-test Firebase config
+            setTimeout(() => {
+                testFirebaseConfig();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

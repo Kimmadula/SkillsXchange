@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTPS Assets Test</title>
+</head>
+<body>
+    <h1>HTTPS Assets Test</h1>
+    <p>This page tests if assets are being loaded over HTTPS.</p>
+    
+    <h2>Asset URLs Test:</h2>
+    <div id="asset-test-results"></div>
+    
+    <script>
+        // Test asset URLs
+        const testUrls = [
+            'https://skillsxchangee.onrender.com/build/assets/app-4ed993c7.js',
+            'https://skillsxchangee.onrender.com/build/assets/js-d0be043b.js',
+            'https://skillsxchangee.onrender.com/build/assets/style-3862fde1.css'
+        ];
+        
+        const resultsDiv = document.getElementById('asset-test-results');
+        
+        testUrls.forEach(url => {
+            const testElement = document.createElement('div');
+            testElement.innerHTML = `Testing: ${url} - <span id="status-${testUrls.indexOf(url)}">Loading...</span>`;
+            resultsDiv.appendChild(testElement);
+            
+            // Test if the asset loads
+            if (url.endsWith('.js')) {
+                const script = document.createElement('script');
+                script.src = url;
+                script.onload = () => {
+                    document.getElementById(`status-${testUrls.indexOf(url)}`).innerHTML = '✅ Loaded successfully';
+                    document.getElementById(`status-${testUrls.indexOf(url)}`).style.color = 'green';
+                };
+                script.onerror = () => {
+                    document.getElementById(`status-${testUrls.indexOf(url)}`).innerHTML = '❌ Failed to load';
+                    document.getElementById(`status-${testUrls.indexOf(url)}`).style.color = 'red';
+                };
+                document.head.appendChild(script);
+            } else if (url.endsWith('.css')) {
+                const link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = url;
+                link.onload = () => {
+                    document.getElementById(`status-${testUrls.indexOf(url)}`).innerHTML = '✅ Loaded successfully';
+                    document.getElementById(`status-${testUrls.indexOf(url)}`).style.color = 'green';
+                };
+                link.onerror = () => {
+                    document.getElementById(`status-${testUrls.indexOf(url)}`).innerHTML = '❌ Failed to load';
+                    document.getElementById(`status-${testUrls.indexOf(url)}`).style.color = 'red';
+                };
+                document.head.appendChild(link);
+            }
+        });
+        
+        // Check for mixed content warnings
+        window.addEventListener('load', () => {
+            console.log('Page loaded. Check browser console for mixed content warnings.');
+            console.log('If you see mixed content warnings, the fix did not work.');
+            console.log('If no mixed content warnings appear, the fix is working correctly.');
+        });
+    </script>
+</body>
+</html>

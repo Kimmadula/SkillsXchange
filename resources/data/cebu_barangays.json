@@ -1,0 +1,29 @@
+{
+	"Cebu City": [
+		"Adlaon", "Agsungot", "Apas", "Babag", "Banilad", "Basak Pardo", "Basak San Nicolas", "Binaliw", "Bonbon", "Budlaan", "Buhisan", "Bulacao", "Busay", "Calamba", "Cambinocot", "Capitol Site", "Carreta", "Cogon Pardo", "Cogon Ramos", "Day-as", "Duljo Fatima", "Ermita", "Guadalupe", "Guba", "Hipodromo", "Inayawan", "Kalubihan", "Kalunasan", "Kamagayan", "Kamputhaw", "Kinasang-an Pardo", "Labangon", "Lahug", "Lusaran", "Luz", "Mabini", "Mabolo", "Malubog", "Mambaling", "Pahina Central", "Pahina San Nicolas", "Pamutan", "Pari-an", "Paril", "Pasil", "Pit-os", "Poblacion Pardo", "Pulangbato", "Pung-ol Sibugay", "Quiot Pardo", "Sambag I", "Sambag II", "San Antonio", "San Jose", "San Nicolas Central", "San Roque", "Santa Cruz", "Sapangdaku", "Sawang Calero", "Sinsin", "Sirao", "Suba", "Sudlon I", "Sudlon II", "T. Padilla", "Tabunan", "Tagba-o", "Talamban", "Taptap", "Tejero", "Tinago", "To-ong", "Zapatera"
+	],
+	"Mandaue City": [
+		"Alang-alang", "Bakilid", "Banilad", "Basak", "Cabancalan", "Cambaro", "Canduman", "Casili", "Casuntingan", "Centro", "Cubacub", "Guizo", "Ibabao-Estancia", "Jagobiao", "Labogon", "Looc", "Maguikay", "Mantuyong", "Opao", "Paknaan", "Pagsabungan", "Subangdaku", "Tawason", "Tipolo", "Umapad"
+	],
+	"Lapu-Lapu City": [
+		"Agus", "Babag", "Bankal", "Basak", "Buaya", "Caubian", "Caw-oy", "Gun-ob", "Ibo", "Looc", "Mactan", "Maribago", "Marigondon", "Pajo", "Pajac", "Poblacion", "Punta Engaño", "Pusok", "Sabang", "Santa Rosa", "Subabasbas", "Talima", "Tingo"
+	],
+	"Talisay City": [
+		"Bulacao", "Biasong", "Camp 4", "Candulawan", "Cansojong", "Dumlog", "Jaclupan", "Lagtang", "Lawaan I", "Lawaan II", "Lawaan III", "Linao", "Maghaway", "Manipis", "Mohon", "Poblacion", "Pooc", "San Isidro", "San Roque", "Tabunok", "Tapul", "Tanke"
+	],
+	"Consolacion": [
+		"Cabatbatan", "Cabangahan", "Cansaga", "Casili", "Danglag", "Garing", "Jugan", "Lamac", "Lanipga", "Lilingan", "Nangka", "Panoypoy", "Poblacion Occidental", "Poblacion Oriental", "Polog", "Pulpogan", "Sacsac", "Sayao", "Tilhaong", "Tayud"
+	],
+	"Liloan": [
+		"Catarman", "Calero", "Cotcot", "Jubay", "Mulao", "Poblacion", "San Roque", "San Vicente", "Taboc", "Tayud", "Yati"
+	],
+	"Minglanilla": [
+		"Calajo-an", "Culi", "Guindaruhan", "Lutac", "Manduang", "Pakigne", "Poblacion Ward I", "Poblacion Ward II", "Tigbao", "Tulay", "Tunghaan", "Tubod", "Vito"
+	],
+	"Cordova": [
+		"Alegria", "Bangbang", "Buagsong", "Catarman", "Cogon", "Dapitan", "Day-as", "Gabi", "Gilutongan", "Ibabao", "Pajac-Pob. (Poblacion)", "Pilipog", "San Miguel"
+	],
+	"Toledo City": [
+		"Awihao", "Bato", "Bunga", "Buto", "Canlumampao", "Cantabaco", "Daanlungsod", "Dian-ay", "Ilihan", "Ibo", "Luray II", "Magdugo", "Matab-ang", "Media Once", "Pangamihan", "Pinamungajan (boundary)", "Poog", "Putingbato", "Sagay", "Sangi", "Bunga (Upper)", "Talavera", "Tubod"
+	]
+}

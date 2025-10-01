@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Answer Exchange Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📞 Answer Exchange Test</h1>
+        <p>This page tests the WebRTC answer exchange process to ensure both sides can communicate properly.</p>
+        
+        <div class="status info">
+            <strong>Instructions:</strong><br>
+            1. Open this page in two different browser tabs/windows<br>
+            2. Set different User IDs in each tab<br>
+            3. Click "Start Call" in one tab<br>
+            4. Check if the other tab receives the call and sends an answer<br>
+            5. Monitor the logs for answer exchange
+        </div>
+        
+        <div class="container">
+            <h3>🔧 Setup</h3>
+            <div>
+                <label for="userId">User ID:</label>
+                <input type="text" id="userId" value="user1" placeholder="Enter your user ID">
+            </div>
+            <div>
+                <label for="tradeId">Trade ID:</label>
+                <input type="text" id="tradeId" value="trade1" placeholder="Enter trade ID">
+            </div>
+            <div>
+                <label for="partnerId">Partner ID:</label>
+                <input type="text" id="partnerId" value="user2" placeholder="Enter partner user ID">
+            </div>
+            <button onclick="setupTest()">Setup Test</button>
+        </div>
+        
+        <div class="container">
+            <h3>🎥 Video Call Test</h3>
+            <div id="video-container" style="display: none;">
+                <div style="display: flex; gap: 20px;">
+                    <div style="flex: 1;">
+                        <h4>Local Video</h4>
+                        <video id="local-video" autoplay muted playsinline style="width: 100%; max-width: 300px; height: auto; background: #000;"></video>
+                    </div>
+                    <div style="flex: 1;">
+                        <h4>Remote Video</h4>
+                        <video id="remote-video" autoplay playsinline style="width: 100%; max-width: 300px; height: auto; background: #000;"></video>
+                    </div>
+                </div>
+                <div style="text-align: center; margin: 20px 0;">
+                    <button id="start-call-btn" onclick="startCall()">Start Call</button>
+                    <button id="end-call-btn" onclick="endCall()" style="display: none;">End Call</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="container">
+            <h3>📊 Test Log</h3>
+            <div id="test-log" class="log">Test log will appear here...\n</div>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+    </div>
+
+    <!-- Include the WebSocket video call manager -->
+    <script src="resources/views/websocket-video-call.js"></script>
+
+    <script>
+        let videoCallManager = null;
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            
+            console.log(logMessage);
+            
+            const logElement = document.getElementById('test-log');
+            if (logElement) {
+                const logEntry = document.createElement('div');
+                logEntry.textContent = logMessage;
+                logEntry.style.color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : type === 'warning' ? '#ffc107' : '#333';
+                logElement.appendChild(logEntry);
+                logElement.scrollTop = logElement.scrollHeight;
+            }
+        }
+        
+        function clearLog() {
+            document.getElementById('test-log').innerHTML = '';
+        }
+        
+        function setupTest() {
+            const userId = document.getElementById('userId').value;
+            const tradeId = document.getElementById('tradeId').value;
+            const partnerId = document.getElementById('partnerId').value;
+            
+            if (!userId || !tradeId || !partnerId) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            // Set global variables for the video call manager
+            window.userId = userId;
+            window.tradeId = tradeId;
+            window.partnerId = partnerId;
+            
+            // Show video container
+            document.getElementById('video-container').style.display = 'block';
+            
+            // Initialize video call manager
+            if (typeof WebSocketVideoCallManager !== 'undefined') {
+                videoCallManager = new WebSocketVideoCallManager();
+                log(`✅ Test setup complete for User: ${userId}, Partner: ${partnerId}`, 'success');
+            } else {
+                log('❌ WebSocketVideoCallManager not loaded', 'error');
+            }
+        }
+        
+        function startCall() {
+            if (videoCallManager) {
+                log('🚀 Starting video call...', 'info');
+                videoCallManager.startCall();
+                
+                // Update UI
+                document.getElementById('start-call-btn').style.display = 'none';
+                document.getElementById('end-call-btn').style.display = 'inline-block';
+            } else {
+                log('❌ Video call manager not initialized', 'error');
+            }
+        }
+        
+        function endCall() {
+            if (videoCallManager) {
+                log('🛑 Ending video call...', 'info');
+                videoCallManager.endCall();
+                
+                // Update UI
+                document.getElementById('start-call-btn').style.display = 'inline-block';
+                document.getElementById('end-call-btn').style.display = 'none';
+            }
+        }
+        
+        // Override the WebSocketVideoCallManager log method to use our custom log
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof WebSocketVideoCallManager !== 'undefined') {
+                const originalLog = WebSocketVideoCallManager.prototype.log;
+                WebSocketVideoCallManager.prototype.log = function(message, type) {
+                    originalLog.call(this, message, type);
+                    log(message, type);
+                };
+            }
+        });
+        
+        // Auto-setup on page load
+        window.addEventListener('load', function() {
+            log('🚀 Answer Exchange Test loaded', 'info');
+            log('📋 Please set up your test parameters and click "Setup Test"', 'info');
+        });
+    </script>
+</body>
+</html>

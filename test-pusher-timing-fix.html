@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Pusher Timing Fix</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        .warning { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Pusher Timing Fix Test</h1>
+        
+        <div class="test-section">
+            <h3>1. Simulate Pusher Loading Delay</h3>
+            <button onclick="simulateDelayedPusher()">Simulate Delayed Pusher</button>
+            <div id="pusher-status" class="status"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. Test Pusher Wait Function</h3>
+            <button onclick="testPusherWait()">Test Wait Function</button>
+            <div id="wait-status" class="status"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. Test Video Call Listeners</h3>
+            <button onclick="testVideoCallListeners()">Test Listeners</button>
+            <div id="listener-status" class="status"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Console Log</h3>
+            <div id="console-log" style="background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; max-height: 300px; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Override console.log to show in our test interface
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        function logToInterface(...args) {
+            const logDiv = document.getElementById('console-log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `<div>[${timestamp}] ${args.join(' ')}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            logToInterface(...args);
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            logToInterface('❌', ...args);
+        };
+        
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            logToInterface('⚠️', ...args);
+        };
+        
+        // Simulate the Pusher timing fix
+        let pusherWaitAttempts = 0;
+        const maxPusherWaitAttempts = 20;
+        let videoCallListenersInitialized = false;
+        
+        function waitForPusherAndInitialize() {
+            pusherWaitAttempts++;
+            
+            if (typeof window.Echo !== 'undefined' && window.Echo.connector && window.Echo.connector.pusher) {
+                console.log('✅ Pusher is ready, initializing video call listeners');
+                initializeVideoCallListeners();
+            } else if (pusherWaitAttempts < maxPusherWaitAttempts) {
+                console.log(`⏳ Waiting for Pusher to be available... (attempt ${pusherWaitAttempts}/${maxPusherWaitAttempts})`);
+                setTimeout(waitForPusherAndInitialize, 500);
+            } else {
+                console.error('❌ Pusher failed to load after maximum wait time. Video calls may not work properly.');
+                if (typeof window.Echo !== 'undefined') {
+                    console.log('⚠️ Attempting to initialize with available Echo...');
+                    initializeVideoCallListeners();
+                }
+            }
+        }
+        
+        function initializeVideoCallListeners() {
+            if (videoCallListenersInitialized) {
+                console.log('⚠️ Video call listeners already initialized, skipping...');
+                return;
+            }
+            
+            console.log('🔧 Setting up video call listeners...');
+            
+            // Simulate setting up listeners
+            setTimeout(() => {
+                console.log('✅ Video call listeners initialized successfully');
+                videoCallListenersInitialized = true;
+                document.getElementById('listener-status').innerHTML = '<div class="success">✅ Video call listeners initialized</div>';
+            }, 100);
+        }
+        
+        function simulateDelayedPusher() {
+            console.log('🎭 Simulating delayed Pusher loading...');
+            document.getElementById('pusher-status').innerHTML = '<div class="info">⏳ Simulating Pusher loading delay...</div>';
+            
+            // Clear previous state
+            pusherWaitAttempts = 0;
+            videoCallListenersInitialized = false;
+            window.Echo = undefined;
+            
+            // Simulate Pusher loading after 3 seconds
+            setTimeout(() => {
+                window.Echo = {
+                    connector: {
+                        pusher: {
+                            connection: {
+                                state: 'connected'
+                            }
+                        }
+                    }
+                };
+                console.log('✅ Pusher simulation loaded');
+                document.getElementById('pusher-status').innerHTML = '<div class="success">✅ Pusher simulation loaded</div>';
+            }, 3000);
+            
+            // Start waiting for Pusher
+            waitForPusherAndInitialize();
+        }
+        
+        function testPusherWait() {
+            console.log('🧪 Testing Pusher wait function...');
+            document.getElementById('wait-status').innerHTML = '<div class="info">⏳ Testing wait function...</div>';
+            
+            // Clear previous state
+            pusherWaitAttempts = 0;
+            videoCallListenersInitialized = false;
+            
+            // Start waiting
+            waitForPusherAndInitialize();
+        }
+        
+        function testVideoCallListeners() {
+            console.log('🎥 Testing video call listeners...');
+            
+            if (videoCallListenersInitialized) {
+                document.getElementById('listener-status').innerHTML = '<div class="success">✅ Listeners already initialized</div>';
+            } else {
+                document.getElementById('listener-status').innerHTML = '<div class="warning">⚠️ Listeners not initialized yet</div>';
+            }
+        }
+        
+        // Auto-start test when page loads
+        window.addEventListener('load', function() {
+            console.log('🚀 Page loaded, ready for testing...');
+        });
+    </script>
+</body>
+</html>

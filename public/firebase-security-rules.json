@@ -1,0 +1,34 @@
+{
+  "rules": {
+    "video_rooms": {
+      "$roomId": {
+        ".read": "auth != null && (data.child('metadata/user1').val() == auth.uid || data.child('metadata/user2').val() == auth.uid)",
+        ".write": "auth != null && (data.child('metadata/user1').val() == auth.uid || data.child('metadata/user2').val() == auth.uid)",
+        "metadata": {
+          ".read": "auth != null && (data.child('user1').val() == auth.uid || data.child('user2').val() == auth.uid)",
+          ".write": "auth != null && (data.child('user1').val() == auth.uid || data.child('user2').val() == auth.uid)"
+        },
+        "users": {
+          "$userId": {
+            ".read": "auth != null && (data.parent().parent().child('metadata/user1').val() == auth.uid || data.parent().parent().child('metadata/user2').val() == auth.uid)",
+            ".write": "auth != null && (data.parent().parent().child('metadata/user1').val() == auth.uid || data.parent().parent().child('metadata/user2').val() == auth.uid)"
+          }
+        },
+        "calls": {
+          "$callId": {
+            ".read": "auth != null && (data.parent().parent().child('metadata/user1').val() == auth.uid || data.parent().parent().child('metadata/user2').val() == auth.uid)",
+            ".write": "auth != null && (data.parent().parent().child('metadata/user1').val() == auth.uid || data.parent().parent().child('metadata/user2').val() == auth.uid)"
+          }
+        }
+      }
+    },
+    "test_connection": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "security_test": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}

@@ -1,0 +1,107 @@
+# Node modules and logs
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Git
+.git
+.gitignore
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+.env.testing
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+bootstrap/cache/*
+
+# Test files (keep Firebase test files)
+test-*.html
+debug-*.html
+*test*.html
+
+# Documentation (keep essential ones)
+README.md
+*.md
+!FIREBASE_MIGRATION_GUIDE.md
+!FIREBASE_VIDEO_CALL_SETUP.md
+
+# Development files
+composer.phar
+composer-setup.php
+clear_skills.php
+clear_skills.sql
+
+# Old WebSocket files (no longer needed)
+start-websocket-server.*
+test-websocket-*
+test-pusher-*
+test-broadcasting-*
+test-video-call-*
+test-answer-exchange.html
+test-camera-mirror.html
+test-chat-*.html
+test-message-sending.html
+test-mysql-connection.php
+test-skills.html
+test-ice-candidate-fix.html
+test-https-assets.html
+test-notification-fix.html
+test-pusher-timing-fix.html
+test-video-call-*.html
+debug-chat-js.html
+debug-video-call.html
+
+# Keep Firebase files (essential for deployment)
+!public/firebase-config.js
+!public/firebase-video-integration.js
+!public/firebase-video-call.js
+!public/test-firebase-integration.html
+!public/test-firebase-video-call.html
+
+# Keep essential deployment files
+!build-render.sh
+!start-render.sh
+!deploy.sh
+!deploy-setup.*
+!build-assets.*
+!setup-env.*
+!start.sh
+!Procfile
+!railway.toml
+!render.yaml
+!Dockerfile*
+!.dockerignore*
+
+# Coverage and testing
+coverage
+.nyc_output
+.phpunit.result.cache
+.phpunit.cache
+tests/
+
+# Temporary files
+*.tmp
+*.temp

@@ -1,0 +1,96 @@
+# PUSHER CONFIGURATION TEMPLATE
+# Copy these settings to your .env file for real-time chat functionality
+
+# ===========================================
+# BROADCASTING CONFIGURATION
+# ===========================================
+BROADCAST_DRIVER=pusher
+
+# ===========================================
+# PUSHER CREDENTIALS
+# ===========================================
+PUSHER_APP_ID=2047345
+PUSHER_APP_KEY=5c02e54d01ca577ae77e
+PUSHER_APP_SECRET=3ad793a15a653af09cd6
+PUSHER_APP_CLUSTER=ap1
+PUSHER_HOST=
+PUSHER_PORT=443
+PUSHER_SCHEME=https
+
+# ===========================================
+# VITE ENVIRONMENT VARIABLES (for frontend)
+# ===========================================
+VITE_PUSHER_APP_KEY=5c02e54d01ca577ae77e
+VITE_PUSHER_APP_CLUSTER=ap1
+VITE_PUSHER_HOST=
+VITE_PUSHER_PORT=443
+VITE_PUSHER_SCHEME=https
+
+# ===========================================
+# QUICK SETUP COMMANDS
+# ===========================================
+# After adding the above to your .env file, run these commands:
+
+# 1. Clear configuration cache
+php artisan config:clear
+
+# 2. Clear application cache
+php artisan cache:clear
+
+# 3. Build frontend assets (choose one)
+npm run build          # For production
+npm run dev            # For development
+
+# ===========================================
+# VERIFICATION STEPS
+# ===========================================
+# 1. Check if Pusher is working:
+#    - Open browser console in chat page
+#    - Look for "Pusher connected successfully" message
+#    - Connection status should show "Connected" (green dot)
+
+# 2. Test real-time messaging:
+#    - Open chat in two different browsers
+#    - Send message from one browser
+#    - Should appear instantly in the other browser
+
+# ===========================================
+# TROUBLESHOOTING
+# ===========================================
+# If messages don't appear in real-time:
+# 1. Check browser console for errors
+# 2. Verify all environment variables are set correctly
+# 3. Ensure BROADCAST_DRIVER=pusher is in .env
+# 4. Check if Pusher app is active in Pusher dashboard
+# 5. Verify cluster setting matches your Pusher app (ap1)
+
+# ===========================================
+# PUSHER DASHBOARD
+# ===========================================
+# Monitor your app at: https://dashboard.pusher.com/
+# App ID: 2047345
+# Cluster: ap1
+# Check message throughput, connections, and errors
+
+# ===========================================
+# FEATURES INCLUDED
+# ===========================================
+# ✅ Real-time messaging
+# ✅ Task updates broadcasting
+# ✅ Connection status monitoring
+# ✅ Error handling and reconnection
+# ✅ Channel authorization (secure)
+# ✅ Optimistic UI updates
+# ✅ Message deduplication
+
+# ===========================================
+# SECURITY NOTES
+# ===========================================
+# - Only trade participants can access trade channels
+# - All broadcasts require authenticated users
+# - Channel authorization prevents unauthorized access
+# - Messages are validated before broadcasting
+
+# ===========================================
+# COPY THIS ENTIRE BLOCK TO YOUR .env FILE
+# ===========================================

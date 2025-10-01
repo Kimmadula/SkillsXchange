@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Firebase v12 Configuration</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .primary { background: #007bff; color: white; }
+    </style>
+</head>
+<body>
+    <h1>Test Firebase v12 Configuration</h1>
+    
+    <div id="test-results"></div>
+    
+    <button id="test-firebase-btn" class="primary">Test Firebase Connection</button>
+    <button id="test-database-btn" class="primary">Test Database Write</button>
+    <button id="test-webrtc-btn" class="primary">Test WebRTC Signaling</button>
+    
+    <script>
+        const testResults = document.getElementById('test-results');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            console.log(logMessage);
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.textContent = logMessage;
+            testResults.appendChild(resultDiv);
+            testResults.scrollTop = testResults.scrollHeight;
+        }
+        
+        // Test Firebase connection
+        function testFirebase() {
+            log('🔧 Testing Firebase v12 connection...', 'info');
+            
+            if (typeof firebase !== 'undefined') {
+                log('✅ Firebase is loaded', 'success');
+                
+                try {
+                    const database = firebase.database();
+                    log('✅ Firebase database initialized', 'success');
+                    
+                    // Test if we can access the database
+                    const testRef = database.ref('test');
+                    log('✅ Firebase database reference created', 'success');
+                    
+                } catch (error) {
+                    log(`❌ Firebase database error: ${error.message}`, 'error');
+                }
+            } else {
+                log('❌ Firebase not loaded', 'error');
+            }
+        }
+        
+        // Test database write
+        function testDatabaseWrite() {
+            log('🔧 Testing database write...', 'info');
+            
+            if (typeof firebase !== 'undefined' && firebase.database) {
+                try {
+                    const database = firebase.database();
+                    const testData = {
+                        message: 'Firebase v12 test from SkillsXchange',
+                        timestamp: Date.now(),
+                        testId: Math.random().toString(36).substr(2, 9)
+                    };
+                    
+                    database.ref('test').set(testData)
+                        .then(() => {
+                            log('✅ Database write successful', 'success');
+                            log(`📝 Test data written: ${JSON.stringify(testData)}`, 'info');
+                            
+                            // Clean up test data after 5 seconds
+                            setTimeout(() => {
+                                database.ref('test').remove()
+                                    .then(() => {
+                                        log('🧹 Test data cleaned up', 'info');
+                                    })
+                                    .catch(error => {
+                                        log(`❌ Error cleaning up: ${error.message}`, 'error');
+                                    });
+                            }, 5000);
+                        })
+                        .catch(error => {
+                            log(`❌ Database write failed: ${error.message}`, 'error');
+                        });
+                        
+                } catch (error) {
+                    log(`❌ Database write error: ${error.message}`, 'error');
+                }
+            } else {
+                log('❌ Firebase not available for database write', 'error');
+            }
+        }
+        
+        // Test WebRTC signaling
+        function testWebRTCSignaling() {
+            log('🔧 Testing WebRTC signaling...', 'info');
+            
+            if (window.webrtcSignaling) {
+                log('✅ WebRTC signaling class available', 'success');
+                
+                if (window.webrtcSignaling.database) {
+                    log('✅ WebRTC signaling database initialized', 'success');
+                } else {
+                    log('❌ WebRTC signaling database not initialized', 'error');
+                }
+            } else {
+                log('❌ WebRTC signaling class not available', 'error');
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('test-firebase-btn').addEventListener('click', testFirebase);
+        document.getElementById('test-database-btn').addEventListener('click', testDatabaseWrite);
+        document.getElementById('test-webrtc-btn').addEventListener('click', testWebRTCSignaling);
+        
+        // Auto-run tests when page loads
+        window.addEventListener('load', function() {
+            log('Page loaded, testing Firebase v12...', 'info');
+            testFirebase();
+            testWebRTCSignaling();
+        });
+    </script>
+    
+    <!-- Firebase v12 Compatibility Layer -->
+    <script type="module" src="firebase-v12-compat.js"></script>
+    
+    <!-- Firebase Configuration Fallback -->
+    <script src="firebase-config.js"></script>
+</body>
+</html>

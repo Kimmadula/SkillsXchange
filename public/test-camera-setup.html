@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Camera Setup</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .video-container { margin: 20px 0; }
+        video { width: 300px; height: 200px; border: 2px solid #007bff; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>Camera Setup Test</h1>
+    
+    <button id="start-camera-btn" style="background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
+        📹 Start Camera
+    </button>
+    
+    <button id="stop-camera-btn" style="background: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-left: 10px;">
+        🛑 Stop Camera
+    </button>
+    
+    <div class="video-container">
+        <h3>Local Video (Your Camera):</h3>
+        <video id="local-video" autoplay muted style="display: none;"></video>
+        <div id="local-status" class="status info">Camera not started</div>
+    </div>
+    
+    <div id="debug-info"></div>
+    
+    <script>
+        let localStream = null;
+        const debugDiv = document.getElementById('debug-info');
+        const localVideo = document.getElementById('local-video');
+        const localStatus = document.getElementById('local-status');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
+            console.log(logMessage);
+            
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = logMessage;
+            debugDiv.appendChild(statusDiv);
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+        }
+        
+        function initializeCamera() {
+            log('📹 Initializing camera...', 'info');
+            
+            // Check if getUserMedia is supported
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                log('❌ Camera not supported in this browser', 'error');
+                localStatus.textContent = 'Camera not supported';
+                localStatus.className = 'status error';
+                return;
+            }
+            
+            // Request camera access
+            navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    facingMode: 'user'
+                }, 
+                audio: true 
+            })
+            .then(function(stream) {
+                log('✅ Camera access granted', 'success');
+                
+                localStream = stream;
+                localVideo.srcObject = stream;
+                localVideo.style.display = 'block';
+                localVideo.play();
+                
+                localStatus.textContent = 'Camera active';
+                localStatus.className = 'status success';
+                
+                log('✅ Local video stream started', 'success');
+            })
+            .catch(function(error) {
+                log(`❌ Camera access denied: ${error.message}`, 'error');
+                localStatus.textContent = `Camera error: ${error.message}`;
+                localStatus.className = 'status error';
+            });
+        }
+        
+        function stopCamera() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+                localVideo.srcObject = null;
+                localVideo.style.display = 'none';
+                
+                localStatus.textContent = 'Camera stopped';
+                localStatus.className = 'status info';
+                
+                log('🛑 Camera stopped', 'info');
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('start-camera-btn').addEventListener('click', initializeCamera);
+        document.getElementById('stop-camera-btn').addEventListener('click', stopCamera);
+        
+        // Auto-start camera when page loads
+        window.addEventListener('load', function() {
+            log('Page loaded, testing camera support...', 'info');
+            
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                log('✅ Camera API is supported', 'success');
+            } else {
+                log('❌ Camera API is not supported', 'error');
+            }
+        });
+    </script>
+</body>
+</html>

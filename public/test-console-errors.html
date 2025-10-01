@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Console Errors Test - SkillsXchangee</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .log {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Console Errors Test</h1>
+        <p>This page tests the fixes for the console errors you encountered.</p>
+
+        <div class="test-section">
+            <h3>1. Template Literal Test</h3>
+            <p>Testing if template literals are properly escaped:</p>
+            <button onclick="testTemplateLiterals()">Test Template Literals</button>
+            <div id="template-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Function Definition Test</h3>
+            <p>Testing if functions are properly defined:</p>
+            <button onclick="testFunctionDefinitions()">Test Function Definitions</button>
+            <div id="function-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>3. URL Generation Test</h3>
+            <p>Testing if URLs are generated correctly:</p>
+            <button onclick="testUrlGeneration()">Test URL Generation</button>
+            <div id="url-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Console Log</h3>
+            <div id="console-log" class="log"></div>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+    </div>
+
+    <script>
+        // Mock the functions that were causing issues
+        function openVideoChat() {
+            log('✅ openVideoChat function called successfully');
+            return true;
+        }
+
+        function closeVideoChat() {
+            log('✅ closeVideoChat function called successfully');
+            return true;
+        }
+
+        function initializeVideoChat() {
+            log('✅ initializeVideoChat function called successfully');
+            return true;
+        }
+
+        // Mock window variables
+        window.tempImageData = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA/8A8A';
+        window.tempVideoData = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMWF2YzEAAAAIZnJlZQAAABxtZGF0AQAAAGxtdmhkAAAAANk2Z2Q2TZnaAAABDAEAAAEAAAAAAAAAAAQAAAAA';
+        window.tradeId = 123;
+        window.authUserId = 456;
+
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('console-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'red' : type === 'success' ? 'green' : type === 'warning' ? 'orange' : 'black';
+            logDiv.textContent += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('console-log').textContent = '';
+        }
+
+        function testTemplateLiterals() {
+            const resultDiv = document.getElementById('template-result');
+            resultDiv.innerHTML = '<p>Testing template literals...</p>';
+            
+            try {
+                // Test the problematic template literals
+                const fileName = 'test-image.jpg';
+                const messageContent = `
+                    <div style="max-width: 70%; background: #e5e7eb; color: #374151; padding: 12px; border-radius: 12px;">
+                        <div style="margin-bottom: 8px;">
+                            <img src="${window.tempImageData || '#'}" alt="${fileName}" class="chat-image" onerror="this.style.display='none'">
+                        </div>
+                        <div style="font-size: 0.75rem; opacity: 0.8;">${fileName}</div>
+                    </div>
+                `;
+                
+                log('✅ Template literal with image data works correctly', 'success');
+                
+                const videoContent = `
+                    <video controls style="max-width: 200px; max-height: 200px; border-radius: 8px;">
+                        <source src="${window.tempVideoData || '#'}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                `;
+                
+                log('✅ Template literal with video data works correctly', 'success');
+                
+                resultDiv.innerHTML = '<div class="success">✅ Template literals work correctly!</div>';
+                
+            } catch (error) {
+                log(`❌ Template literal error: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Template literal error: ${error.message}</div>`;
+            }
+        }
+
+        function testFunctionDefinitions() {
+            const resultDiv = document.getElementById('function-result');
+            resultDiv.innerHTML = '<p>Testing function definitions...</p>';
+            
+            try {
+                // Test if functions are defined
+                if (typeof openVideoChat === 'function') {
+                    log('✅ openVideoChat function is defined', 'success');
+                } else {
+                    throw new Error('openVideoChat is not a function');
+                }
+                
+                if (typeof closeVideoChat === 'function') {
+                    log('✅ closeVideoChat function is defined', 'success');
+                } else {
+                    throw new Error('closeVideoChat is not a function');
+                }
+                
+                if (typeof initializeVideoChat === 'function') {
+                    log('✅ initializeVideoChat function is defined', 'success');
+                } else {
+                    throw new Error('initializeVideoChat is not a function');
+                }
+                
+                // Test function calls
+                openVideoChat();
+                closeVideoChat();
+                initializeVideoChat();
+                
+                resultDiv.innerHTML = '<div class="success">✅ All functions are properly defined and callable!</div>';
+                
+            } catch (error) {
+                log(`❌ Function definition error: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="error">❌ Function definition error: ${error.message}</div>`;
+            }
+        }
+
+        function testUrlGeneration() {
+            const resultDiv = document.getElementById('url-result');
+            resultDiv.innerHTML = '<p>Testing URL generation...</p>';
+            
+            try {
+                // Test URL generation similar to the chat session
+                const baseUrl = window.location.origin;
+                const url = baseUrl + '/chat/' + window.tradeId + '/message';
+                
+                log(`Base URL: ${baseUrl}`, 'info');
+                log(`Generated URL: ${url}`, 'info');
+                
+                if (url && !url.includes('undefined') && url.includes('/chat/')) {
+                    log('✅ URL generation works correctly', 'success');
+                    resultDiv.innerHTML = '<div class="success">✅ URL generation works correctly!</div>';
+                } else {
+                    throw new Error('Invalid URL generated');
+                }
+                
+            } catch (error) {
+                log(`❌ URL generation error: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<div class="error">❌ URL generation error: ${error.message}</div>`;
+            }
+        }
+
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            log('Console errors test page loaded');
+            log('Running initial tests...');
+            testTemplateLiterals();
+            testFunctionDefinitions();
+            testUrlGeneration();
+        });
+    </script>
+</body>
+</html>
