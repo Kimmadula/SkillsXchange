@@ -9,7 +9,7 @@ services:
     healthCheckPath: /
     envVars:
       - key: APP_NAME
-        value: SkillsXchangee
+        value: SkillsXchange
       - key: APP_ENV
         value: production
       - key: VITE_APP_ENV
@@ -19,7 +19,7 @@ services:
       - key: APP_DEBUG
         value: false
       - key: APP_URL
-        value: https://skillsxchangee.onrender.com
+        value: https://skillsxchange-13vk.onrender.com
       - key: LOG_CHANNEL
         value: stderr
 
@@ -27,15 +27,15 @@ services:
       - key: DB_CONNECTION
         value: mysql
       - key: DB_HOST
-        value: shuttle.proxy.rlwy.net
+        value: yamanote.proxy.rlwy.net
       - key: DB_PORT
-        value: "14460"
+        value: "45822"
       - key: DB_DATABASE
         value: railway
       - key: DB_USERNAME
         value: root
       - key: DB_PASSWORD
-        value: lncQUGzAqadIdRckNFrZLgrIlgpKJPOx
+        value: nBMPUzSWZaJhIrrmNKWhiSoFMgfsBBqI
 
       # ✅ Laravel-specific configs
       - key: CACHE_DRIVER
@@ -50,6 +50,22 @@ services:
         value: log
       - key: FILESYSTEM_DISK
         value: public
+
+      # ✅ Pusher Configuration for Real-time Features
+      - key: BROADCAST_DRIVER
+        value: pusher
+      - key: PUSHER_APP_ID
+        value: "2047345"
+      - key: PUSHER_APP_KEY
+        value: "5c02e54d01ca577ae77e"
+      - key: PUSHER_APP_SECRET
+        value: "3ad793a15a653af09cd6"
+      - key: PUSHER_APP_CLUSTER
+        value: "ap1"
+      - key: VITE_PUSHER_APP_KEY
+        value: "5c02e54d01ca577ae77e"
+      - key: VITE_PUSHER_APP_CLUSTER
+        value: "ap1"
 
   # ✅ WebSocket service removed - Firebase handles video call signaling
   # Firebase Realtime Database provides real-time communication

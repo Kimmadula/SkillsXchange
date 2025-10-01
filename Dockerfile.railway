@@ -39,7 +39,7 @@ COPY routes/ ./routes/
 COPY storage/ ./storage/
 
 # Create proper .env file for build process
-RUN echo "APP_NAME=SkillsXchangee\nAPP_ENV=production\nAPP_KEY=\nAPP_DEBUG=false\nDB_CONNECTION=mysql\nDB_HOST=mysql.railway.internal\nDB_PORT=3306\nDB_DATABASE=railway\nDB_USERNAME=root\nDB_PASSWORD=\nLOG_CHANNEL=stderr\nCACHE_DRIVER=file\nSESSION_DRIVER=file\nQUEUE_CONNECTION=sync\nMAIL_MAILER=log" > .env
+RUN echo "APP_NAME=SkillsXchange\nAPP_ENV=production\nAPP_KEY=\nAPP_DEBUG=false\nDB_CONNECTION=mysql\nDB_HOST=mysql.railway.internal\nDB_PORT=3306\nDB_DATABASE=railway\nDB_USERNAME=root\nDB_PASSWORD=\nLOG_CHANNEL=stderr\nCACHE_DRIVER=file\nSESSION_DRIVER=file\nQUEUE_CONNECTION=sync\nMAIL_MAILER=log" > .env
 
 # Install dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction

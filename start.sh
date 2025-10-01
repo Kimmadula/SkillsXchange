@@ -12,11 +12,11 @@ echo "Ensuring .env file exists..."
 if [ ! -f .env ]; then
     echo "Creating .env file..."
     cat > .env << EOF
-APP_NAME=SkillsXchangee
+APP_NAME=SkillsXchange
 APP_ENV=production
 APP_KEY=
 APP_DEBUG=false
-APP_URL=https://skillsxchangee.onrender.com
+APP_URL=https://skillsxchange-13vk.onrender.com
 LOG_CHANNEL=stderr
 DB_CONNECTION=mysql
 DB_HOST=mysql.railway.internal

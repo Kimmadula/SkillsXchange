@@ -1,9 +1,20 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "Dockerfile.railway"
 
 [deploy]
-healthcheckPath = "/"
+healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
+
+[env]
+APP_NAME = "SkillsXchange"
+APP_ENV = "production"
+APP_DEBUG = "false"
+DB_CONNECTION = "mysql"
+DB_HOST = "mysql.railway.internal"
+DB_PORT = "3306"
+DB_DATABASE = "railway"
+DB_USERNAME = "root"
+DB_PASSWORD = "nBMPUzSWZaJhIrrmNKWhiSoFMgfsBBqI"
