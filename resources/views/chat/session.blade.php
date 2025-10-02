@@ -755,7 +755,7 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 12px;">
-                    <button id="video-call-btn"
+                    <button id="video-call-btn" onclick="window.openVideoChat()"
                         style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem;">📷</button>
 
                     <!-- Ensure openVideoChat is defined immediately -->
