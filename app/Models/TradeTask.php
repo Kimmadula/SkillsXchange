@@ -22,7 +22,17 @@ class TradeTask extends Model
         'verified_by',
         'verification_notes',
         'priority',
-        'due_date'
+        'due_date',
+        'associated_skills',
+        'requires_submission',
+        'submission_type',
+        'submission_instructions',
+        'max_score',
+        'passing_score',
+        'current_status',
+        'started_at',
+        'submitted_at',
+        'evaluated_at'
     ];
 
     protected $casts = [
@@ -30,9 +40,19 @@ class TradeTask extends Model
         'completed_at' => 'datetime',
         'verified' => 'boolean',
         'verified_at' => 'datetime',
-        'due_date' => 'datetime'
+        'due_date' => 'datetime',
+        'associated_skills' => 'array',
+        'requires_submission' => 'boolean',
+        'started_at' => 'datetime',
+        'submitted_at' => 'datetime',
+        'evaluated_at' => 'datetime',
+        'max_score' => 'integer',
+        'passing_score' => 'integer'
     ];
 
+    /**
+     * Relationships
+     */
     public function trade()
     {
         return $this->belongsTo(Trade::class);
@@ -51,5 +71,188 @@ class TradeTask extends Model
     public function verifier()
     {
         return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    public function submissions()
+    {
+        return $this->hasMany(TaskSubmission::class, 'task_id');
+    }
+
+    public function latestSubmission()
+    {
+        return $this->hasOne(TaskSubmission::class, 'task_id')->where('is_latest', true);
+    }
+
+    public function evaluations()
+    {
+        return $this->hasMany(TaskEvaluation::class, 'task_id');
+    }
+
+    public function latestEvaluation()
+    {
+        return $this->hasOne(TaskEvaluation::class, 'task_id')->latest('evaluated_at');
+    }
+
+    /**
+     * Scopes
+     */
+    public function scopeByStatus($query, $status)
+    {
+        return $query->where('current_status', $status);
+    }
+
+    public function scopeAssignedTo($query, $userId)
+    {
+        return $query->where('assigned_to', $userId);
+    }
+
+    public function scopeCreatedBy($query, $userId)
+    {
+        return $query->where('created_by', $userId);
+    }
+
+    public function scopeRequiringSubmission($query)
+    {
+        return $query->where('requires_submission', true);
+    }
+
+    public function scopeOverdue($query)
+    {
+        return $query->where('due_date', '<', now())
+                    ->whereNotIn('current_status', ['completed', 'evaluated']);
+    }
+
+    /**
+     * Accessors & Mutators
+     */
+    public function getStatusColorAttribute()
+    {
+        return match($this->current_status) {
+            'assigned' => 'secondary',
+            'in_progress' => 'info',
+            'submitted' => 'warning',
+            'evaluated' => 'primary',
+            'completed' => 'success',
+            default => 'secondary'
+        };
+    }
+
+    public function getStatusIconAttribute()
+    {
+        return match($this->current_status) {
+            'assigned' => 'fas fa-clipboard-list',
+            'in_progress' => 'fas fa-spinner',
+            'submitted' => 'fas fa-upload',
+            'evaluated' => 'fas fa-check-square',
+            'completed' => 'fas fa-check-circle',
+            default => 'fas fa-question-circle'
+        };
+    }
+
+    public function getPriorityColorAttribute()
+    {
+        return match($this->priority) {
+            'high' => 'danger',
+            'medium' => 'warning',
+            'low' => 'success',
+            default => 'secondary'
+        };
+    }
+
+    public function getIsOverdueAttribute()
+    {
+        return $this->due_date && 
+               $this->due_date->isPast() && 
+               !in_array($this->current_status, ['completed', 'evaluated']);
+    }
+
+    public function getDaysUntilDueAttribute()
+    {
+        if (!$this->due_date) {
+            return null;
+        }
+
+        return now()->diffInDays($this->due_date, false);
+    }
+
+    /**
+     * Helper Methods
+     */
+    public function canBeStarted()
+    {
+        return $this->current_status === 'assigned';
+    }
+
+    public function canBeSubmitted()
+    {
+        return $this->current_status === 'in_progress' && $this->requires_submission;
+    }
+
+    public function canBeEvaluated()
+    {
+        return $this->current_status === 'submitted';
+    }
+
+    public function isCompleted()
+    {
+        return in_array($this->current_status, ['completed', 'evaluated']);
+    }
+
+    public function hasAssociatedSkills()
+    {
+        return !empty($this->associated_skills);
+    }
+
+    public function getAssociatedSkillNames()
+    {
+        if (!$this->hasAssociatedSkills()) {
+            return [];
+        }
+
+        return Skill::whereIn('skill_id', $this->associated_skills)
+            ->pluck('name')
+            ->toArray();
+    }
+
+    public function updateStatus($newStatus)
+    {
+        $this->current_status = $newStatus;
+        
+        switch ($newStatus) {
+            case 'in_progress':
+                $this->started_at = now();
+                break;
+            case 'submitted':
+                $this->submitted_at = now();
+                break;
+            case 'evaluated':
+            case 'completed':
+                $this->evaluated_at = now();
+                $this->completed = true;
+                $this->completed_at = now();
+                break;
+        }
+        
+        $this->save();
+    }
+
+    /**
+     * Boot method to handle model events
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($task) {
+            if (!$task->current_status) {
+                $task->current_status = 'assigned';
+            }
+            if (!$task->max_score) {
+                $task->max_score = 100;
+            }
+            if (!$task->passing_score) {
+                $task->passing_score = 70;
+            }
+        });
     }
 }

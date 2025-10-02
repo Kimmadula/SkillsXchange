@@ -32,10 +32,6 @@ Route::get('/test-video-permissions', function () {
     return response()->file(public_path('test-video-permissions.html'));
 });
 
-Route::get('/test-video-call-debug', function () {
-    return response()->file(public_path('test-video-call-debug.html'));
-});
-
 Route::get('/test-video-call-fixes', function () {
     return response()->file(public_path('test-video-call-fixes.html'));
 });
@@ -374,6 +370,16 @@ Route::middleware('auth')->group(function () {
         Route::put('/tasks/{task}', [\App\Http\Controllers\TaskController::class, 'update'])->name('tasks.update');
         Route::delete('/tasks/{task}', [\App\Http\Controllers\TaskController::class, 'destroy'])->name('tasks.destroy');
         Route::patch('/tasks/{task}/toggle', [\App\Http\Controllers\TaskController::class, 'toggle'])->name('tasks.toggle');
+        
+        // Enhanced task management routes
+        Route::post('/tasks/{task}/start', [\App\Http\Controllers\TaskController::class, 'startTask'])->name('tasks.start');
+        Route::post('/tasks/{task}/submit', [\App\Http\Controllers\TaskController::class, 'submitTask'])->name('tasks.submit');
+        Route::get('/tasks/{task}/evaluate', [\App\Http\Controllers\TaskController::class, 'showEvaluationForm'])->name('tasks.evaluate');
+        Route::post('/tasks/{task}/evaluation', [\App\Http\Controllers\TaskController::class, 'storeEvaluation'])->name('tasks.store-evaluation');
+        Route::get('/tasks/{task}/progress', [\App\Http\Controllers\TaskController::class, 'getTaskProgress'])->name('tasks.progress');
+        
+        // Task submission file downloads
+        Route::get('/submissions/{submission}/files/{fileIndex}', [\App\Http\Controllers\TaskController::class, 'downloadSubmissionFile'])->name('submissions.download');
         
         // API routes for task management
         Route::get('/api/trades/{trade}/participants', function(\App\Models\Trade $trade) {
