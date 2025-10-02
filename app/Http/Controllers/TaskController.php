@@ -95,7 +95,10 @@ class TaskController extends Controller
             'submission_type' => 'nullable|in:file,text,both',
             'submission_instructions' => 'nullable|string|max:1000',
             'max_score' => 'nullable|integer|min:1|max:1000',
-            'passing_score' => 'nullable|integer|min:1|max:1000'
+            'passing_score' => 'nullable|integer|min:1|max:1000',
+            'allowed_file_types' => 'nullable|array',
+            'allowed_file_types.*' => 'in:image,video,pdf,word,excel',
+            'strict_file_types' => 'boolean'
         ]);
 
         try {
@@ -130,6 +133,8 @@ class TaskController extends Controller
                 'submission_instructions' => $request->submission_instructions,
                 'max_score' => $request->max_score ?? 100,
                 'passing_score' => $request->passing_score ?? 70,
+                'allowed_file_types' => $request->allowed_file_types,
+                'strict_file_types' => $request->boolean('strict_file_types'),
             ]);
 
             $task->load(['creator', 'assignee']);
@@ -174,7 +179,10 @@ class TaskController extends Controller
 
         $task->load(['trade', 'assignee']);
         
-        return view('tasks.edit', compact('task'));
+        // Get available skills for task association
+        $skills = $this->taskSkillService->getAvailableSkills();
+        
+        return view('tasks.edit', compact('task', 'skills'));
     }
 
     /**
@@ -192,18 +200,42 @@ class TaskController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'assigned_to' => 'required|exists:users,id',
             'priority' => 'nullable|in:low,medium,high',
-            'due_date' => 'nullable|date'
+            'due_date' => 'nullable|date|after:today',
+            'associated_skills' => 'nullable|array',
+            'associated_skills.*' => 'exists:skills,skill_id',
+            'requires_submission' => 'boolean',
+            'submission_instructions' => 'nullable|string|max:1000',
+            'max_score' => 'nullable|integer|min:1|max:1000',
+            'passing_score' => 'nullable|integer|min:1|max:1000',
+            'allowed_file_types' => 'nullable|array',
+            'allowed_file_types.*' => 'in:image,video,pdf,word,excel',
+            'strict_file_types' => 'boolean'
         ]);
 
         try {
+            // Validate skills if provided
+            if ($request->associated_skills) {
+                $skillValidation = $this->taskSkillService->validateSkills($request->associated_skills);
+                if (!$skillValidation['valid']) {
+                    return redirect()->back()
+                        ->withInput()
+                        ->with('error', 'Some selected skills are invalid.');
+                }
+            }
+
             $task->update([
-                'assigned_to' => $request->assigned_to,
                 'title' => $request->title,
                 'description' => $request->description,
                 'priority' => $request->priority ?? 'medium',
-                'due_date' => $request->due_date
+                'due_date' => $request->due_date,
+                'associated_skills' => $request->associated_skills,
+                'requires_submission' => $request->boolean('requires_submission'),
+                'submission_instructions' => $request->submission_instructions,
+                'max_score' => $request->max_score ?? 100,
+                'passing_score' => $request->passing_score ?? 70,
+                'allowed_file_types' => $request->allowed_file_types,
+                'strict_file_types' => $request->boolean('strict_file_types'),
             ]);
 
             return redirect()->route('tasks.show', $task)->with('success', 'Task updated successfully!');
@@ -310,11 +342,19 @@ class TaskController extends Controller
             return redirect()->back()->with('error', 'This task cannot be submitted at this time.');
         }
 
-        $request->validate([
+        // Dynamic validation based on task requirements
+        $validationRules = [
             'submission_notes' => 'nullable|string|max:2000',
-            'files' => 'nullable|array|max:10',
-            'files.*' => 'file|max:50000|mimes:jpg,jpeg,png,gif,pdf,doc,docx,mp4,mov,avi'
-        ]);
+            'files' => 'nullable|array|max:10'
+        ];
+
+        if ($task->hasAllowedFileTypes()) {
+            $validationRules['files.*'] = $task->getFileTypeValidationRules();
+        } else {
+            $validationRules['files.*'] = 'file|max:50000|mimes:jpg,jpeg,png,gif,pdf,doc,docx,mp4,mov,avi,xls,xlsx';
+        }
+
+        $request->validate($validationRules);
 
         try {
             $filePaths = [];
