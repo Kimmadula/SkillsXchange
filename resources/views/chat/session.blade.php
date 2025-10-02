@@ -1950,41 +1950,41 @@ if (window.Echo) {
     try {
         window.openVideoChat = function() {
             console.log('🎥 Opening video chat...');
-        const modal = document.getElementById('video-chat-modal');
-        if (modal) {
-            modal.style.display = 'flex';
-            
-            // Initialize camera immediately
-            if (typeof initializeCamera === 'function') {
-                initializeCamera();
-            } else {
-                console.log('initializeCamera not available, using fallback');
-                // Fallback camera initialization
-                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-                        .then(stream => {
-                            const localVideo = document.getElementById('local-video');
-                            if (localVideo) {
-                                localVideo.srcObject = stream;
-                                localVideo.style.display = 'block';
-                                localVideo.play();
-                            }
-                            window.localStream = stream;
-                        })
-                        .catch(error => console.error('Camera error:', error));
+            const modal = document.getElementById('video-chat-modal');
+            if (modal) {
+                modal.style.display = 'flex';
+                
+                // Initialize camera immediately
+                if (typeof initializeCamera === 'function') {
+                    initializeCamera();
+                } else {
+                    console.log('initializeCamera not available, using fallback');
+                    // Fallback camera initialization
+                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                            .then(stream => {
+                                const localVideo = document.getElementById('local-video');
+                                if (localVideo) {
+                                    localVideo.srcObject = stream;
+                                    localVideo.style.display = 'block';
+                                    localVideo.play();
+                                }
+                                window.localStream = stream;
+                            })
+                            .catch(error => console.error('Camera error:', error));
+                    }
                 }
-            }
-            
-            // Automatically start the call like Messenger
-            if (typeof window.startVideoCall === 'function') {
-                window.startVideoCall();
+                
+                // Automatically start the call like Messenger
+                if (typeof window.startVideoCall === 'function') {
+                    window.startVideoCall();
+                } else {
+                    console.log('startVideoCall not available yet');
+                }
             } else {
-                console.log('startVideoCall not available yet');
+                console.error('Video chat modal not found');
+                alert('Video chat is not available. Please refresh the page.');
             }
-        } else {
-            console.error('Video chat modal not found');
-            alert('Video chat is not available. Please refresh the page.');
-        }
     };
         console.log('✅ openVideoChat function defined:', typeof window.openVideoChat);
     } catch (error) {
