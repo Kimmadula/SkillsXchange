@@ -1640,18 +1640,99 @@
                         @forelse($myTasks as $task)
                         <div class="task-item" data-task-id="{{ $task->id }}"
                             style="margin-bottom: 12px; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                                <input type="checkbox" {{ $task->completed ? 'checked' : '' }}
-                                onchange="toggleTask({{ $task->id }})"
-                                style="width: 16px; height: 16px;">
-                                <span
-                                    style="font-weight: 500; {{ $task->completed ? 'text-decoration: line-through; color: #6b7280;' : '' }}">{{
-                                    $task->title }}</span>
+                            <div style="display: flex; align-items: center; justify-content: between; margin-bottom: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                    <input type="checkbox" {{ $task->completed ? 'checked' : '' }}
+                                    onchange="toggleTask({{ $task->id }})"
+                                    style="width: 16px; height: 16px;">
+                                    <span style="font-weight: 500; {{ $task->completed ? 'text-decoration: line-through; color: #6b7280;' : '' }}">{{ $task->title }}</span>
+                                    
+                                    <!-- Task Status Badge -->
+                                    @if($task->current_status)
+                                    <span class="badge" style="background: 
+                                        @switch($task->current_status)
+                                            @case('assigned') #6b7280 @break
+                                            @case('in_progress') #f59e0b @break
+                                            @case('submitted') #3b82f6 @break
+                                            @case('completed') #10b981 @break
+                                            @default #6b7280
+                                        @endswitch; color: white; font-size: 0.75rem;">
+                                        {{ ucfirst(str_replace('_', ' ', $task->current_status)) }}
+                                    </span>
+                                    @endif
+
+                                    <!-- File Submission Required -->
+                                    @if($task->requires_submission)
+                                    <span class="badge" style="background: #8b5cf6; color: white; font-size: 0.75rem;">
+                                        <i class="fas fa-paperclip" style="font-size: 0.7rem;"></i> Submission Required
+                                    </span>
+                                    @endif
+                                </div>
+
+                                <!-- Task Actions Dropdown -->
+                                <div class="dropdown" style="margin-left: auto;">
+                                    <button class="btn btn-sm btn-outline-secondary" type="button" 
+                                            data-bs-toggle="dropdown" aria-expanded="false"
+                                            style="padding: 2px 6px; font-size: 0.75rem;">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" href="#" onclick="viewTaskDetails({{ $task->id }})">
+                                            <i class="fas fa-eye me-2"></i>View Details
+                                        </a></li>
+                                        @if($task->created_by === Auth::id())
+                                        <li><a class="dropdown-item" href="#" onclick="editTask({{ $task->id }})">
+                                            <i class="fas fa-edit me-2"></i>Edit Task
+                                        </a></li>
+                                        @endif
+                                        @if($task->assigned_to === Auth::id() && $task->requires_submission && $task->current_status === 'assigned')
+                                        <li><a class="dropdown-item" href="#" onclick="submitTaskWork({{ $task->id }})">
+                                            <i class="fas fa-upload me-2"></i>Submit Work
+                                        </a></li>
+                                        @endif
+                                        @if($task->created_by === Auth::id())
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger" href="#" onclick="deleteTask({{ $task->id }})">
+                                            <i class="fas fa-trash me-2"></i>Delete Task
+                                        </a></li>
+                                        @endif
+                                    </ul>
+                                </div>
                             </div>
+                            
                             @if($task->description)
-                            <div style="font-size: 0.875rem; color: #6b7280; margin-left: 24px;">{{ $task->description
-                                }}</div>
+                            <div style="font-size: 0.875rem; color: #6b7280; margin-left: 24px; margin-bottom: 8px;">{{ $task->description }}</div>
                             @endif
+
+                            <!-- Task Details -->
+                            <div style="margin-left: 24px; font-size: 0.75rem; color: #9ca3af;">
+                                @if($task->priority)
+                                <span style="margin-right: 12px;">
+                                    <i class="fas fa-flag" style="color: 
+                                        @switch($task->priority)
+                                            @case('high') #ef4444 @break
+                                            @case('medium') #f59e0b @break
+                                            @case('low') #10b981 @break
+                                            @default #6b7280
+                                        @endswitch;"></i>
+                                    {{ ucfirst($task->priority) }} Priority
+                                </span>
+                                @endif
+                                
+                                @if($task->due_date)
+                                <span style="margin-right: 12px;">
+                                    <i class="fas fa-calendar"></i>
+                                    Due: {{ \Carbon\Carbon::parse($task->due_date)->format('M j, Y') }}
+                                </span>
+                                @endif
+
+                                @if($task->allowed_file_types)
+                                <span>
+                                    <i class="fas fa-file"></i>
+                                    Accepts: {{ implode(', ', $task->allowed_file_types) }}
+                                </span>
+                                @endif
+                            </div>
                         </div>
                         @empty
                         <div style="color: #6b7280; font-size: 0.875rem; text-align: center; padding: 16px;">No tasks
@@ -1803,34 +1884,95 @@
 <div id="add-task-modal"
     style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;"
     onclick="handleModalClick(event)">
-    <div style="background: white; padding: 24px; border-radius: 8px; width: 400px; max-width: 90%;"
+    <div style="background: white; padding: 24px; border-radius: 8px; width: 500px; max-width: 90%; max-height: 90%; overflow-y: auto;"
         onclick="event.stopPropagation()">
         <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 16px;">Add Task</h3>
+        
+        <!-- Task Assignment (Read-only, only to partner) -->
         <div style="margin-bottom: 16px;">
             <label style="display: block; margin-bottom: 4px; font-weight: 500;">Assign Task To</label>
-            <select id="task-assignee" required
-                style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
-                <option value="{{ $partner->id }}">{{ $partner->firstname }} {{ $partner->lastname }}</option>
-                <option value="{{ Auth::id() }}">Myself</option>
-            </select>
+            <input type="text" value="{{ $partner->firstname }} {{ $partner->lastname }}" readonly
+                style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; background: #f9fafb; color: #6b7280;">
+            <input type="hidden" id="task-assignee" value="{{ $partner->id }}">
+            <small style="color: #6b7280; font-size: 0.875rem;">Tasks can only be assigned to your trade partner</small>
         </div>
+
         <form id="add-task-form">
             <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 4px; font-weight: 500;">Task Title</label>
                 <input type="text" id="task-title" required
                     style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
             </div>
+            
             <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 4px; font-weight: 500;">Description (Optional)</label>
                 <textarea id="task-description" rows="3"
                     style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; resize: vertical;"></textarea>
             </div>
+
+            <!-- File Submission Requirements -->
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">
+                    <input type="checkbox" id="requires-submission" style="margin-right: 8px;">
+                    Require File Submission
+                </label>
+                
+                <div id="submission-options" style="display: none; margin-left: 20px; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.875rem;">Required File Types:</label>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                        <label style="display: flex; align-items: center; font-size: 0.875rem;">
+                            <input type="checkbox" name="file-types" value="images" style="margin-right: 6px;">
+                            📸 Images (JPG, PNG, GIF)
+                        </label>
+                        <label style="display: flex; align-items: center; font-size: 0.875rem;">
+                            <input type="checkbox" name="file-types" value="videos" style="margin-right: 6px;">
+                            🎥 Videos (MP4, MOV, AVI)
+                        </label>
+                        <label style="display: flex; align-items: center; font-size: 0.875rem;">
+                            <input type="checkbox" name="file-types" value="pdf" style="margin-right: 6px;">
+                            📄 PDF Documents
+                        </label>
+                        <label style="display: flex; align-items: center; font-size: 0.875rem;">
+                            <input type="checkbox" name="file-types" value="docx" style="margin-right: 6px;">
+                            📝 Word Documents
+                        </label>
+                        <label style="display: flex; align-items: center; font-size: 0.875rem;">
+                            <input type="checkbox" name="file-types" value="excel" style="margin-right: 6px;">
+                            📊 Excel Files
+                        </label>
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 4px; font-weight: 500; font-size: 0.875rem;">Submission Instructions:</label>
+                        <textarea id="submission-instructions" rows="2" placeholder="Provide specific instructions for what should be submitted..."
+                            style="width: 100%; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.875rem; resize: vertical;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Priority and Due Date -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div>
+                    <label style="display: block; margin-bottom: 4px; font-weight: 500;">Priority</label>
+                    <select id="task-priority" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 4px; font-weight: 500;">Due Date (Optional)</label>
+                    <input type="date" id="task-due-date" min="{{ date('Y-m-d', strtotime('+1 day')) }}"
+                        style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+                </div>
+            </div>
+
             <div style="display: flex; gap: 8px; justify-content: flex-end;">
                 <button type="button" onclick="hideAddTaskModal()"
                     style="padding: 8px 16px; border: 1px solid #d1d5db; background: white; border-radius: 4px; cursor: pointer;">Cancel</button>
                 <button type="submit"
-                    style="padding: 8px 16px; background: #1e40af; color: white; border: none; border-radius: 4px; cursor: pointer;">Add
-                    Task</button>
+                    style="padding: 8px 16px; background: #1e40af; color: white; border: none; border-radius: 4px; cursor: pointer;">Add Task</button>
             </div>
         </form>
     </div>
@@ -2968,12 +3110,36 @@ function handleVerificationModalClick(event) {
     }
 }
 
+// Handle submission requirements toggle
+document.getElementById('requires-submission').addEventListener('change', function() {
+    const submissionOptions = document.getElementById('submission-options');
+    if (this.checked) {
+        submissionOptions.style.display = 'block';
+    } else {
+        submissionOptions.style.display = 'none';
+    }
+});
+
 document.getElementById('add-task-form').addEventListener('submit', function(e) {
     e.preventDefault();
     
     const title = document.getElementById('task-title').value;
     const description = document.getElementById('task-description').value;
     const assignedTo = document.getElementById('task-assignee').value;
+    const priority = document.getElementById('task-priority').value;
+    const dueDate = document.getElementById('task-due-date').value;
+    const requiresSubmission = document.getElementById('requires-submission').checked;
+    const submissionInstructions = document.getElementById('submission-instructions').value;
+    
+    // Get selected file types
+    const fileTypeCheckboxes = document.querySelectorAll('input[name="file-types"]:checked');
+    const selectedFileTypes = Array.from(fileTypeCheckboxes).map(cb => cb.value);
+    
+    // Validate file types if submission is required
+    if (requiresSubmission && selectedFileTypes.length === 0) {
+        showError('Please select at least one file type when requiring submission.');
+        return;
+    }
     
     fetch('{{ route("chat.create-task", $trade->id) }}'.replace('http://', 'https://'), {
         method: 'POST',
@@ -2984,7 +3150,12 @@ document.getElementById('add-task-form').addEventListener('submit', function(e) 
         body: JSON.stringify({
             title: title,
             description: description,
-            assigned_to: assignedTo
+            assigned_to: assignedTo,
+            priority: priority,
+            due_date: dueDate,
+            requires_submission: requiresSubmission,
+            allowed_file_types: selectedFileTypes,
+            submission_instructions: submissionInstructions
         })
     })
     .then(response => response.json())
@@ -2994,18 +3165,191 @@ document.getElementById('add-task-form').addEventListener('submit', function(e) 
             addTaskToUI(data.task);
             updateTaskCount(); // Update task count after adding task
             // Clear form
-            document.getElementById('task-title').value = '';
-            document.getElementById('task-description').value = '';
-            document.getElementById('task-assignee').value = '{{ $partner->id }}';
+            clearTaskForm();
         } else {
             showError('Failed to create task: ' + (data.error || 'Unknown error'));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-                    showError('Failed to create task. Please try again.');
+        showError('Failed to create task. Please try again.');
     });
 });
+
+function clearTaskForm() {
+    document.getElementById('task-title').value = '';
+    document.getElementById('task-description').value = '';
+    document.getElementById('task-priority').value = 'medium';
+    document.getElementById('task-due-date').value = '';
+    document.getElementById('requires-submission').checked = false;
+    document.getElementById('submission-instructions').value = '';
+    document.getElementById('submission-options').style.display = 'none';
+    
+    // Clear file type checkboxes
+    const fileTypeCheckboxes = document.querySelectorAll('input[name="file-types"]');
+    fileTypeCheckboxes.forEach(cb => cb.checked = false);
+}
+
+// Task CRUD Operations
+function viewTaskDetails(taskId) {
+    // Redirect to task details page
+    window.open(`/tasks/${taskId}`, '_blank');
+}
+
+function editTask(taskId) {
+    // Redirect to task edit page
+    window.open(`/tasks/${taskId}/edit`, '_blank');
+}
+
+function deleteTask(taskId) {
+    if (confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+        fetch(`/tasks/${taskId}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remove task from UI
+                const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+                if (taskElement) {
+                    taskElement.remove();
+                }
+                showSuccess('Task deleted successfully!');
+                updateTaskCount();
+            } else {
+                showError('Failed to delete task: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showError('Failed to delete task. Please try again.');
+        });
+    }
+}
+
+function submitTaskWork(taskId) {
+    // Create and show file submission modal
+    showTaskSubmissionModal(taskId);
+}
+
+function showTaskSubmissionModal(taskId) {
+    // Create modal HTML
+    const modalHtml = `
+        <div id="task-submission-modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+            <div style="background: white; padding: 24px; border-radius: 8px; width: 500px; max-width: 90%; max-height: 90%; overflow-y: auto;">
+                <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 16px;">Submit Task Work</h3>
+                
+                <form id="task-submission-form" enctype="multipart/form-data">
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 4px; font-weight: 500;">Upload Files</label>
+                        <input type="file" id="task-files" name="files[]" multiple 
+                               style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;"
+                               accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx">
+                        <small style="color: #6b7280;">Select files according to task requirements</small>
+                    </div>
+                    
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 4px; font-weight: 500;">Submission Notes</label>
+                        <textarea id="submission-notes" rows="3" 
+                                  style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; resize: vertical;"
+                                  placeholder="Add any notes about your submission..."></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                        <button type="button" onclick="hideTaskSubmissionModal()" 
+                                style="padding: 8px 16px; border: 1px solid #d1d5db; background: white; border-radius: 4px; cursor: pointer;">Cancel</button>
+                        <button type="submit" 
+                                style="padding: 8px 16px; background: #1e40af; color: white; border: none; border-radius: 4px; cursor: pointer;">Submit Work</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Add form submit handler
+    document.getElementById('task-submission-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData();
+        const files = document.getElementById('task-files').files;
+        const notes = document.getElementById('submission-notes').value;
+        
+        // Add files to form data
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files[]', files[i]);
+        }
+        formData.append('submission_notes', notes);
+        
+        fetch(`/tasks/${taskId}/submit`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                hideTaskSubmissionModal();
+                showSuccess('Work submitted successfully!');
+                // Refresh task status
+                location.reload();
+            } else {
+                showError('Failed to submit work: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showError('Failed to submit work. Please try again.');
+        });
+    });
+}
+
+function hideTaskSubmissionModal() {
+    const modal = document.getElementById('task-submission-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function showSuccess(message) {
+    // Create and show success toast
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed; top: 20px; right: 20px; z-index: 9999;
+        background: #10b981; color: white; padding: 12px 20px;
+        border-radius: 6px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+function showError(message) {
+    // Create and show error toast
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed; top: 20px; right: 20px; z-index: 9999;
+        background: #ef4444; color: white; padding: 12px 20px;
+        border-radius: 6px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 5000);
+}
 
 // Verification form handler
 document.getElementById('verification-form').addEventListener('submit', function(e) {

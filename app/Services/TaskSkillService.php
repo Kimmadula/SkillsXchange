@@ -7,6 +7,7 @@ use App\Models\Skill;
 use App\Models\TradeTask;
 use App\Models\TaskEvaluation;
 use App\Models\UserSkill;
+use App\Models\SkillAcquisitionHistory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -63,6 +64,19 @@ class TaskSkillService
                     'user_id' => $user->id,
                     'skill_id' => $skillId
                 ]);
+
+                // Record skill acquisition in history
+                SkillAcquisitionHistory::recordSkillAcquisition(
+                    $user->id,
+                    $skillId,
+                    'task_completion',
+                    [
+                        'task_id' => $evaluation->task_id,
+                        'trade_id' => $evaluation->task->trade_id,
+                        'score_achieved' => $evaluation->score_percentage,
+                        'notes' => "Acquired through task completion: {$evaluation->task->title}"
+                    ]
+                );
 
                 $addedSkills[] = [
                     'skill_id' => $skillId,

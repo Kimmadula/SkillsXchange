@@ -51,6 +51,24 @@
                         <i class="fas fa-tasks me-1"></i>Tasks
                     </a>
                 </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle {{ request()->routeIs('skills.*') ? 'active' : '' }}" 
+                       href="#" id="skillsDropdown" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-graduation-cap me-1"></i>Skills
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{{ route('skills.index') }}">
+                            <i class="fas fa-list me-2"></i>Browse Skills
+                        </a></li>
+                        <li><a class="dropdown-item" href="{{ route('skills.create') }}">
+                            <i class="fas fa-plus me-2"></i>Add New Skill
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ route('skills.history') }}">
+                            <i class="fas fa-history me-2"></i>My Skill History
+                        </a></li>
+                    </ul>
+                </li>
                 <li class="nav-item position-relative">
                     <a class="nav-link {{ request()->routeIs('trades.notifications') ? 'active' : '' }}"
                         href="{{ route('trades.notifications') }}">

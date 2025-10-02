@@ -378,8 +378,20 @@ Route::middleware('auth')->group(function () {
         Route::post('/tasks/{task}/evaluation', [\App\Http\Controllers\TaskController::class, 'storeEvaluation'])->name('tasks.store-evaluation');
         Route::get('/tasks/{task}/progress', [\App\Http\Controllers\TaskController::class, 'getTaskProgress'])->name('tasks.progress');
         
-        // Task submission file downloads
-        Route::get('/submissions/{submission}/files/{fileIndex}', [\App\Http\Controllers\TaskController::class, 'downloadSubmissionFile'])->name('submissions.download');
+// Task submission file downloads
+Route::get('/submissions/{submission}/files/{fileIndex}', [\App\Http\Controllers\TaskController::class, 'downloadSubmissionFile'])->name('submissions.download');
+
+// Skill Management Routes
+Route::resource('skills', \App\Http\Controllers\SkillController::class);
+Route::post('/skills/{skill}/add-to-profile', [\App\Http\Controllers\SkillController::class, 'addToProfile'])->name('skills.add-to-profile');
+Route::delete('/skills/{skill}/remove-from-profile', [\App\Http\Controllers\SkillController::class, 'removeFromProfile'])->name('skills.remove-from-profile');
+Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 'getSkills'])->name('api.skills.search');
+
+// Skill History Routes
+Route::get('/my-skills/history', [\App\Http\Controllers\SkillHistoryController::class, 'index'])->name('skills.history');
+Route::get('/my-skills/history/{history}', [\App\Http\Controllers\SkillHistoryController::class, 'show'])->name('skills.history.show');
+Route::get('/my-skills/history-export', [\App\Http\Controllers\SkillHistoryController::class, 'export'])->name('skills.history.export');
+Route::get('/api/skills/analytics', [\App\Http\Controllers\SkillHistoryController::class, 'getAnalytics'])->name('api.skills.analytics');
         
         // API routes for task management
         Route::get('/api/trades/{trade}/participants', function(\App\Models\Trade $trade) {

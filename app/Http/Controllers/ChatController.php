@@ -134,14 +134,40 @@ class ChatController extends Controller
             $request->validate([
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string|max:1000',
-                'assigned_to' => 'required|exists:users,id'
+                'assigned_to' => 'required|exists:users,id',
+                'priority' => 'nullable|in:low,medium,high',
+                'due_date' => 'nullable|date|after:today',
+                'requires_submission' => 'boolean',
+                'allowed_file_types' => 'nullable|array',
+                'allowed_file_types.*' => 'in:images,videos,pdf,docx,excel',
+                'submission_instructions' => 'nullable|string|max:1000'
             ]);
+
+            // Ensure task is only assigned to the other party (not self)
+            if ($request->assigned_to == $user->id) {
+                return response()->json(['error' => 'Tasks can only be assigned to your trade partner'], 400);
+            }
+
+            // Validate that assigned user is actually the trade partner
+            $isValidPartner = ($trade->user_id === $user->id && $request->assigned_to !== $user->id) ||
+                             ($trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists() && 
+                              $request->assigned_to === $trade->user_id);
+            
+            if (!$isValidPartner) {
+                return response()->json(['error' => 'Invalid task assignment'], 400);
+            }
 
             $task = $trade->tasks()->create([
                 'created_by' => $user->id,
                 'assigned_to' => $request->assigned_to,
                 'title' => $request->title,
-                'description' => $request->description
+                'description' => $request->description,
+                'priority' => $request->priority ?? 'medium',
+                'due_date' => $request->due_date,
+                'requires_submission' => $request->boolean('requires_submission'),
+                'allowed_file_types' => $request->allowed_file_types,
+                'submission_instructions' => $request->submission_instructions,
+                'current_status' => 'assigned'
             ]);
 
             $task->load(['creator', 'assignee']);
