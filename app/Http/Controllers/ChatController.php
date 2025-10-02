@@ -148,13 +148,22 @@ class ChatController extends Controller
                 return response()->json(['error' => 'Tasks can only be assigned to your trade partner'], 400);
             }
 
-            // Validate that assigned user is actually the trade partner
-            $isValidPartner = ($trade->user_id === $user->id && $request->assigned_to !== $user->id) ||
-                             ($trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists() && 
-                              $request->assigned_to === $trade->user_id);
-            
-            if (!$isValidPartner) {
-                return response()->json(['error' => 'Invalid task assignment'], 400);
+            // Get the trade partner (the other user in the trade)
+            $tradePartner = null;
+            if ($trade->user_id === $user->id) {
+                // Current user is the trade owner, partner is the requester
+                $acceptedRequest = $trade->requests()->where('status', 'accepted')->first();
+                if ($acceptedRequest) {
+                    $tradePartner = $acceptedRequest->requester;
+                }
+            } else {
+                // Current user is the requester, partner is the trade owner
+                $tradePartner = $trade->user;
+            }
+
+            // Validate that the task is being assigned to the trade partner
+            if (!$tradePartner || $request->assigned_to != $tradePartner->id) {
+                return response()->json(['error' => 'Tasks can only be assigned to your trade partner'], 400);
             }
 
             $task = $trade->tasks()->create([
@@ -167,6 +176,8 @@ class ChatController extends Controller
                 'requires_submission' => $request->boolean('requires_submission'),
                 'allowed_file_types' => $request->allowed_file_types,
                 'submission_instructions' => $request->submission_instructions,
+                'max_score' => 100,
+                'passing_score' => 70,
                 'current_status' => 'assigned'
             ]);
 

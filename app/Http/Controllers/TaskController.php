@@ -157,10 +157,33 @@ class TaskController extends Controller
         // Check if user is part of this task's trade
         if ($task->trade->user_id !== $user->id && 
             !$task->trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists()) {
+            if (request()->wantsJson()) {
+                return response()->json(['error' => 'You are not authorized to view this task.'], 403);
+            }
             return redirect()->back()->with('error', 'You are not authorized to view this task.');
         }
 
         $task->load(['trade', 'creator', 'assignee', 'verifier']);
+        
+        // If this is an AJAX request, return JSON
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'task' => [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'priority' => $task->priority,
+                    'due_date' => $task->due_date,
+                    'requires_submission' => $task->requires_submission,
+                    'allowed_file_types' => $task->allowed_file_types,
+                    'submission_instructions' => $task->submission_instructions,
+                    'current_status' => $task->current_status,
+                    'max_score' => $task->max_score,
+                    'passing_score' => $task->passing_score
+                ]
+            ]);
+        }
         
         return view('tasks.show', compact('task'));
     }

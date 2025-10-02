@@ -355,7 +355,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/chat/{trade}', [\App\Http\Controllers\ChatController::class, 'show'])->name('chat.show');
         Route::get('/chat/{trade}/messages', [\App\Http\Controllers\ChatController::class, 'getMessages'])->name('chat.messages');
         Route::post('/chat/{trade}/message', [\App\Http\Controllers\ChatController::class, 'sendMessage'])->name('chat.send-message');
-        Route::post('/chat/{trade}/task', [\App\Http\Controllers\ChatController::class, 'createTask'])->name('chat.create-task');
+        Route::post('/chat/{trade}/task', [\App\Http\Controllers\ChatController::class, 'createTask'])->name('chat.create-task')->middleware('throttle:10,1');
         Route::patch('/chat/task/{task}/toggle', [\App\Http\Controllers\ChatController::class, 'toggleTask'])->name('chat.toggle-task');
         Route::patch('/chat/task/{task}/verify', [\App\Http\Controllers\ChatController::class, 'verifyTask'])->name('chat.verify-task');
         Route::post('/chat/{trade}/complete-session', [\App\Http\Controllers\ChatController::class, 'completeSession'])->name('chat.complete-session');

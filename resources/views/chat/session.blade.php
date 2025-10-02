@@ -1669,46 +1669,54 @@
                                     @endif
                                 </div>
 
-                                <!-- Task Actions Dropdown -->
-                                <div class="dropdown" style="margin-left: auto;">
-                                    <button class="btn btn-sm btn-outline-secondary" type="button" 
-                                            data-bs-toggle="dropdown" aria-expanded="false"
-                                            style="padding: 2px 6px; font-size: 0.75rem;">
-                                        <i class="fas fa-ellipsis-v"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><a class="dropdown-item" href="#" onclick="viewTaskDetails({{ $task->id }})">
-                                            <i class="fas fa-eye me-2"></i>View Details
-                                        </a></li>
-                                        
-                                        @if($task->created_by === Auth::id())
-                                            <!-- Task Creator Actions -->
-                                            <li><a class="dropdown-item" href="#" onclick="editTask({{ $task->id }})">
-                                                <i class="fas fa-edit me-2"></i>Edit Task
+                                <!-- Task Actions -->
+                                <div style="margin-left: auto; display: flex; gap: 4px;">
+                                    @if($task->created_by === Auth::id())
+                                        <!-- Always visible Edit/Delete buttons for creators -->
+                                        <button onclick="editTask({{ $task->id }})" title="Edit Task"
+                                                style="background: #3b82f6; color: white; border: none; border-radius: 3px; padding: 2px 6px; font-size: 0.7rem; cursor: pointer;">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button onclick="deleteTask({{ $task->id }})" title="Delete Task"
+                                                style="background: #ef4444; color: white; border: none; border-radius: 3px; padding: 2px 6px; font-size: 0.7rem; cursor: pointer;">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    @endif
+                                    
+                                    <!-- Dropdown for other actions -->
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" 
+                                                data-bs-toggle="dropdown" aria-expanded="false"
+                                                style="padding: 2px 6px; font-size: 0.75rem;">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="#" onclick="viewTaskDetails({{ $task->id }})">
+                                                <i class="fas fa-eye me-2"></i>View Details
                                             </a></li>
-                                            @if($task->current_status === 'submitted')
-                                            <li><a class="dropdown-item" href="#" onclick="reviewTaskSubmission({{ $task->id }})">
-                                                <i class="fas fa-clipboard-check me-2"></i>Review Submission
-                                            </a></li>
+                                            
+                                            @if($task->created_by === Auth::id())
+                                                <!-- Task Creator Actions -->
+                                                @if($task->current_status === 'submitted')
+                                                <li><a class="dropdown-item" href="#" onclick="reviewTaskSubmission({{ $task->id }})">
+                                                    <i class="fas fa-clipboard-check me-2"></i>Review Submission
+                                                </a></li>
+                                                @endif
+                                            @else
+                                                <!-- Task Assignee Actions -->
+                                                @if($task->requires_submission && in_array($task->current_status, ['assigned', 'in_progress']))
+                                                <li><a class="dropdown-item" href="#" onclick="submitTaskWork({{ $task->id }})">
+                                                    <i class="fas fa-upload me-2"></i>Submit Work
+                                                </a></li>
+                                                @endif
+                                                @if($task->current_status === 'assigned')
+                                                <li><a class="dropdown-item" href="#" onclick="startTask({{ $task->id }})">
+                                                    <i class="fas fa-play me-2"></i>Start Task
+                                                </a></li>
+                                                @endif
                                             @endif
-                                            <li><hr class="dropdown-divider"></li>
-                                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteTask({{ $task->id }})">
-                                                <i class="fas fa-trash me-2"></i>Delete Task
-                                            </a></li>
-                                        @else
-                                            <!-- Task Assignee Actions -->
-                                            @if($task->requires_submission && in_array($task->current_status, ['assigned', 'in_progress']))
-                                            <li><a class="dropdown-item" href="#" onclick="submitTaskWork({{ $task->id }})">
-                                                <i class="fas fa-upload me-2"></i>Submit Work
-                                            </a></li>
-                                            @endif
-                                            @if($task->current_status === 'assigned')
-                                            <li><a class="dropdown-item" href="#" onclick="startTask({{ $task->id }})">
-                                                <i class="fas fa-play me-2"></i>Start Task
-                                            </a></li>
-                                            @endif
-                                        @endif
-                                    </ul>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
                             
@@ -1971,6 +1979,97 @@
                     style="padding: 8px 16px; border: 1px solid #d1d5db; background: white; border-radius: 4px; cursor: pointer;">Cancel</button>
                 <button type="submit"
                     style="padding: 8px 16px; background: #1e40af; color: white; border: none; border-radius: 4px; cursor: pointer;">Add Task</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Task Edit Modal -->
+<div id="edit-task-modal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;"
+    onclick="handleEditTaskModalClick(event)">
+    <div style="background: white; padding: 24px; border-radius: 8px; width: 500px; max-width: 90%; max-height: 90%; overflow-y: auto;"
+        onclick="event.stopPropagation()">
+        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 16px;">Edit Task</h3>
+        
+        <form id="edit-task-form">
+            <input type="hidden" id="edit-task-id">
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">Task Title</label>
+                <input type="text" id="edit-task-title" required
+                    style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 4px; font-weight: 500;">Description (Optional)</label>
+                <textarea id="edit-task-description" rows="3"
+                    style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; resize: vertical;"></textarea>
+            </div>
+
+            <!-- File Submission Requirements -->
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">
+                    <input type="checkbox" id="edit-requires-submission" style="margin-right: 8px;">
+                    Require File Submission
+                </label>
+                
+                <div id="edit-submission-options" style="display: none; margin-left: 20px; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.875rem;">Required File Types:</label>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                        <label style="display: flex; align-items: center; font-size: 0.875rem;">
+                            <input type="checkbox" name="edit-file-types" value="images" style="margin-right: 6px;">
+                            📸 Images (JPG, PNG, GIF)
+                        </label>
+                        <label style="display: flex; align-items: center; font-size: 0.875rem;">
+                            <input type="checkbox" name="edit-file-types" value="videos" style="margin-right: 6px;">
+                            🎥 Videos (MP4, MOV, AVI)
+                        </label>
+                        <label style="display: flex; align-items: center; font-size: 0.875rem;">
+                            <input type="checkbox" name="edit-file-types" value="pdf" style="margin-right: 6px;">
+                            📄 PDF Documents
+                        </label>
+                        <label style="display: flex; align-items: center; font-size: 0.875rem;">
+                            <input type="checkbox" name="edit-file-types" value="docx" style="margin-right: 6px;">
+                            📝 Word Documents
+                        </label>
+                        <label style="display: flex; align-items: center; font-size: 0.875rem;">
+                            <input type="checkbox" name="edit-file-types" value="excel" style="margin-right: 6px;">
+                            📊 Excel Files
+                        </label>
+                    </div>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <label style="display: block; margin-bottom: 4px; font-weight: 500; font-size: 0.875rem;">Submission Instructions:</label>
+                        <textarea id="edit-submission-instructions" rows="2" placeholder="Provide specific instructions for what should be submitted..."
+                            style="width: 100%; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.875rem; resize: vertical;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Priority and Due Date -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div>
+                    <label style="display: block; margin-bottom: 4px; font-weight: 500;">Priority</label>
+                    <select id="edit-task-priority" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 4px; font-weight: 500;">Due Date (Optional)</label>
+                    <input type="date" id="edit-task-due-date" min="{{ date('Y-m-d', strtotime('+1 day')) }}"
+                        style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                <button type="button" onclick="hideEditTaskModal()"
+                    style="padding: 8px 16px; border: 1px solid #d1d5db; background: white; border-radius: 4px; cursor: pointer;">Cancel</button>
+                <button type="submit"
+                    style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">Update Task</button>
             </div>
         </form>
     </div>
@@ -3217,6 +3316,71 @@ document.getElementById('requires-submission').addEventListener('change', functi
     }
 });
 
+// Handle edit modal submission requirements toggle
+document.getElementById('edit-requires-submission').addEventListener('change', function() {
+    const submissionOptions = document.getElementById('edit-submission-options');
+    if (this.checked) {
+        submissionOptions.style.display = 'block';
+    } else {
+        submissionOptions.style.display = 'none';
+    }
+});
+
+// Edit task form handler
+document.getElementById('edit-task-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const taskId = document.getElementById('edit-task-id').value;
+    const title = document.getElementById('edit-task-title').value;
+    const description = document.getElementById('edit-task-description').value;
+    const priority = document.getElementById('edit-task-priority').value;
+    const dueDate = document.getElementById('edit-task-due-date').value;
+    const requiresSubmission = document.getElementById('edit-requires-submission').checked;
+    const submissionInstructions = document.getElementById('edit-submission-instructions').value;
+    
+    // Get selected file types
+    const fileTypeCheckboxes = document.querySelectorAll('input[name="edit-file-types"]:checked');
+    const selectedFileTypes = Array.from(fileTypeCheckboxes).map(cb => cb.value);
+    
+    // Validation
+    if (requiresSubmission && selectedFileTypes.length === 0) {
+        showError('Please select at least one file type when requiring submission.');
+        return;
+    }
+    
+    fetch(`/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            title: title,
+            description: description,
+            priority: priority,
+            due_date: dueDate,
+            requires_submission: requiresSubmission,
+            allowed_file_types: selectedFileTypes,
+            submission_instructions: submissionInstructions
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            hideEditTaskModal();
+            showSuccess('Task updated successfully!');
+            // Refresh the page to show updated task
+            location.reload();
+        } else {
+            showError('Failed to update task: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Failed to update task. Please try again.');
+    });
+});
+
 document.getElementById('add-task-form').addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -3294,8 +3458,67 @@ function viewTaskDetails(taskId) {
 }
 
 function editTask(taskId) {
-    // Redirect to task edit page
-    window.open(`/tasks/${taskId}/edit`, '_blank');
+    // Fetch task details and show edit modal
+    fetch(`/tasks/${taskId}`, {
+        method: 'GET',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showEditTaskModal(data.task);
+        } else {
+            showError('Failed to load task details: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Failed to load task details. Please try again.');
+    });
+}
+
+function showEditTaskModal(task) {
+    const modal = document.getElementById('edit-task-modal');
+    
+    // Populate form fields
+    document.getElementById('edit-task-id').value = task.id;
+    document.getElementById('edit-task-title').value = task.title;
+    document.getElementById('edit-task-description').value = task.description || '';
+    document.getElementById('edit-task-priority').value = task.priority || 'medium';
+    document.getElementById('edit-task-due-date').value = task.due_date ? task.due_date.split(' ')[0] : '';
+    
+    // Handle submission requirements
+    const requiresSubmission = task.requires_submission;
+    document.getElementById('edit-requires-submission').checked = requiresSubmission;
+    const submissionOptions = document.getElementById('edit-submission-options');
+    submissionOptions.style.display = requiresSubmission ? 'block' : 'none';
+    
+    // Set file types
+    const fileTypeCheckboxes = document.querySelectorAll('input[name="edit-file-types"]');
+    fileTypeCheckboxes.forEach(cb => {
+        cb.checked = task.allowed_file_types && task.allowed_file_types.includes(cb.value);
+    });
+    
+    // Set submission instructions
+    document.getElementById('edit-submission-instructions').value = task.submission_instructions || '';
+    
+    modal.style.display = 'flex';
+}
+
+function hideEditTaskModal() {
+    const modal = document.getElementById('edit-task-modal');
+    modal.style.display = 'none';
+    document.getElementById('edit-task-form').reset();
+}
+
+function handleEditTaskModalClick(event) {
+    if (event.target.id === 'edit-task-modal') {
+        hideEditTaskModal();
+    }
 }
 
 function deleteTask(taskId) {
