@@ -1640,7 +1640,7 @@
                         @forelse($myTasks as $task)
                         <div class="task-item" data-task-id="{{ $task->id }}"
                             style="margin-bottom: 12px; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                            <div style="display: flex; align-items: center; justify-content: between; margin-bottom: 8px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                                 <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
                                     <input type="checkbox" {{ $task->completed ? 'checked' : '' }}
                                     onchange="toggleTask({{ $task->id }})"
@@ -1669,25 +1669,26 @@
                                     @endif
                                 </div>
 
-                                <!-- Task Actions -->
-                                <div style="margin-left: auto; display: flex; gap: 4px;">
+                                <!-- Task Actions - Always visible Edit/Delete for creators -->
+                                <div style="display: flex; align-items: center; gap: 4px;">
                                     @if($task->created_by === Auth::id())
-                                        <!-- Always visible Edit/Delete buttons for creators -->
+                                        <!-- Edit Button -->
                                         <button onclick="editTask({{ $task->id }})" title="Edit Task"
-                                                style="background: #3b82f6; color: white; border: none; border-radius: 3px; padding: 2px 6px; font-size: 0.7rem; cursor: pointer;">
-                                            <i class="fas fa-edit"></i>
+                                                style="background: #3b82f6; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                            <i class="fas fa-edit"></i> Edit
                                         </button>
+                                        <!-- Delete Button -->
                                         <button onclick="deleteTask({{ $task->id }})" title="Delete Task"
-                                                style="background: #ef4444; color: white; border: none; border-radius: 3px; padding: 2px 6px; font-size: 0.7rem; cursor: pointer;">
-                                            <i class="fas fa-trash"></i>
+                                                style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                            <i class="fas fa-trash"></i> Delete
                                         </button>
                                     @endif
                                     
-                                    <!-- Dropdown for other actions -->
+                                    <!-- Dropdown for additional actions -->
                                     <div class="dropdown">
                                         <button class="btn btn-sm btn-outline-secondary" type="button" 
                                                 data-bs-toggle="dropdown" aria-expanded="false"
-                                                style="padding: 2px 6px; font-size: 0.75rem;">
+                                                style="padding: 4px 8px; font-size: 0.75rem;">
                                             <i class="fas fa-ellipsis-v"></i>
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end">
@@ -1784,25 +1785,80 @@
                         @forelse($partnerTasks as $task)
                         <div class="task-item" data-task-id="{{ $task->id }}"
                             style="margin-bottom: 12px; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
-                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                                <input type="checkbox" {{ $task->completed ? 'checked' : '' }} disabled style="width:
-                                16px; height: 16px;">
-                                <span
-                                    style="font-weight: 500; {{ $task->completed ? 'text-decoration: line-through; color: #6b7280;' : '' }}">{{
-                                    $task->title }}</span>
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                                    <input type="checkbox" {{ $task->completed ? 'checked' : '' }} disabled style="width: 16px; height: 16px;">
+                                    <span style="font-weight: 500; {{ $task->completed ? 'text-decoration: line-through; color: #6b7280;' : '' }}">{{ $task->title }}</span>
 
-                                <!-- Verification Status Badge -->
-                                @if($task->completed)
-                                @if($task->verified)
-                                <span
-                                    style="background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;">✓
-                                    Verified</span>
-                                @else
-                                <span
-                                    style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;">⏳
-                                    Pending Verification</span>
-                                @endif
-                                @endif
+                                    <!-- Task Status Badge -->
+                                    @if($task->current_status)
+                                    <span class="badge" style="background: 
+                                        @switch($task->current_status)
+                                            @case('assigned') #6b7280 @break
+                                            @case('in_progress') #f59e0b @break
+                                            @case('submitted') #3b82f6 @break
+                                            @case('completed') #10b981 @break
+                                            @default #6b7280
+                                        @endswitch; color: white; font-size: 0.75rem;">
+                                        {{ ucfirst(str_replace('_', ' ', $task->current_status)) }}
+                                    </span>
+                                    @endif
+
+                                    <!-- File Submission Required -->
+                                    @if($task->requires_submission)
+                                    <span class="badge" style="background: #8b5cf6; color: white; font-size: 0.75rem;">
+                                        <i class="fas fa-paperclip" style="font-size: 0.7rem;"></i> Submission Required
+                                    </span>
+                                    @endif
+
+                                    <!-- Verification Status Badge (Legacy) -->
+                                    @if($task->completed)
+                                    @if($task->verified)
+                                    <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;">✓ Verified</span>
+                                    @else
+                                    <span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;">⏳ Pending Verification</span>
+                                    @endif
+                                    @endif
+                                </div>
+
+                                <!-- Task Actions - Edit/Delete for creators -->
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    @if($task->created_by === Auth::id())
+                                        <!-- Edit Button -->
+                                        <button onclick="editTask({{ $task->id }})" title="Edit Task"
+                                                style="background: #3b82f6; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                        <!-- Delete Button -->
+                                        <button onclick="deleteTask({{ $task->id }})" title="Delete Task"
+                                                style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    @endif
+                                    
+                                    <!-- Dropdown for additional actions -->
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" 
+                                                data-bs-toggle="dropdown" aria-expanded="false"
+                                                style="padding: 4px 8px; font-size: 0.75rem;">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="#" onclick="viewTaskDetails({{ $task->id }})">
+                                                <i class="fas fa-eye me-2"></i>View Details
+                                            </a></li>
+                                            
+                                            @if($task->created_by === Auth::id())
+                                                <!-- Task Creator Actions -->
+                                                @if($task->current_status === 'submitted')
+                                                <li><a class="dropdown-item" href="#" onclick="reviewTaskSubmission({{ $task->id }})">
+                                                    <i class="fas fa-clipboard-check me-2"></i>Review Submission
+                                                </a></li>
+                                                @endif
+                                            @endif
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                             @if($task->description)
                             <div style="font-size: 0.875rem; color: #6b7280; margin-left: 24px;">{{ $task->description
@@ -3527,18 +3583,30 @@ function deleteTask(taskId) {
             method: 'DELETE',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             }
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Remove task from UI
-                const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
-                if (taskElement) {
-                    taskElement.remove();
-                }
                 showSuccess('Task deleted successfully!');
+                
+                // Remove all instances of the task from UI immediately
+                const taskElements = document.querySelectorAll(`[data-task-id="${taskId}"]`);
+                taskElements.forEach(element => {
+                    element.style.transition = 'opacity 0.3s ease';
+                    element.style.opacity = '0';
+                    setTimeout(() => {
+                        element.remove();
+                    }, 300);
+                });
+                
+                // Check if containers are empty after deletion
+                setTimeout(() => {
+                    checkEmptyTaskContainers();
+                }, 350);
+                
                 updateTaskCount();
             } else {
                 showError('Failed to delete task: ' + (data.error || 'Unknown error'));
@@ -3548,6 +3616,22 @@ function deleteTask(taskId) {
             console.error('Error:', error);
             showError('Failed to delete task. Please try again.');
         });
+    }
+}
+
+function checkEmptyTaskContainers() {
+    const myTasksContainer = document.getElementById('my-tasks');
+    const partnerTasksContainer = document.getElementById('partner-tasks');
+    
+    // Check My Tasks container
+    if (myTasksContainer && myTasksContainer.children.length === 0) {
+        myTasksContainer.innerHTML = '<div style="color: #6b7280; font-size: 0.875rem; text-align: center; padding: 16px;">No tasks assigned to you</div>';
+    }
+    
+    // Check Partner Tasks container
+    if (partnerTasksContainer && partnerTasksContainer.children.length === 0) {
+        const partnerName = '{{ $partner->firstname ?? "Partner" }}';
+        partnerTasksContainer.innerHTML = `<div style="color: #6b7280; font-size: 0.875rem; text-align: center; padding: 16px;">No tasks assigned to ${partnerName}</div>`;
     }
 }
 
@@ -3750,6 +3834,7 @@ document.getElementById('submission-evaluation-form').addEventListener('submit',
 function addTaskToUI(task) {
     // Determine which container to add the task to based on who it's assigned to
     const isAssignedToMe = task.assigned_to == window.authUserId;
+    const isCreatedByMe = task.created_by == window.authUserId;
     const container = isAssignedToMe ? document.getElementById('my-tasks') : document.getElementById('partner-tasks');
     
     const taskDiv = document.createElement('div');
@@ -3761,11 +3846,52 @@ function addTaskToUI(task) {
         ? `<input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})" style="width: 16px; height: 16px;">`
         : `<input type="checkbox" disabled style="width: 16px; height: 16px;">`;
     
+    // Status badge
+    let statusBadge = '';
+    if (task.current_status) {
+        const statusColors = {
+            'assigned': '#6b7280',
+            'in_progress': '#f59e0b',
+            'submitted': '#3b82f6',
+            'completed': '#10b981'
+        };
+        const statusColor = statusColors[task.current_status] || '#6b7280';
+        const statusText = task.current_status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+        statusBadge = `<span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">${statusText}</span>`;
+    }
+    
+    // File submission badge
+    let submissionBadge = '';
+    if (task.requires_submission) {
+        submissionBadge = '<span style="background: #8b5cf6; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;"><i class="fas fa-paperclip" style="font-size: 0.7rem;"></i> Submission Required</span>';
+    }
+    
+    // Edit/Delete buttons for creators
+    let actionButtons = '';
+    if (isCreatedByMe) {
+        actionButtons = `
+            <button onclick="editTask(${task.id})" title="Edit Task"
+                    style="background: #3b82f6; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 4px; margin-right: 4px;">
+                <i class="fas fa-edit"></i> Edit
+            </button>
+            <button onclick="deleteTask(${task.id})" title="Delete Task"
+                    style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        `;
+    }
+    
     taskDiv.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-            ${checkboxHtml}
-            <span style="font-weight: 500;">${task.title}</span>
-            ${task.completed ? '<span style="color: #10b981; font-size: 0.75rem; margin-left: auto;">✓ Completed</span>' : ''}
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+                ${checkboxHtml}
+                <span style="font-weight: 500;">${task.title}</span>
+                ${statusBadge}
+                ${submissionBadge}
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+                ${actionButtons}
+            </div>
         </div>
         ${task.description ? `<div style="font-size: 0.875rem; color: #6b7280; margin-left: 24px;">${task.description}</div>` : ''}
     `;
