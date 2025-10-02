@@ -2378,7 +2378,7 @@ function startVideoCallPolling() {
         } catch (error) {
             console.error('❌ Error polling for video call messages:', error);
         }
-    }, 2000); // Poll every 2 seconds
+    }, 5000); // Poll every 5 seconds
     
     // Show a notification that we're using polling fallback
     const fallbackDiv = document.createElement('div');
@@ -3326,9 +3326,58 @@ let timeInterval = setInterval(function() {
 // Keep track of the last message count
 let lastMessageCount = window.initialMessageCount;
 
-// Check for new messages every 10 seconds (only if Laravel Echo is not working)
+// Smart message polling - only if Laravel Echo is not working
+let messagePollingInterval = null;
+let pollingFrequency = 5000; // Start with 5 seconds
+let lastActivity = Date.now();
+let consecutiveEmptyPolls = 0;
+
 if (!window.Echo) {
-    setInterval(checkForNewMessages, 1000);
+    console.log('🔄 Laravel Echo not available, starting smart message polling...');
+    startSmartMessagePolling();
+    
+    // Track user activity to optimize polling
+    ['click', 'keypress', 'mousemove', 'scroll'].forEach(event => {
+        document.addEventListener(event, () => {
+            lastActivity = Date.now();
+            
+            // If user becomes active and polling is slow, speed it up
+            if (pollingFrequency > 5000) {
+                pollingFrequency = 5000;
+                startSmartMessagePolling();
+                console.log('🚀 User active - speeding up message polling to 5s');
+            }
+        }, { passive: true });
+    });
+}
+
+function startSmartMessagePolling() {
+    if (messagePollingInterval) {
+        clearInterval(messagePollingInterval);
+    }
+    
+    messagePollingInterval = setInterval(() => {
+        checkForNewMessages();
+    }, pollingFrequency);
+}
+
+function adjustPollingFrequency() {
+    const timeSinceActivity = Date.now() - lastActivity;
+    
+    // If no activity for 30 seconds, slow down polling
+    if (timeSinceActivity > 30000) {
+        pollingFrequency = Math.min(15000, pollingFrequency + 1000); // Max 15 seconds
+    } else {
+        pollingFrequency = Math.max(3000, pollingFrequency - 500); // Min 3 seconds
+    }
+    
+    // If too many empty polls, slow down
+    if (consecutiveEmptyPolls > 5) {
+        pollingFrequency = Math.min(20000, pollingFrequency + 2000); // Max 20 seconds
+    }
+    
+    // Restart polling with new frequency
+    startSmartMessagePolling();
 }
 
 function checkForNewMessages() {
@@ -3339,6 +3388,10 @@ function checkForNewMessages() {
                 // Get only the new messages
                 const newMessages = data.messages.slice(lastMessageCount);
                 lastMessageCount = data.count;
+                
+                // Reset activity tracking
+                lastActivity = Date.now();
+                consecutiveEmptyPolls = 0;
 
                 // Add only new messages to chat
                 newMessages.forEach(msg => {
@@ -3349,10 +3402,27 @@ function checkForNewMessages() {
                         msg.sender_id === window.authUserId
                     );
                 });
+                
+                console.log(`📨 Received ${newMessages.length} new messages`);
+            } else {
+                // No new messages
+                consecutiveEmptyPolls++;
+                
+                // Adjust polling frequency every 10 polls
+                if (consecutiveEmptyPolls % 10 === 0) {
+                    adjustPollingFrequency();
+                    console.log(`🔄 Adjusted polling frequency to ${pollingFrequency}ms after ${consecutiveEmptyPolls} empty polls`);
+                }
             }
         })
         .catch(error => {
             console.error("Error checking for new messages:", error);
+            consecutiveEmptyPolls++;
+            
+            // Slow down on errors
+            if (consecutiveEmptyPolls % 5 === 0) {
+                adjustPollingFrequency();
+            }
         });
 }
 
@@ -3729,7 +3799,7 @@ async function initializeVideoChat() {
 
 // Metered API Configuration
 const METERED_API_KEY = '511852cda421697270ed9af8b089038b39a7';
-const METERED_API_URL = 'https://skillxchange.metered.live/api/v1/turn/credentials';
+const METERED_API_URL = 'https://skillsxchange.metered.live/api/v1/turn/credentials';
 
 // Fetch TURN server credentials from Metered API
 async function fetchTurnCredentials() {

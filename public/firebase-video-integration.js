@@ -36,7 +36,7 @@ class FirebaseVideoIntegration {
         this.onStatusUpdate = options.onStatusUpdate || (() => {});
         this.onParticipantUpdate = options.onParticipantUpdate || (() => {});
         
-        // WebRTC Configuration
+        // WebRTC Configuration with updated TURN servers
         this.config = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
@@ -44,6 +44,21 @@ class FirebaseVideoIntegration {
                 { urls: 'stun:stun.relay.metered.ca:80' },
                 {
                     urls: 'turn:asia.relay.metered.ca:80',
+                    username: '0582eeabe15281e17e922394',
+                    credential: 'g7fjNoaIyTpLnkaf'
+                },
+                {
+                    urls: 'turn:asia.relay.metered.ca:80?transport=tcp',
+                    username: '0582eeabe15281e17e922394',
+                    credential: 'g7fjNoaIyTpLnkaf'
+                },
+                {
+                    urls: 'turn:asia.relay.metered.ca:443',
+                    username: '0582eeabe15281e17e922394',
+                    credential: 'g7fjNoaIyTpLnkaf'
+                },
+                {
+                    urls: 'turns:asia.relay.metered.ca:443?transport=tcp',
                     username: '0582eeabe15281e17e922394',
                     credential: 'g7fjNoaIyTpLnkaf'
                 }

@@ -102,13 +102,22 @@ class ErrorHandlingMiddleware
         $requests[] = $currentTime;
         Session::put($key, $requests);
         
-        // If more than 30 requests in 1 minute, log as suspicious
-        if (count($requests) > 30) {
+        // Adjust threshold based on request type
+        $threshold = 30; // Default threshold
+        
+        // Higher threshold for chat message polling
+        if (str_contains($request->path(), 'chat') && str_contains($request->path(), 'messages')) {
+            $threshold = 100; // Allow more requests for chat polling
+        }
+        
+        // If more than threshold requests in 1 minute, log as suspicious
+        if (count($requests) > $threshold) {
             Log::warning('Suspicious activity detected', [
                 'ip' => $ip,
                 'user_agent' => $userAgent,
                 'request_count' => count($requests),
-                'url' => $request->url()
+                'url' => $request->url(),
+                'threshold' => $threshold
             ]);
         }
     }

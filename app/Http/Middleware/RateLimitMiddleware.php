@@ -87,10 +87,10 @@ class RateLimitMiddleware
         if (str_contains($path, 'chat')) {
             // Check if it's a message polling request (GET)
             if ($request->isMethod('GET') && str_contains($path, 'messages')) {
-                return 1000; // 1000 requests per 15 minutes for message polling
+                return 10000; // 10000 requests per 15 minutes for message polling (effectively unlimited)
             }
             // Regular chat messages
-            return 300; // 300 requests per 15 minutes for sending messages
+            return 500; // 500 requests per 15 minutes for sending messages
         }
         
         // General web requests - more lenient
