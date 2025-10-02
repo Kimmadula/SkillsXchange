@@ -9,6 +9,7 @@ use App\Models\UserSkill;
 use App\Http\Requests\StoreSkillRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class AdminController extends Controller
@@ -347,6 +348,7 @@ class AdminController extends Controller
 
     public function updateProfile(Request $request)
     {
+        /** @var User $user */
         $user = auth()->user();
         
         $request->validate([
@@ -422,7 +424,7 @@ class AdminController extends Controller
             $validated = $request->validated();
 
             // Log the attempt for debugging
-            \Log::info('Admin attempting to create skill', [
+            Log::info('Admin attempting to create skill', [
                 'admin_user' => auth()->user()->email,
                 'skill_data' => $validated
             ]);
@@ -432,7 +434,7 @@ class AdminController extends Controller
             $existingSkill = Skill::whereRaw('LOWER(name) = ?', [strtolower($normalizedName)])->first();
             
             if ($existingSkill) {
-                \Log::warning('Duplicate skill creation attempt', ['name' => $normalizedName]);
+                Log::warning('Duplicate skill creation attempt', ['name' => $normalizedName]);
                 return redirect()->back()
                     ->withInput()
                     ->withErrors(['name' => 'A skill with this name already exists. Please choose a different name.']);
@@ -440,11 +442,11 @@ class AdminController extends Controller
 
             $skill = Skill::create($validated);
             
-            \Log::info('Skill created successfully', ['skill_id' => $skill->skill_id, 'name' => $skill->name]);
+            Log::info('Skill created successfully', ['skill_id' => $skill->skill_id, 'name' => $skill->name]);
 
             return redirect()->route('admin.skills.index')->with('success', 'Skill "' . $skill->name . '" added successfully.');
         } catch (\Illuminate\Database\QueryException $e) {
-            \Log::error('Database error creating skill', ['error' => $e->getMessage(), 'code' => $e->getCode()]);
+            Log::error('Database error creating skill', ['error' => $e->getMessage(), 'code' => $e->getCode()]);
             
             // Handle database unique constraint violations
             if ($e->getCode() == 23000) {
@@ -458,7 +460,7 @@ class AdminController extends Controller
                 ->withInput()
                 ->withErrors(['database' => 'Database error: ' . $e->getMessage()]);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error creating skill', ['error' => $e->getMessage()]);
+            Log::error('Unexpected error creating skill', ['error' => $e->getMessage()]);
             
             // Handle any other unexpected errors
             return redirect()->back()
@@ -510,7 +512,7 @@ class AdminController extends Controller
             $user->is_verified = true;
             $user->save();
 
-            \Log::info('User approved by admin', [
+            Log::info('User approved by admin', [
                 'admin_user' => auth()->user()->email,
                 'approved_user' => $user->email,
                 'user_id' => $user->id
@@ -528,7 +530,7 @@ class AdminController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Error approving user', [
+            Log::error('Error approving user', [
                 'error' => $e->getMessage(),
                 'user_id' => $user->id,
                 'admin_user' => auth()->user()->email
@@ -562,7 +564,7 @@ class AdminController extends Controller
             $action = $wasVerified ? 'revoked' : 'denied';
             $actionPast = $wasVerified ? 'Verification revoked' : 'Registration denied';
 
-            \Log::info("User verification {$action} by admin", [
+            Log::info("User verification {$action} by admin", [
                 'admin_user' => auth()->user()->email,
                 'affected_user' => $user->email,
                 'user_id' => $user->id,
@@ -581,7 +583,7 @@ class AdminController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Error denying/revoking user', [
+            Log::error('Error denying/revoking user', [
                 'error' => $e->getMessage(),
                 'user_id' => $user->id,
                 'admin_user' => auth()->user()->email

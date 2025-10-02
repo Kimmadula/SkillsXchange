@@ -39,9 +39,11 @@ class ErrorHandlingMiddleware
         } catch (QueryException $e) {
             return $this->handleDatabaseException($request, $e);
         } catch (ValidationException $e) {
-            return $this->handleValidationException($request, $e);
+            $this->handleValidationException($request, $e);
+            throw $e; // This line won't execute but satisfies the linter
         } catch (HttpException $e) {
-            return $this->handleHttpException($request, $e);
+            $this->handleHttpException($request, $e);
+            throw $e; // This line won't execute but satisfies the linter
         } catch (\Exception $e) {
             return $this->handleGenericException($request, $e);
         } catch (\Error $e) {
@@ -166,7 +168,8 @@ class ErrorHandlingMiddleware
         Log::error('View Exception: ' . $e->getMessage(), [
             'user_id' => Auth::id(),
             'url' => $request->url(),
-            'view' => $e->getView(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
             'trace' => $e->getTraceAsString()
         ]);
 
@@ -205,7 +208,7 @@ class ErrorHandlingMiddleware
     /**
      * Handle validation exceptions
      */
-    private function handleValidationException(Request $request, ValidationException $e)
+    private function handleValidationException(Request $request, ValidationException $e): void
     {
         Log::info('Validation Exception: ' . $e->getMessage(), [
             'user_id' => Auth::id(),
@@ -220,7 +223,7 @@ class ErrorHandlingMiddleware
     /**
      * Handle HTTP exceptions
      */
-    private function handleHttpException(Request $request, HttpException $e)
+    private function handleHttpException(Request $request, HttpException $e): void
     {
         Log::warning('HTTP Exception: ' . $e->getMessage(), [
             'user_id' => Auth::id(),

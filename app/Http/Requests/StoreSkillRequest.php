@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;
 use App\Models\Skill;
 
 class StoreSkillRequest extends FormRequest
@@ -41,7 +42,7 @@ class StoreSkillRequest extends FormRequest
                         }
                     } catch (\Exception $e) {
                         // Log the error but don't fail validation to prevent 500 errors
-                        \Log::warning('Skill validation error: ' . $e->getMessage());
+                        Log::warning('Skill validation error: ' . $e->getMessage());
                     }
                 },
             ],
