@@ -55,10 +55,15 @@
             <select id="looking_skill_category" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
                 <option value="">Select a category first</option>
                 @foreach($skills->groupBy('category') as $category => $group)
-                    <option value="{{ $category }}">{{ $category }}</option>
+                    <option value="{{ $category }}">{{ $category }} ({{ $group->count() }} skills)</option>
                 @endforeach
             </select>
             <small style="color:#6b7280; font-size:0.75rem;">Select a category to see available skills</small>
+            @if($skills->count() === 0)
+                <div style="color:#dc2626; font-size:0.875rem; margin-top:4px;">
+                    ⚠️ No skills available. Please contact admin to add skills.
+                </div>
+            @endif
         </div>
 
         <div>
@@ -151,27 +156,58 @@
         </div>
     </form>
 
+    <!-- Debug Information -->
+    @if(config('app.debug'))
+    <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin: 20px 0; font-size: 12px;">
+        <strong>Debug Info:</strong>
+        <br>Total Skills: {{ $skills->count() }}
+        <br>Categories: {{ $skills->groupBy('category')->count() }}
+        <br>Categories List: {{ $skills->groupBy('category')->keys()->implode(', ') }}
+    </div>
+    @endif
+
     <script>
-        // Skill category selection
+        // Skill category selection with debugging
         document.addEventListener('DOMContentLoaded', function() {
             const categorySelect = document.getElementById('looking_skill_category');
             const skillSelect = document.getElementById('looking_skill_id');
             const allOptions = Array.from(skillSelect.options);
 
+            console.log('🔧 Skill selection initialized');
+            console.log('📊 Total skill options:', allOptions.length);
+            console.log('📋 All options:', allOptions.map(opt => ({value: opt.value, category: opt.getAttribute('data-category'), text: opt.textContent})));
+
             categorySelect.addEventListener('change', function() {
                 const selectedCategory = this.value;
+                console.log('🎯 Category selected:', selectedCategory);
+                
                 skillSelect.innerHTML = '<option value="">Select a skill</option>';
                 
                 if (selectedCategory) {
                     skillSelect.disabled = false;
+                    let addedCount = 0;
+                    
                     allOptions.forEach(option => {
                         if (!option.value) return; // skip placeholder
-                        if (option.getAttribute('data-category') === selectedCategory) {
+                        const optionCategory = option.getAttribute('data-category');
+                        console.log('🔍 Checking option:', option.textContent, 'Category:', optionCategory);
+                        
+                        if (optionCategory === selectedCategory) {
                             skillSelect.appendChild(option.cloneNode(true));
+                            addedCount++;
+                            console.log('✅ Added skill:', option.textContent);
                         }
                     });
+                    
+                    console.log('📈 Added', addedCount, 'skills for category:', selectedCategory);
+                    
+                    if (addedCount === 0) {
+                        skillSelect.innerHTML = '<option value="">No skills found for this category</option>';
+                        console.log('⚠️ No skills found for category:', selectedCategory);
+                    }
                 } else {
                     skillSelect.disabled = true;
+                    console.log('🔒 Skill select disabled');
                 }
             });
         });
