@@ -1328,11 +1328,9 @@
                                                 console.error('❌ Failed to answer incoming call');
                                             }
                                         });
-                                        } else {
-                                            console.log('📞 Call already in progress, ignoring incoming call');
-                                        }
                                     }
-                                });
+                                }
+                            });
                                 
                                 console.log('✅ Callee setup complete - listening for incoming calls');
                             } else {
