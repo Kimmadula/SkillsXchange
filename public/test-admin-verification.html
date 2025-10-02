@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin User Verification Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        .test-section { background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .success { color: #059669; }
+        .error { color: #dc2626; }
+        .info { color: #0c4a6e; }
+        button { background: #3b82f6; color: white; padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; margin: 5px; }
+        button:hover { background: #2563eb; }
+        .approve { background: #10b981; }
+        .deny { background: #ef4444; }
+        .revoke { background: #f59e0b; }
+        pre { background: #f3f4f6; padding: 15px; border-radius: 6px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Admin User Verification Test</h1>
+    
+    <div class="test-section">
+        <h3>📋 Test Instructions</h3>
+        <ol>
+            <li>Make sure you're logged in as an admin user</li>
+            <li>Go to <strong>/admin/users</strong> in your application</li>
+            <li>Look for users with "PENDING" status</li>
+            <li>Click the "Approve" or "Deny" buttons</li>
+            <li>Verify the status changes and you see success messages</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h3>🚀 Quick Test Links</h3>
+        <p>Use these links to test the functionality:</p>
+        <a href="/admin/users" target="_blank">
+            <button>Open Admin Users Page</button>
+        </a>
+        <a href="/admin/skills" target="_blank">
+            <button>Open Admin Skills Page</button>
+        </a>
+    </div>
+
+    <div class="test-section">
+        <h3>🔍 API Endpoints Test</h3>
+        <p>Test the verification endpoints directly:</p>
+        <div id="apiTest">
+            <input type="number" id="userId" placeholder="User ID" style="padding: 8px; margin: 5px;">
+            <button onclick="testApprove()" class="approve">Test Approve</button>
+            <button onclick="testDeny()" class="deny">Test Deny</button>
+        </div>
+        <div id="apiResult" style="margin-top: 15px;"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>✅ Expected Features</h3>
+        <ul>
+            <li><strong>Approve Button:</strong> Changes user status to "VERIFIED" (green badge)</li>
+            <li><strong>Deny Button:</strong> Keeps user status as "PENDING" (orange badge)</li>
+            <li><strong>Revoke Button:</strong> Changes verified user back to "PENDING"</li>
+            <li><strong>Real-time Updates:</strong> Status changes without page reload</li>
+            <li><strong>Success Messages:</strong> Toast notifications appear</li>
+            <li><strong>Admin Protection:</strong> Admin users cannot be modified</li>
+            <li><strong>Search:</strong> Filter users by name, email, or username</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h3>🐛 Troubleshooting</h3>
+        <ul>
+            <li><strong>404 Error:</strong> Routes not registered - check routes/web.php</li>
+            <li><strong>403 Error:</strong> Not logged in as admin - check admin middleware</li>
+            <li><strong>500 Error:</strong> Server error - check Laravel logs</li>
+            <li><strong>CSRF Error:</strong> Token mismatch - refresh the page</li>
+            <li><strong>No Response:</strong> JavaScript error - check browser console</li>
+        </ul>
+    </div>
+
+    <script>
+        async function testApprove() {
+            const userId = document.getElementById('userId').value;
+            if (!userId) {
+                alert('Please enter a User ID');
+                return;
+            }
+            await testAPI(userId, 'approve');
+        }
+
+        async function testDeny() {
+            const userId = document.getElementById('userId').value;
+            if (!userId) {
+                alert('Please enter a User ID');
+                return;
+            }
+            await testAPI(userId, 'deny');
+        }
+
+        async function testAPI(userId, action) {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.innerHTML = '<p class="info">Testing...</p>';
+
+            try {
+                // Get CSRF token from meta tag (if available)
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 'test-token';
+
+                const response = await fetch(`/admin/users/${userId}/${action}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        is_verified: action === 'approve'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✅ Success!</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="error">❌ Error (${response.status})</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Network Error</p>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+    </script>
+
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px;">
+        <p><strong>Security Note:</strong> Delete this file after testing is complete.</p>
+        <p><strong>File location:</strong> public/test-admin-verification.html</p>
+    </div>
+</body>
+</html>

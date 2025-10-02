@@ -441,6 +441,10 @@ Route::middleware('auth')->group(function () {
         // User management
         Route::patch('/admin/approve/{user}', [AdminController::class, 'approve'])->name('admin.approve');
         Route::patch('/admin/reject/{user}', [AdminController::class, 'reject'])->name('admin.reject');
+        
+        // Enhanced user verification routes
+        Route::patch('/admin/users/{user}/approve', [AdminController::class, 'approveUser'])->name('admin.users.approve');
+        Route::patch('/admin/users/{user}/deny', [AdminController::class, 'denyUser'])->name('admin.users.deny');
         Route::get('/admin/user/{user}', [AdminController::class, 'show'])->name('admin.user.show');
 
         // Admin profile

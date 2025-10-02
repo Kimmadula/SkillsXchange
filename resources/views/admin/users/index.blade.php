@@ -204,6 +204,17 @@
 
             <!-- Users Content -->
             <div class="dashboard-content">
+                @if(session('success'))
+                <div class="alert alert-success" style="position: relative; animation: none;">
+                    {{ session('success') }}
+                </div>
+                @endif
+
+                @if(session('error'))
+                <div class="alert alert-error" style="position: relative; animation: none;">
+                    {{ session('error') }}
+                </div>
+                @endif
                 <!-- User Statistics Cards -->
                 <div class="user-stats-row">
                     <div class="stat-card">
@@ -303,8 +314,46 @@
                                     </td>
                                     <td>
                                         <div class="action-buttons">
+                                            @if($user->role !== 'admin')
+                                                @if(!$user->is_verified)
+                                                    <button onclick="verifyUser({{ $user->id }}, true)" 
+                                                            class="btn btn-approve" 
+                                                            id="approve-btn-{{ $user->id }}">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <polyline points="20,6 9,17 4,12"></polyline>
+                                                        </svg>
+                                                        Approve
+                                                    </button>
+                                                    <button onclick="verifyUser({{ $user->id }}, false)" 
+                                                            class="btn btn-deny" 
+                                                            id="deny-btn-{{ $user->id }}">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                        </svg>
+                                                        Deny
+                                                    </button>
+                                                @else
+                                                    <button onclick="verifyUser({{ $user->id }}, false)" 
+                                                            class="btn btn-revoke" 
+                                                            id="revoke-btn-{{ $user->id }}">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <circle cx="12" cy="12" r="10"></circle>
+                                                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                                                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                                                        </svg>
+                                                        Revoke
+                                                    </button>
+                                                @endif
+                                            @endif
                                             <a href="{{ route('admin.user.show', $user->id) }}"
-                                                class="btn btn-view">View</a>
+                                                class="btn btn-view">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                    <circle cx="12" cy="12" r="3"></circle>
+                                                </svg>
+                                                View
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>
@@ -569,6 +618,51 @@
             background: #059669;
         }
 
+        .btn-deny {
+            background: #ef4444;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-deny:hover {
+            background: #dc2626;
+        }
+
+        .btn-revoke {
+            background: #f59e0b;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-revoke:hover {
+            background: #d97706;
+        }
+
+        .btn-approve {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-view {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn:disabled:hover {
+            background: inherit;
+        }
+
         .no-data {
             text-align: center;
             color: #6b7280;
@@ -604,7 +698,247 @@
                 overflow-x: auto;
             }
         }
+        /* Success/Error Messages */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 500;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            min-width: 300px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <script>
+        // CSRF Token for AJAX requests
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        // Show loading overlay
+        function showLoading() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        // Hide loading overlay
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        // Show alert message
+        function showAlert(message, type = 'success') {
+            // Remove existing alerts
+            const existingAlerts = document.querySelectorAll('.alert');
+            existingAlerts.forEach(alert => alert.remove());
+
+            // Create new alert
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            document.body.appendChild(alert);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.remove();
+                }
+            }, 5000);
+        }
+
+        // Verify/Deny user function
+        async function verifyUser(userId, isVerified) {
+            const action = isVerified ? 'approve' : 'deny';
+            const actionText = isVerified ? 'approve' : 'deny';
+            
+            if (!confirm(`Are you sure you want to ${actionText} this user?`)) {
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch(`/admin/users/${userId}/${action}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        is_verified: isVerified
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert(data.message || `User ${actionText}d successfully!`, 'success');
+                    
+                    // Update the UI
+                    updateUserRow(userId, isVerified);
+                    updateStats();
+                } else {
+                    showAlert(data.message || `Failed to ${actionText} user`, 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert(`Network error occurred while trying to ${actionText} user`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Update user row in the table
+        function updateUserRow(userId, isVerified) {
+            const row = document.querySelector(`tr:has(button[id*="${userId}"])`);
+            if (!row) return;
+
+            // Update status badge
+            const statusBadge = row.querySelector('.status-badge');
+            if (statusBadge) {
+                statusBadge.className = `status-badge status-${isVerified ? 'verified' : 'pending'}`;
+                statusBadge.textContent = isVerified ? 'Verified' : 'Pending';
+            }
+
+            // Update action buttons
+            const actionButtons = row.querySelector('.action-buttons');
+            const viewButton = actionButtons.querySelector('.btn-view');
+            
+            // Clear existing buttons except view
+            actionButtons.innerHTML = '';
+            
+            if (isVerified) {
+                // Add revoke button
+                const revokeBtn = document.createElement('button');
+                revokeBtn.onclick = () => verifyUser(userId, false);
+                revokeBtn.className = 'btn btn-revoke';
+                revokeBtn.id = `revoke-btn-${userId}`;
+                revokeBtn.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                    Revoke
+                `;
+                actionButtons.appendChild(revokeBtn);
+            } else {
+                // Add approve and deny buttons
+                const approveBtn = document.createElement('button');
+                approveBtn.onclick = () => verifyUser(userId, true);
+                approveBtn.className = 'btn btn-approve';
+                approveBtn.id = `approve-btn-${userId}`;
+                approveBtn.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20,6 9,17 4,12"></polyline>
+                    </svg>
+                    Approve
+                `;
+                
+                const denyBtn = document.createElement('button');
+                denyBtn.onclick = () => verifyUser(userId, false);
+                denyBtn.className = 'btn btn-deny';
+                denyBtn.id = `deny-btn-${userId}`;
+                denyBtn.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    Deny
+                `;
+                
+                actionButtons.appendChild(approveBtn);
+                actionButtons.appendChild(denyBtn);
+            }
+            
+            // Re-add view button
+            actionButtons.appendChild(viewButton);
+        }
+
+        // Update statistics
+        function updateStats() {
+            // Reload the page to update stats (simple approach)
+            // In a more sophisticated app, you'd update the stats via AJAX
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        }
+
+        // Search functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.querySelector('.search-input');
+            if (searchInput) {
+                searchInput.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const rows = document.querySelectorAll('.users-table tbody tr');
+                    
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        row.style.display = text.includes(searchTerm) ? '' : 'none';
+                    });
+                });
+            }
+        });
+    </script>
 </body>
 
 </html>

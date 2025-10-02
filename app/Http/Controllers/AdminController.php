@@ -421,22 +421,33 @@ class AdminController extends Controller
         try {
             $validated = $request->validated();
 
-            // Double-check for duplicates before creating (extra safety)
+            // Log the attempt for debugging
+            \Log::info('Admin attempting to create skill', [
+                'admin_user' => auth()->user()->email,
+                'skill_data' => $validated
+            ]);
+
+            // Simple duplicate check
             $normalizedName = $this->normalizeSkillName($validated['name']);
-            $existingSkill = Skill::whereRaw('LOWER(TRIM(REGEXP_REPLACE(name, "\\s+", " ", "g"))) = ?', [strtolower($normalizedName)])->first();
+            $existingSkill = Skill::whereRaw('LOWER(name) = ?', [strtolower($normalizedName)])->first();
             
             if ($existingSkill) {
+                \Log::warning('Duplicate skill creation attempt', ['name' => $normalizedName]);
                 return redirect()->back()
                     ->withInput()
                     ->withErrors(['name' => 'A skill with this name already exists. Please choose a different name.']);
             }
 
-            Skill::create($validated);
+            $skill = Skill::create($validated);
+            
+            \Log::info('Skill created successfully', ['skill_id' => $skill->skill_id, 'name' => $skill->name]);
 
-            return redirect()->route('admin.skills.index')->with('success', 'Skill added successfully.');
+            return redirect()->route('admin.skills.index')->with('success', 'Skill "' . $skill->name . '" added successfully.');
         } catch (\Illuminate\Database\QueryException $e) {
+            \Log::error('Database error creating skill', ['error' => $e->getMessage(), 'code' => $e->getCode()]);
+            
             // Handle database unique constraint violations
-            if ($e->getCode() == 23000) { // MySQL duplicate entry error code
+            if ($e->getCode() == 23000) {
                 return redirect()->back()
                     ->withInput()
                     ->withErrors(['name' => 'A skill with this name already exists. Please choose a different name.']);
@@ -445,12 +456,14 @@ class AdminController extends Controller
             // Handle other database errors
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['name' => 'An error occurred while saving the skill. Please try again.']);
+                ->withErrors(['database' => 'Database error: ' . $e->getMessage()]);
         } catch (\Exception $e) {
+            \Log::error('Unexpected error creating skill', ['error' => $e->getMessage()]);
+            
             // Handle any other unexpected errors
             return redirect()->back()
                 ->withInput()
-                ->withErrors(['name' => 'An unexpected error occurred. Please try again.']);
+                ->withErrors(['general' => 'An unexpected error occurred: ' . $e->getMessage()]);
         }
     }
 
@@ -478,5 +491,106 @@ class AdminController extends Controller
     {
         $skill->delete();
         return back()->with('success', 'Skill deleted.');
+    }
+
+    /**
+     * Approve a user (AJAX endpoint)
+     */
+    public function approveUser(User $user)
+    {
+        try {
+            // Prevent admins from being modified
+            if ($user->role === 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot modify admin users.'
+                ], 403);
+            }
+
+            $user->is_verified = true;
+            $user->save();
+
+            \Log::info('User approved by admin', [
+                'admin_user' => auth()->user()->email,
+                'approved_user' => $user->email,
+                'user_id' => $user->id
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "User {$user->name} has been approved successfully.",
+                'user' => [
+                    'id' => $user->id,
+                    'is_verified' => $user->is_verified,
+                    'name' => $user->name,
+                    'email' => $user->email
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error approving user', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id,
+                'admin_user' => auth()->user()->email
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while approving the user.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Deny/Revoke user verification (AJAX endpoint)
+     */
+    public function denyUser(User $user)
+    {
+        try {
+            // Prevent admins from being modified
+            if ($user->role === 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot modify admin users.'
+                ], 403);
+            }
+
+            $wasVerified = $user->is_verified;
+            $user->is_verified = false;
+            $user->save();
+
+            $action = $wasVerified ? 'revoked' : 'denied';
+            $actionPast = $wasVerified ? 'Verification revoked' : 'Registration denied';
+
+            \Log::info("User verification {$action} by admin", [
+                'admin_user' => auth()->user()->email,
+                'affected_user' => $user->email,
+                'user_id' => $user->id,
+                'was_verified' => $wasVerified
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "{$actionPast} for user {$user->name}.",
+                'user' => [
+                    'id' => $user->id,
+                    'is_verified' => $user->is_verified,
+                    'name' => $user->name,
+                    'email' => $user->email
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error denying/revoking user', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id,
+                'admin_user' => auth()->user()->email
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while processing the request.'
+            ], 500);
+        }
     }
 }

@@ -204,9 +204,26 @@
 
             <!-- Skills Content -->
             <div class="dashboard-content">
+                <!-- Debug Info (remove in production) -->
+                @if(config('app.debug'))
+                <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 12px;">
+                    <strong>Debug Info:</strong> 
+                    User: {{ auth()->user()->email }} | 
+                    Role: {{ auth()->user()->role }} | 
+                    Skills Count: {{ $skills->count() }}
+                </div>
+                @endif
+
                 @if(session('success'))
                 <div class="success-message">
                     {{ session('success') }}
+                </div>
+                @endif
+
+                @if(session('error'))
+                <div class="error-message">
+                    <div class="error-title">⚠️ Error:</div>
+                    <p>{{ session('error') }}</p>
                 </div>
                 @endif
 

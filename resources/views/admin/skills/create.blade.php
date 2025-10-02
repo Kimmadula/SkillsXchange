@@ -34,9 +34,9 @@
                 <input id="category" name="category" type="text" value="{{ old('category') }}" required style="width:100%; padding:10px; border:1px solid {{ $errors->has('category') ? '#dc2626' : '#ddd' }}; border-radius:6px;" placeholder="e.g., IT" />
                 @error('category')<div style="color:#dc2626; font-size:0.875rem; margin-top:4px; font-weight:500;">⚠️ {{ $message }}</div>@enderror
             </div>
-            <div>
-                <button type="submit" style="padding:10px 16px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer;">Save</button>
-                <a href="{{ route('admin.skills.index') }}" style="margin-left:8px;">Cancel</a>
+            <div style="display:flex; gap:12px; align-items:center;">
+                <button type="submit" style="padding:10px 16px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; font-weight:500;">Add Skill</button>
+                <a href="{{ route('admin.skills.index') }}" style="padding:10px 16px; background:#6b7280; color:#fff; text-decoration:none; border-radius:6px; font-weight:500;">Cancel</a>
             </div>
         </form>
     </div>

@@ -33,23 +33,15 @@ class StoreSkillRequest extends FormRequest
                         // Normalize the skill name for comparison
                         $normalizedValue = $this->normalizeSkillName($value);
                         
-                        // Simple case-insensitive check first
+                        // Simple case-insensitive check
                         $existingSkill = Skill::whereRaw('LOWER(name) = ?', [strtolower($normalizedValue)])->first();
-                        
-                        if ($existingSkill) {
-                            $fail('A skill with this name already exists. Please choose a different name.');
-                            return;
-                        }
-                        
-                        // Additional check for space-normalized duplicates
-                        $existingSkill = Skill::whereRaw('LOWER(TRIM(REGEXP_REPLACE(name, "\\s+", " ", "g"))) = ?', [strtolower($normalizedValue)])->first();
                         
                         if ($existingSkill) {
                             $fail('A skill with this name already exists. Please choose a different name.');
                         }
                     } catch (\Exception $e) {
-                        // If there's any error with the validation, let it pass and handle in controller
-                        // This prevents 500 errors from validation issues
+                        // Log the error but don't fail validation to prevent 500 errors
+                        \Log::warning('Skill validation error: ' . $e->getMessage());
                     }
                 },
             ],
