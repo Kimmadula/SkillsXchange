@@ -1299,10 +1299,8 @@
                                     
                                     // Enhanced call state management
                                     const now = Date.now();
-                                    // Only block if we're processing a different call or too soon after last call
+                                    // Only block if we're processing a call or too soon after last call
                                     if (videoCallState.isProcessingCall || 
-                                        (videoCallState.isActive && videoCallState.callId !== callId) ||
-                                        (window.webrtcSignaling.callId && window.webrtcSignaling.callId !== callId) ||
                                         (now - videoCallState.lastCallTime) < videoCallState.callCooldown) {
                                         console.log('📞 Call already in progress or too soon, ignoring incoming call');
                                         return;
@@ -1328,6 +1326,12 @@
                                         } else {
                                             console.error('❌ Failed to answer incoming call');
                                         }
+                                        
+                                        // Reset processing flag
+                                        videoCallState.isProcessingCall = false;
+                                    }).catch(error => {
+                                        console.error('❌ Error answering call:', error);
+                                        videoCallState.isProcessingCall = false;
                                     });
                                 }
                             });
@@ -3998,43 +4002,11 @@ async function initializePeerConnection() {
 
 // All remaining duplicate functions removed - using the ones defined earlier
 
+   
 // All duplicate functions removed - using the ones defined earlier
 
-// All duplicate functions removed - using the ones defined earlier
-
-// All duplicate functions removed - using the ones defined earlier
-    
-// All duplicate functions removed - using the ones defined earlier
-// All duplicate functions removed - using the ones defined earlier
-
-// All duplicate functions removed - using the ones defined earlier
-
-
-
-// All duplicate functions removed - using the ones defined earlier
-
-// All duplicate functions removed - using the ones defined earlier
-
-// All duplicate functions removed - using the ones defined earlier
-
-// All duplicate functions removed - using the ones defined earlier
-    
-
-// All duplicate functions removed - using the ones defined earlier
-
-// All duplicate functions removed - using the ones defined earlier
-// All duplicate functions removed - using the ones defined earlier
-// All duplicate functions removed - using the ones defined earlier
-            
-// All duplicate functions removed - using the ones defined earlier
-                
-// All duplicate functions removed - using the ones defined earlier
-// All duplicate functions removed - using the ones defined earlier
-// All duplicate functions removed - using the ones defined earlier
 // All remaining duplicate functions removed - script section cleaned up
-// All remaining duplicate functions removed - script section cleaned up
-// All remaining duplicate functions removed - script section cleaned up
-// All remaining duplicate functions removed - script section cleaned up
+
 
 </script>
 @endsection
