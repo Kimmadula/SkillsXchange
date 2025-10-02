@@ -83,14 +83,14 @@ class RateLimitMiddleware
             return 30; // 30 requests per 15 minutes
         }
         
-        // Chat endpoints - more lenient for video calls
+        // Chat endpoints - very lenient for video calls
         if (str_contains($path, 'chat')) {
             // Check if it's a message polling request (GET)
             if ($request->isMethod('GET') && str_contains($path, 'messages')) {
-                return 500; // 500 requests per 15 minutes for message polling
+                return 1000; // 1000 requests per 15 minutes for message polling
             }
             // Regular chat messages
-            return 200; // 200 requests per 15 minutes for sending messages
+            return 300; // 300 requests per 15 minutes for sending messages
         }
         
         // General web requests - more lenient

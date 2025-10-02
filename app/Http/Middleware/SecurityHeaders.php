@@ -57,7 +57,8 @@ class SecurityHeaders
                "https://*.firebaseio.com " .
                "https://*.firebasedatabase.app " .
                "https://*.googleapis.com " .
-               "https://unpkg.com; " .
+               "https://unpkg.com " .
+               "https://www.googletagmanager.com; " .
                "style-src 'self' 'unsafe-inline' " .
                "https://cdnjs.cloudflare.com " .
                "https://cdn.jsdelivr.net " .
@@ -84,7 +85,9 @@ class SecurityHeaders
                "https://turn.relay.metered.ca " .
                "https://asia.relay.metered.ca " .
                "https://europe.relay.metered.ca " .
-               "https://us.relay.metered.ca; " .
+               "https://us.relay.metered.ca " .
+               "https://www.google-analytics.com " .
+               "https://analytics.google.com; " .
                "media-src 'self' blob: data:; " .
                "frame-src 'self' https://*.pusher.com; " .
                "object-src 'none'; " .

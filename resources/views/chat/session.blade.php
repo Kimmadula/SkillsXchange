@@ -23,7 +23,10 @@
         remoteStream: null,
         peerConnection: null,
         startTime: null,
-        timer: null
+        timer: null,
+        isProcessingCall: false,
+        lastCallTime: 0,
+        callCooldown: 2000 // 2 seconds between calls
     };
     
     // Listen for user presence events
@@ -1294,14 +1297,26 @@
                                     if (callData.offer && !callData.answer) {
                                         console.log('📞 Incoming call detected:', callId);
                                         
-                                        // Check if we're not already in a call
-                                        if (!window.webrtcSignaling.callId) {
-                                            console.log('📞 Auto-answering incoming call...');
-                                            
-                                            // Auto-answer the call
-                                            window.webrtcSignaling.answerCall(callId).then(success => {
-                                                if (success) {
-                                                    console.log('✅ Successfully answered incoming call');
+                                        // Enhanced call state management
+                                        const now = Date.now();
+                                        if (videoCallState.isProcessingCall || 
+                                            videoCallState.isActive || 
+                                            window.webrtcSignaling.callId ||
+                                            (now - videoCallState.lastCallTime) < videoCallState.callCooldown) {
+                                            console.log('📞 Call already in progress or too soon, ignoring incoming call');
+                                            return;
+                                        }
+                                        
+                                        // Set processing flag to prevent duplicate calls
+                                        videoCallState.isProcessingCall = true;
+                                        videoCallState.lastCallTime = now;
+                                        
+                                        console.log('📞 Auto-answering incoming call...');
+                                        
+                                        // Auto-answer the call
+                                        window.webrtcSignaling.answerCall(callId).then(success => {
+                                            if (success) {
+                                                console.log('✅ Successfully answered incoming call');
                                                     
                                                     // Show video chat modal for callee
                                                     const modal = document.getElementById('video-chat-modal');
@@ -2116,6 +2131,7 @@ if (window.Echo) {
         videoCallState.startTime = null;
         videoCallState.localStream = null;
         videoCallState.remoteStream = null;
+        videoCallState.isProcessingCall = false;
         
         updateCallStatus('Call ended');
     }
@@ -3430,6 +3446,214 @@ function resetVideoChat() {
     
     // Clear video elements
     document.getElementById('local-video').srcObject = null;
+}
+
+// Missing video control functions
+let isMaximized = false;
+let maximizedVideo = null;
+
+function maximizeVideo(videoType) {
+    console.log('⛶ Maximizing video:', videoType);
+    
+    const videoGrid = document.getElementById('video-grid');
+    const localVideoItem = document.getElementById('local-video-item');
+    const remoteVideoItem = document.getElementById('remote-video-item');
+    
+    if (isMaximized && maximizedVideo === videoType) {
+        // Restore normal view
+        videoGrid.classList.remove('maximized');
+        localVideoItem.classList.remove('maximized', 'minimized');
+        remoteVideoItem.classList.remove('maximized', 'minimized');
+        isMaximized = false;
+        maximizedVideo = null;
+        console.log('✅ Video restored to normal view');
+    } else {
+        // Maximize selected video
+        videoGrid.classList.add('maximized');
+        
+        if (videoType === 'local') {
+            localVideoItem.classList.add('maximized');
+            remoteVideoItem.classList.add('minimized');
+        } else {
+            remoteVideoItem.classList.add('maximized');
+            localVideoItem.classList.add('minimized');
+        }
+        
+        isMaximized = true;
+        maximizedVideo = videoType;
+        console.log('✅ Video maximized:', videoType);
+    }
+}
+
+function toggleMaximize() {
+    console.log('⛶ Toggle maximize clicked');
+    // Default to maximizing remote video
+    maximizeVideo(maximizedVideo === 'remote' ? 'local' : 'remote');
+}
+
+function toggleAutoCall() {
+    console.log('🔗 Toggle auto-call clicked');
+    isAutoCallEnabled = !isAutoCallEnabled;
+    const toggle = document.getElementById('auto-call-toggle');
+    if (toggle) {
+        toggle.textContent = isAutoCallEnabled ? '🔗' : '⛓️‍💥';
+        toggle.title = isAutoCallEnabled ? 'Auto-call enabled' : 'Auto-call disabled';
+    }
+    console.log('Auto-call:', isAutoCallEnabled ? 'enabled' : 'disabled');
+}
+
+function toggleScreenShare() {
+    console.log('🖥️ Toggle screen share clicked');
+    if (isScreenSharing) {
+        stopScreenShare();
+    } else {
+        startScreenShare();
+    }
+}
+
+function startScreenShare() {
+    console.log('🖥️ Starting screen share...');
+    if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+            .then(stream => {
+                const localVideo = document.getElementById('local-video');
+                if (localVideo) {
+                    localVideo.srcObject = stream;
+                }
+                
+                // Replace video track in peer connection if active
+                if (window.peerConnection && localStream) {
+                    const videoTrack = stream.getVideoTracks()[0];
+                    const sender = window.peerConnection.getSenders().find(s => 
+                        s.track && s.track.kind === 'video'
+                    );
+                    if (sender) {
+                        sender.replaceTrack(videoTrack);
+                    }
+                }
+                
+                isScreenSharing = true;
+                const btn = document.getElementById('screen-share-btn');
+                if (btn) {
+                    btn.textContent = '🖥️';
+                    btn.title = 'Stop screen share';
+                }
+                
+                // Handle screen share end
+                stream.getVideoTracks()[0].addEventListener('ended', () => {
+                    stopScreenShare();
+                });
+                
+                console.log('✅ Screen sharing started');
+            })
+            .catch(error => {
+                console.error('❌ Screen share error:', error);
+            });
+    } else {
+        console.error('❌ Screen sharing not supported');
+    }
+}
+
+function stopScreenShare() {
+    console.log('🖥️ Stopping screen share...');
+    
+    // Get camera stream back
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(stream => {
+                const localVideo = document.getElementById('local-video');
+                if (localVideo) {
+                    localVideo.srcObject = stream;
+                }
+                
+                // Replace video track in peer connection if active
+                if (window.peerConnection) {
+                    const videoTrack = stream.getVideoTracks()[0];
+                    const sender = window.peerConnection.getSenders().find(s => 
+                        s.track && s.track.kind === 'video'
+                    );
+                    if (sender) {
+                        sender.replaceTrack(videoTrack);
+                    }
+                }
+                
+                window.localStream = stream;
+                console.log('✅ Camera restored');
+            })
+            .catch(error => {
+                console.error('❌ Camera restore error:', error);
+            });
+    }
+    
+    isScreenSharing = false;
+    const btn = document.getElementById('screen-share-btn');
+    if (btn) {
+        btn.textContent = '📱';
+        btn.title = 'Share screen';
+    }
+    
+    console.log('✅ Screen sharing stopped');
+}
+
+function toggleChat() {
+    console.log('💬 Toggle chat clicked');
+    const chatContainer = document.querySelector('.chat-container');
+    const videoContainer = document.querySelector('.video-container');
+    
+    if (chatContainer && videoContainer) {
+        if (chatContainer.style.display === 'none') {
+            chatContainer.style.display = 'flex';
+            videoContainer.style.width = '70%';
+        } else {
+            chatContainer.style.display = 'none';
+            videoContainer.style.width = '100%';
+        }
+    }
+}
+
+// Global variables
+let isScreenSharing = false;
+let isAutoCallEnabled = true;
+
+// Load video call fixes
+(function() {
+    console.log('🔧 Loading video call fixes...');
+    
+    // Add CSS for maximized video states
+    const style = document.createElement('style');
+    style.textContent = `
+        .video-grid.maximized {
+            position: relative;
+        }
+        
+        .video-item.maximized {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            z-index: 10;
+        }
+        
+        .video-item.minimized {
+            position: absolute !important;
+            top: 10px !important;
+            right: 10px !important;
+            width: 150px !important;
+            height: 100px !important;
+            z-index: 11;
+            border: 2px solid #fff;
+            border-radius: 8px;
+        }
+        
+        .video-item.minimized video {
+            border-radius: 6px;
+        }
+    `;
+    document.head.appendChild(style);
+    
+    console.log('✅ Video call fixes loaded successfully');
+})();
     document.getElementById('remote-video').srcObject = null;
     
     // Reset variables
