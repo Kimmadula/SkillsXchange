@@ -1299,9 +1299,10 @@
                                     
                                     // Enhanced call state management
                                     const now = Date.now();
+                                    // Only block if we're processing a different call or too soon after last call
                                     if (videoCallState.isProcessingCall || 
-                                        videoCallState.isActive || 
-                                        window.webrtcSignaling.callId ||
+                                        (videoCallState.isActive && videoCallState.callId !== callId) ||
+                                        (window.webrtcSignaling.callId && window.webrtcSignaling.callId !== callId) ||
                                         (now - videoCallState.lastCallTime) < videoCallState.callCooldown) {
                                         console.log('📞 Call already in progress or too soon, ignoring incoming call');
                                         return;
