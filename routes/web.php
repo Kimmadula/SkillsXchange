@@ -377,6 +377,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/tasks/{task}/evaluate', [\App\Http\Controllers\TaskController::class, 'showEvaluationForm'])->name('tasks.evaluate');
         Route::post('/tasks/{task}/evaluation', [\App\Http\Controllers\TaskController::class, 'storeEvaluation'])->name('tasks.store-evaluation');
         Route::get('/tasks/{task}/progress', [\App\Http\Controllers\TaskController::class, 'getTaskProgress'])->name('tasks.progress');
+        Route::get('/tasks/{task}/submission-details', [\App\Http\Controllers\TaskController::class, 'getSubmissionDetails'])->name('tasks.submission-details');
         
 // Task submission file downloads
 Route::get('/submissions/{submission}/files/{fileIndex}', [\App\Http\Controllers\TaskController::class, 'downloadSubmissionFile'])->name('submissions.download');

@@ -1680,21 +1680,33 @@
                                         <li><a class="dropdown-item" href="#" onclick="viewTaskDetails({{ $task->id }})">
                                             <i class="fas fa-eye me-2"></i>View Details
                                         </a></li>
+                                        
                                         @if($task->created_by === Auth::id())
-                                        <li><a class="dropdown-item" href="#" onclick="editTask({{ $task->id }})">
-                                            <i class="fas fa-edit me-2"></i>Edit Task
-                                        </a></li>
-                                        @endif
-                                        @if($task->assigned_to === Auth::id() && $task->requires_submission && $task->current_status === 'assigned')
-                                        <li><a class="dropdown-item" href="#" onclick="submitTaskWork({{ $task->id }})">
-                                            <i class="fas fa-upload me-2"></i>Submit Work
-                                        </a></li>
-                                        @endif
-                                        @if($task->created_by === Auth::id())
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item text-danger" href="#" onclick="deleteTask({{ $task->id }})">
-                                            <i class="fas fa-trash me-2"></i>Delete Task
-                                        </a></li>
+                                            <!-- Task Creator Actions -->
+                                            <li><a class="dropdown-item" href="#" onclick="editTask({{ $task->id }})">
+                                                <i class="fas fa-edit me-2"></i>Edit Task
+                                            </a></li>
+                                            @if($task->current_status === 'submitted')
+                                            <li><a class="dropdown-item" href="#" onclick="reviewTaskSubmission({{ $task->id }})">
+                                                <i class="fas fa-clipboard-check me-2"></i>Review Submission
+                                            </a></li>
+                                            @endif
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteTask({{ $task->id }})">
+                                                <i class="fas fa-trash me-2"></i>Delete Task
+                                            </a></li>
+                                        @else
+                                            <!-- Task Assignee Actions -->
+                                            @if($task->requires_submission && in_array($task->current_status, ['assigned', 'in_progress']))
+                                            <li><a class="dropdown-item" href="#" onclick="submitTaskWork({{ $task->id }})">
+                                                <i class="fas fa-upload me-2"></i>Submit Work
+                                            </a></li>
+                                            @endif
+                                            @if($task->current_status === 'assigned')
+                                            <li><a class="dropdown-item" href="#" onclick="startTask({{ $task->id }})">
+                                                <i class="fas fa-play me-2"></i>Start Task
+                                            </a></li>
+                                            @endif
                                         @endif
                                     </ul>
                                 </div>
@@ -1789,26 +1801,12 @@
                                 }}</div>
                             @endif
 
-                            <!-- Verification Notes -->
-                            @if($task->verified && $task->verification_notes)
-                            <div
-                                style="font-size: 0.875rem; color: #059669; margin-left: 24px; margin-top: 4px; font-style: italic;">
-                                <strong>Verification:</strong> {{ $task->verification_notes }}
-                            </div>
-                            @endif
-
-                            <!-- Verification Actions -->
-                            @if($task->completed && !$task->verified && $task->created_by == auth()->id())
+                            <!-- Submission Review Actions (Only for Task Creator) -->
+                            @if($task->current_status === 'submitted' && $task->created_by == auth()->id())
                             <div style="margin-top: 8px; margin-left: 24px;">
-                                <button class="verify-btn" data-task-id="{{ $task->id }}"
-                                    data-task-title="{{ $task->title }}" data-verify="true"
-                                    style="background: #10b981; color: white; padding: 4px 12px; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer; margin-right: 8px;">
-                                    ✓ Verify
-                                </button>
-                                <button class="verify-btn" data-task-id="{{ $task->id }}"
-                                    data-task-title="{{ $task->title }}" data-verify="false"
-                                    style="background: #ef4444; color: white; padding: 4px 12px; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
-                                    ✗ Reject
+                                <button onclick="reviewTaskSubmission({{ $task->id }})"
+                                    style="background: #3b82f6; color: white; padding: 4px 12px; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
+                                    <i class="fas fa-eye"></i> Review Submission
                                 </button>
                             </div>
                             @endif
@@ -1978,33 +1976,71 @@
     </div>
 </div>
 
-<!-- Task Verification Modal -->
-<div id="verification-modal"
+<!-- Task Submission Review Modal -->
+<div id="submission-review-modal"
     style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;"
-    onclick="handleVerificationModalClick(event)">
-    <div style="background: white; border-radius: 8px; padding: 24px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto;"
+    onclick="handleSubmissionReviewModalClick(event)">
+    <div style="background: white; border-radius: 8px; padding: 24px; width: 90%; max-width: 700px; max-height: 90vh; overflow-y: auto;"
         onclick="event.stopPropagation()">
-        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 16px; color: #374151;"
-            id="verification-modal-title">Verify Task</h3>
-        <form id="verification-form">
-            <input type="hidden" id="verification-task-id" name="task_id">
-            <input type="hidden" id="verification-verified" name="verified">
+        <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 16px; color: #374151;">
+            Review Task Submission
+        </h3>
+        
+        <div id="submission-content">
+            <!-- Submission details will be loaded here -->
+        </div>
+
+        <form id="submission-evaluation-form" style="margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+            <input type="hidden" id="evaluation-task-id" name="task_id">
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 8px;">
+                    Score (0-100%)
+                </label>
+                <input type="number" id="evaluation-score" name="score_percentage" min="0" max="100" 
+                       style="width: 100px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.875rem;"
+                       placeholder="85">
+            </div>
 
             <div style="margin-bottom: 16px;">
-                <label
-                    style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 8px;">Verification
-                    Notes (Optional)</label>
-                <textarea id="verification-notes" name="verification_notes"
+                <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 8px;">
+                    Status
+                </label>
+                <select id="evaluation-status" name="status" 
+                        style="width: 200px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.875rem;">
+                    <option value="pass">Pass</option>
+                    <option value="needs_improvement">Needs Improvement</option>
+                    <option value="fail">Fail</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 8px;">
+                    Feedback
+                </label>
+                <textarea id="evaluation-feedback" name="feedback"
                     style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.875rem; resize: vertical; min-height: 80px;"
-                    placeholder="Add any feedback or notes about the task completion..."></textarea>
+                    placeholder="Provide feedback on the submitted work..."></textarea>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 8px;">
+                    Improvement Notes (Optional)
+                </label>
+                <textarea id="evaluation-improvement-notes" name="improvement_notes"
+                    style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.875rem; resize: vertical; min-height: 60px;"
+                    placeholder="Specific suggestions for improvement..."></textarea>
             </div>
 
             <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                <button type="button" onclick="hideVerificationModal()"
-                    style="padding: 8px 16px; border: 1px solid #d1d5db; background: white; border-radius: 4px; cursor: pointer;">Cancel</button>
-                <button type="submit" id="verification-submit-btn"
-                    style="padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: 500;">Verify
-                    Task</button>
+                <button type="button" onclick="hideSubmissionReviewModal()"
+                    style="padding: 8px 16px; border: 1px solid #d1d5db; background: white; color: #374151; border-radius: 4px; cursor: pointer; font-size: 0.875rem;">
+                    Cancel
+                </button>
+                <button type="submit"
+                    style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.875rem;">
+                    Submit Evaluation
+                </button>
             </div>
         </form>
     </div>
@@ -3074,39 +3110,100 @@ function handleModalClick(event) {
     }
 }
 
-// Verification modal functions
-function showVerificationModal(taskId, taskTitle, verified = true) {
-    const modal = document.getElementById('verification-modal');
-    const title = document.getElementById('verification-modal-title');
-    const submitBtn = document.getElementById('verification-submit-btn');
-    const verifiedInput = document.getElementById('verification-verified');
+// Submission review modal functions
+function reviewTaskSubmission(taskId) {
+    // Fetch task submission details
+    fetch(`/tasks/${taskId}/submission-details`, {
+        method: 'GET',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSubmissionReviewModal(taskId, data.task, data.submission);
+        } else {
+            showError('Failed to load submission details: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Failed to load submission details. Please try again.');
+    });
+}
+
+function showSubmissionReviewModal(taskId, task, submission) {
+    const modal = document.getElementById('submission-review-modal');
+    const contentDiv = document.getElementById('submission-content');
     
-    document.getElementById('verification-task-id').value = taskId;
-    verifiedInput.value = verified ? '1' : '0';
+    // Set task ID for evaluation form
+    document.getElementById('evaluation-task-id').value = taskId;
     
-    if (verified) {
-        title.textContent = `Verify Task: ${taskTitle}`;
-        submitBtn.textContent = 'Verify Task';
-        submitBtn.style.background = '#10b981';
-    } else {
-        title.textContent = `Reject Task: ${taskTitle}`;
-        submitBtn.textContent = 'Reject Task';
-        submitBtn.style.background = '#ef4444';
-    }
+    // Build submission content HTML
+    let submissionHtml = `
+        <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+            <h4 style="margin: 0 0 8px 0; color: #374151;">Task: ${task.title}</h4>
+            <p style="margin: 0; color: #6b7280; font-size: 0.875rem;">${task.description || 'No description provided'}</p>
+        </div>
+        
+        <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;">
+            <h5 style="margin: 0 0 12px 0; color: #374151;">Submission Details</h5>
+            
+            <div style="margin-bottom: 12px;">
+                <strong>Submitted by:</strong> ${submission.submitter_name}
+            </div>
+            
+            <div style="margin-bottom: 12px;">
+                <strong>Submitted on:</strong> ${new Date(submission.created_at).toLocaleString()}
+            </div>
+            
+            ${submission.submission_notes ? `
+                <div style="margin-bottom: 12px;">
+                    <strong>Notes:</strong>
+                    <div style="background: #f3f4f6; padding: 8px; border-radius: 4px; margin-top: 4px;">
+                        ${submission.submission_notes}
+                    </div>
+                </div>
+            ` : ''}
+            
+            ${submission.file_paths && submission.file_paths.length > 0 ? `
+                <div>
+                    <strong>Submitted Files:</strong>
+                    <div style="margin-top: 8px;">
+                        ${submission.file_paths.map((filePath, index) => `
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <i class="fas fa-file" style="color: #6b7280;"></i>
+                                <a href="/submissions/${submission.id}/files/${index}" target="_blank" 
+                                   style="color: #3b82f6; text-decoration: none;">
+                                    ${filePath.split('/').pop()}
+                                </a>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : '<div style="color: #6b7280; font-style: italic;">No files submitted</div>'}
+        </div>
+    `;
     
+    contentDiv.innerHTML = submissionHtml;
     modal.style.display = 'flex';
-    document.getElementById('verification-notes').value = '';
+    
+    // Clear evaluation form
+    document.getElementById('submission-evaluation-form').reset();
+    document.getElementById('evaluation-task-id').value = taskId;
 }
 
-function hideVerificationModal() {
-    const modal = document.getElementById('verification-modal');
+function hideSubmissionReviewModal() {
+    const modal = document.getElementById('submission-review-modal');
     modal.style.display = 'none';
-    document.getElementById('verification-form').reset();
+    document.getElementById('submission-evaluation-form').reset();
 }
 
-function handleVerificationModalClick(event) {
-    if (event.target.id === 'verification-modal') {
-        hideVerificationModal();
+function handleSubmissionReviewModalClick(event) {
+    if (event.target.id === 'submission-review-modal') {
+        hideSubmissionReviewModal();
     }
 }
 
@@ -3231,6 +3328,30 @@ function deleteTask(taskId) {
     }
 }
 
+function startTask(taskId) {
+    fetch(`/tasks/${taskId}/start`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess('Task started successfully!');
+            // Refresh the page to show updated task status
+            location.reload();
+        } else {
+            showError('Failed to start task: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Failed to start task. Please try again.');
+    });
+}
+
 function submitTaskWork(taskId) {
     // Create and show file submission modal
     showTaskSubmissionModal(taskId);
@@ -3351,42 +3472,55 @@ function showError(message) {
     }, 5000);
 }
 
-// Verification form handler
-document.getElementById('verification-form').addEventListener('submit', function(e) {
+// Submission evaluation form handler
+document.getElementById('submission-evaluation-form').addEventListener('submit', function(e) {
     e.preventDefault();
     
-    const taskId = document.getElementById('verification-task-id').value;
-    const verified = document.getElementById('verification-verified').value === '1';
-    const verificationNotes = document.getElementById('verification-notes').value;
+    const taskId = document.getElementById('evaluation-task-id').value;
+    const scorePercentage = document.getElementById('evaluation-score').value;
+    const status = document.getElementById('evaluation-status').value;
+    const feedback = document.getElementById('evaluation-feedback').value;
+    const improvementNotes = document.getElementById('evaluation-improvement-notes').value;
     
-    fetch(`{{ secure_url('/chat/task') }}/${taskId}/verify`, {
-        method: 'PATCH',
+    // Validation
+    if (!scorePercentage || scorePercentage < 0 || scorePercentage > 100) {
+        showError('Please enter a valid score between 0 and 100.');
+        return;
+    }
+    
+    if (!feedback.trim()) {
+        showError('Please provide feedback for the submission.');
+        return;
+    }
+    
+    fetch(`/tasks/${taskId}/evaluation`, {
+        method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}'
         },
         body: JSON.stringify({
-            verified: verified,
-            verification_notes: verificationNotes
+            score_percentage: parseInt(scorePercentage),
+            status: status,
+            feedback: feedback,
+            improvement_notes: improvementNotes
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            hideVerificationModal();
-            // Update the task in the UI
-            updateTaskInUI(data.task);
-            showSuccess(verified ? 'Task verified successfully!' : 'Task rejected successfully!');
+            hideSubmissionReviewModal();
+            showSuccess('Task evaluation submitted successfully!');
             
-            // Refresh skill learning status
-            loadSkillLearningStatus();
+            // Refresh the page to show updated task status
+            location.reload();
         } else {
-            showError('Failed to verify task: ' + (data.error || 'Unknown error'));
+            showError('Failed to submit evaluation: ' + (data.error || 'Unknown error'));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showError('Failed to verify task. Please try again.');
+        showError('Failed to submit evaluation. Please try again.');
     });
 });
 
@@ -3474,18 +3608,14 @@ function updateTaskInUI(task) {
         taskElement.appendChild(notesDiv);
     }
     
-    // Add verification actions if completed, not verified, and user is creator
-    if (task.completed && !task.verified && task.created_by == window.currentUserId) {
+    // Add submission review action if submitted and user is creator
+    if (task.current_status === 'submitted' && task.created_by == window.authUserId) {
         const actionsDiv = document.createElement('div');
         actionsDiv.style.cssText = 'margin-top: 8px; margin-left: 24px;';
         actionsDiv.innerHTML = `
-            <button class="verify-btn" data-task-id="${task.id}" data-task-title="${task.title}" data-verify="true"
-                    style="background: #10b981; color: white; padding: 4px 12px; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer; margin-right: 8px;">
-                ✓ Verify
-            </button>
-            <button class="verify-btn" data-task-id="${task.id}" data-task-title="${task.title}" data-verify="false"
-                    style="background: #ef4444; color: white; padding: 4px 12px; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
-                ✗ Reject
+            <button onclick="reviewTaskSubmission(${task.id})"
+                    style="background: #3b82f6; color: white; padding: 4px 12px; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">
+                <i class="fas fa-eye"></i> Review Submission
             </button>
         `;
         taskElement.appendChild(actionsDiv);

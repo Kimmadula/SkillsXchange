@@ -508,6 +508,50 @@ class TaskController extends Controller
     }
 
     /**
+     * Get submission details for review (AJAX)
+     */
+    public function getSubmissionDetails(TradeTask $task)
+    {
+        $user = Auth::user();
+        
+        // Check if user is the task creator
+        if ($task->created_by !== $user->id) {
+            return response()->json(['error' => 'You can only review submissions for tasks you created.'], 403);
+        }
+
+        try {
+            // Get the latest submission
+            $submission = $task->latestSubmission()->with('submitter')->first();
+            
+            if (!$submission) {
+                return response()->json(['error' => 'No submission found for this task.'], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'task' => [
+                    'id' => $task->id,
+                    'title' => $task->title,
+                    'description' => $task->description,
+                    'submission_instructions' => $task->submission_instructions,
+                    'allowed_file_types' => $task->allowed_file_types
+                ],
+                'submission' => [
+                    'id' => $submission->id,
+                    'submitter_name' => $submission->submitter->firstname . ' ' . $submission->submitter->lastname,
+                    'submission_notes' => $submission->submission_notes,
+                    'file_paths' => $submission->file_paths,
+                    'created_at' => $submission->created_at->toISOString()
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Get submission details error: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to load submission details.'], 500);
+        }
+    }
+
+    /**
      * Get task progress data for AJAX
      */
     public function getTaskProgress(TradeTask $task)
