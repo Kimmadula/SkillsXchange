@@ -1187,23 +1187,32 @@
                                 
                                 this.database.ref(`calls/${this.callId}/answer`).on('value', async (snapshot) => {
                                     const answerData = snapshot.val();
-                                    if (answerData && answerData.sdp) {
-                                        console.log('📥 Received answer from Firebase');
+                                    if (answerData && answerData.sdp && answerData.from !== window.currentUserId) {
+                                        console.log('📥 Received answer from Firebase from user:', answerData.from);
                                         
-                                        try {
-                                            await this.peerConnection.setRemoteDescription(answerData);
-                                            
-                                            // Mark remote description as set
-                                            this.remoteDescriptionSet = true;
-                                            console.log('✅ Remote description set, processing buffered ICE candidates...');
-                                            
-                                            // Process any buffered ICE candidates
-                                            await this.processBufferedIceCandidates();
-                                            
-                                            console.log('✅ Answer processed successfully');
-                                        } catch (error) {
-                                            console.error('❌ Error handling answer:', error);
+                                        // Only process if we're the initiator and haven't set remote description yet
+                                        if (this.isInitiator && !this.remoteDescriptionSet) {
+                                            try {
+                                                await this.peerConnection.setRemoteDescription(answerData);
+                                                
+                                                // Mark remote description as set
+                                                this.remoteDescriptionSet = true;
+                                                console.log('✅ Remote description set, processing buffered ICE candidates...');
+                                                
+                                                // Process any buffered ICE candidates
+                                                await this.processBufferedIceCandidates();
+                                                
+                                                console.log('✅ Answer processed successfully');
+                                            } catch (error) {
+                                                console.error('❌ Error handling answer:', error);
+                                            }
+                                        } else if (!this.isInitiator) {
+                                            console.log('📞 Ignoring answer - we are the answerer, not the caller');
+                                        } else if (this.remoteDescriptionSet) {
+                                            console.log('📞 Ignoring answer - remote description already set');
                                         }
+                                    } else if (answerData && answerData.from === window.currentUserId) {
+                                        console.log('📞 Ignoring own answer');
                                     }
                                 });
                             }
@@ -1218,8 +1227,8 @@
                                 
                                 this.database.ref(`calls/${this.callId}/candidates`).on('child_added', async (snapshot) => {
                                     const candidateData = snapshot.val();
-                                    if (candidateData && candidateData.candidate) {
-                                        console.log('🧊 Received ICE candidate from Firebase');
+                                    if (candidateData && candidateData.candidate && candidateData.from !== window.currentUserId) {
+                                        console.log('🧊 Received ICE candidate from Firebase from user:', candidateData.from);
                                         
                                         // Check if remote description is set
                                         if (this.remoteDescriptionSet) {
@@ -1235,6 +1244,8 @@
                                             this.iceCandidateBuffer.push(candidateData);
                                             console.log(`🔄 ICE candidate buffered (${this.iceCandidateBuffer.length} total buffered)`);
                                         }
+                                    } else if (candidateData && candidateData.from === window.currentUserId) {
+                                        console.log('🧊 Ignoring own ICE candidate');
                                     }
                                 });
                             }
@@ -1293,9 +1304,9 @@
                                 const callId = snapshot.key;
                                 const callData = snapshot.val();
                                 
-                                // Check if this call has an offer but no answer yet
-                                if (callData.offer && !callData.answer) {
-                                    console.log('📞 Incoming call detected:', callId);
+                                // Check if this call has an offer but no answer yet AND it's not from us
+                                if (callData.offer && !callData.answer && callData.offer.from !== window.currentUserId) {
+                                    console.log('📞 Incoming call detected from user:', callData.offer.from, 'callId:', callId);
                                     
                                     // Enhanced call state management
                                     const now = Date.now();
@@ -1310,7 +1321,7 @@
                                     videoCallState.isProcessingCall = true;
                                     videoCallState.lastCallTime = now;
                                     
-                                    console.log('📞 Auto-answering incoming call...');
+                                    console.log('📞 Auto-answering incoming call from user:', callData.offer.from);
                                     
                                     // Auto-answer the call
                                     window.webrtcSignaling.answerCall(callId).then(success => {
@@ -1333,6 +1344,8 @@
                                         console.error('❌ Error answering call:', error);
                                         videoCallState.isProcessingCall = false;
                                     });
+                                } else if (callData.offer && callData.offer.from === window.currentUserId) {
+                                    console.log('📞 Ignoring own call offer:', callId);
                                 }
                             });
                             
@@ -4002,8 +4015,7 @@ async function initializePeerConnection() {
 
 // All remaining duplicate functions removed - using the ones defined earlier
 
-   
-// All duplicate functions removed - using the ones defined earlier
+   // All duplicate functions removed - using the ones defined earlier
 
 // All remaining duplicate functions removed - script section cleaned up
 
