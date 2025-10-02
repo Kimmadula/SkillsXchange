@@ -1317,17 +1317,17 @@
                                         window.webrtcSignaling.answerCall(callId).then(success => {
                                             if (success) {
                                                 console.log('✅ Successfully answered incoming call');
-                                                    
-                                                    // Show video chat modal for callee
-                                                    const modal = document.getElementById('video-chat-modal');
-                                                    if (modal) {
-                                                        modal.style.display = 'block';
-                                                        console.log('📹 Video chat modal opened for callee');
-                                                    }
-                                                } else {
-                                                    console.error('❌ Failed to answer incoming call');
+                                                
+                                                // Show video chat modal for callee
+                                                const modal = document.getElementById('video-chat-modal');
+                                                if (modal) {
+                                                    modal.style.display = 'block';
+                                                    console.log('📹 Video chat modal opened for callee');
                                                 }
-                                            });
+                                            } else {
+                                                console.error('❌ Failed to answer incoming call');
+                                            }
+                                        });
                                         } else {
                                             console.log('📞 Call already in progress, ignoring incoming call');
                                         }
