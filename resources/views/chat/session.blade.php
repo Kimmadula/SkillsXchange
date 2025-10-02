@@ -1949,7 +1949,7 @@ if (window.Echo) {
     console.log('🔧 Defining openVideoChat function...');
     try {
         window.openVideoChat = function() {
-        console.log('🎥 Opening video chat...');
+            console.log('🎥 Opening video chat...');
         const modal = document.getElementById('video-chat-modal');
         if (modal) {
             modal.style.display = 'flex';
