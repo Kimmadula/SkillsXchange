@@ -68,7 +68,7 @@ class User extends Authenticatable
     /**
      * Get all skills associated with the user.
      * 
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany|\App\Models\Skill[]
      */
     public function skills()
     {

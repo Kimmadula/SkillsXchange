@@ -310,15 +310,37 @@ class TaskController extends Controller
         
         // Check if user is the creator of this task
         if ($task->created_by !== $user->id) {
+            if (request()->wantsJson()) {
+                return response()->json(['error' => 'You can only delete tasks you created.'], 403);
+            }
             return redirect()->back()->with('error', 'You can only delete tasks you created.');
         }
 
         try {
+            // Delete related submissions and evaluations first
+            $task->submissions()->delete();
+            $task->evaluations()->delete();
+            
+            // Delete the task
             $task->delete();
+            
+            if (request()->wantsJson()) {
+                return response()->json(['success' => true, 'message' => 'Task deleted successfully!']);
+            }
+            
             return redirect()->route('tasks.index')->with('success', 'Task deleted successfully!');
             
         } catch (\Exception $e) {
-            Log::error('Task deletion error: ' . $e->getMessage());
+            Log::error('Task deletion error: ' . $e->getMessage(), [
+                'task_id' => $task->id,
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            if (request()->wantsJson()) {
+                return response()->json(['error' => 'Failed to delete task: ' . $e->getMessage()], 500);
+            }
+            
             return redirect()->back()->with('error', 'Failed to delete task: ' . $e->getMessage());
         }
     }

@@ -3587,7 +3587,14 @@ function deleteTask(taskId) {
                 'Accept': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 showSuccess('Task deleted successfully!');
@@ -3613,8 +3620,8 @@ function deleteTask(taskId) {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            showError('Failed to delete task. Please try again.');
+            console.error('Delete task error:', error);
+            showError('Failed to delete task: ' + error.message);
         });
     }
 }

@@ -16,7 +16,8 @@ return new class extends Migration
         Schema::create('skill_acquisition_history', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('skill_id')->constrained('skills', 'skill_id')->onDelete('cascade');
+            $table->unsignedBigInteger('skill_id');
+            $table->foreign('skill_id')->references('skill_id')->on('skills')->onDelete('cascade');
             $table->foreignId('task_id')->nullable()->constrained('trade_tasks')->onDelete('set null');
             $table->foreignId('trade_id')->nullable()->constrained('trades')->onDelete('set null');
             $table->enum('acquisition_method', ['task_completion', 'manual_add', 'trade_completion', 'verification'])->default('task_completion');

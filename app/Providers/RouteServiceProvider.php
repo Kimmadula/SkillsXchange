@@ -36,6 +36,18 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
         });
+
+        // Configure route model bindings
+        $this->configureRouteModelBindings();
+    }
+
+    /**
+     * Configure route model bindings
+     */
+    protected function configureRouteModelBindings()
+    {
+        // Bind 'task' parameter to TradeTask model
+        Route::model('task', \App\Models\TradeTask::class);
     }
 
     /**

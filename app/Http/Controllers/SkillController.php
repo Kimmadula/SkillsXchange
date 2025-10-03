@@ -40,7 +40,8 @@ class SkillController extends Controller
             $query->orderBy($sortBy, $sortOrder);
         }
 
-        $skills = $query->paginate(20)->withQueryString();
+        $skills = $query->paginate(20);
+        $skills->appends($request->query());
         
         // Get categories for filter dropdown
         $categories = Skill::select('category')->distinct()->pluck('category');

@@ -16,7 +16,8 @@ return new class extends Migration
         Schema::create('user_skills', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('skill_id')->constrained('skills', 'skill_id')->onDelete('cascade');
+            $table->unsignedBigInteger('skill_id');
+            $table->foreign('skill_id')->references('skill_id')->on('skills')->onDelete('cascade');
             $table->timestamps();
             
             // Ensure a user can't have the same skill twice
