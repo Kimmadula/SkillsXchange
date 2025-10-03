@@ -16,7 +16,7 @@ class DDoSProtectionMiddleware
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
-     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
+     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
     public function handle(Request $request, Closure $next)
     {
@@ -142,8 +142,8 @@ class DDoSProtectionMiddleware
         $key = "rapid_requests_{$ip}";
         $requests = Cache::get($key, 0);
         
-        // Allow 100 requests per minute
-        if ($requests > 100) {
+        // Allow 500 requests per minute for normal usage
+        if ($requests > 500) {
             return true;
         }
         

@@ -3420,20 +3420,30 @@ document.getElementById('edit-task-form').addEventListener('submit', function(e)
             submission_instructions: submissionInstructions
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (response.status === 429) {
+            showError('Too many requests. Please slow down and try again in a moment.');
+            return;
+        }
+        return response.json();
+    })
     .then(data => {
-        if (data.success) {
+        if (data && data.success) {
             hideEditTaskModal();
             showSuccess('Task updated successfully!');
             // Refresh the page to show updated task
             location.reload();
-        } else {
+        } else if (data) {
             showError('Failed to update task: ' + (data.error || 'Unknown error'));
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showError('Failed to update task. Please try again.');
+        if (error.message && error.message.includes('429')) {
+            showError('Too many requests. Please slow down and try again in a moment.');
+        } else {
+            showError('Failed to update task. Please try again.');
+        }
     });
 });
 
@@ -4173,7 +4183,7 @@ let lastMessageCount = window.initialMessageCount;
 
 // Smart message polling - only if Laravel Echo is not working
 let messagePollingInterval = null;
-let pollingFrequency = 5000; // Start with 5 seconds
+let pollingFrequency = 10000; // Start with 10 seconds
 let lastActivity = Date.now();
 let consecutiveEmptyPolls = 0;
 
@@ -4187,10 +4197,10 @@ if (!window.Echo) {
             lastActivity = Date.now();
             
             // If user becomes active and polling is slow, speed it up
-            if (pollingFrequency > 5000) {
-                pollingFrequency = 5000;
+            if (pollingFrequency > 8000) {
+                pollingFrequency = 8000;
                 startSmartMessagePolling();
-                console.log('🚀 User active - speeding up message polling to 5s');
+                console.log('🚀 User active - speeding up message polling to 8s');
             }
         }, { passive: true });
     });
@@ -4211,9 +4221,9 @@ function adjustPollingFrequency() {
     
     // If no activity for 30 seconds, slow down polling
     if (timeSinceActivity > 30000) {
-        pollingFrequency = Math.min(15000, pollingFrequency + 1000); // Max 15 seconds
+        pollingFrequency = Math.min(20000, pollingFrequency + 2000); // Max 20 seconds
     } else {
-        pollingFrequency = Math.max(3000, pollingFrequency - 500); // Min 3 seconds
+        pollingFrequency = Math.max(8000, pollingFrequency - 1000); // Min 8 seconds
     }
     
     // If too many empty polls, slow down
@@ -4264,7 +4274,15 @@ function checkForNewMessages() {
             console.error("Error checking for new messages:", error);
             consecutiveEmptyPolls++;
             
-            // Slow down on errors
+            // Handle rate limiting specifically
+            if (error.message && error.message.includes('429')) {
+                console.log('🔄 Rate limited - slowing down message polling');
+                pollingFrequency = Math.min(30000, pollingFrequency + 5000); // Slow down significantly
+                startSmartMessagePolling();
+                return;
+            }
+            
+            // Slow down on other errors
             if (consecutiveEmptyPolls % 5 === 0) {
                 adjustPollingFrequency();
             }

@@ -84,6 +84,11 @@ class RateLimitMiddleware
             return 30; // 30 requests per 15 minutes
         }
         
+        // Task management endpoints - very lenient
+        if (str_contains($path, 'tasks')) {
+            return 2000; // 2000 requests per 15 minutes for task operations
+        }
+        
         // Chat endpoints - very lenient for video calls
         if (str_contains($path, 'chat')) {
             // Check if it's a message polling request (GET)
@@ -94,8 +99,8 @@ class RateLimitMiddleware
             return 500; // 500 requests per 15 minutes for sending messages
         }
         
-        // General web requests - more lenient
-        return 300; // 300 requests per 1 minute
+        // General web requests - very lenient for normal usage
+        return 1000; // 1000 requests per 1 minute
     }
     
     /**
