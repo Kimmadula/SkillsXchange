@@ -2075,11 +2075,11 @@
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
                         <label style="display: flex; align-items: center; font-size: 0.875rem;">
-                            <input type="checkbox" name="edit-file-types" value="images" style="margin-right: 6px;">
+                            <input type="checkbox" name="edit-file-types" value="image" style="margin-right: 6px;">
                             📸 Images (JPG, PNG, GIF)
                         </label>
                         <label style="display: flex; align-items: center; font-size: 0.875rem;">
-                            <input type="checkbox" name="edit-file-types" value="videos" style="margin-right: 6px;">
+                            <input type="checkbox" name="edit-file-types" value="video" style="margin-right: 6px;">
                             🎥 Videos (MP4, MOV, AVI)
                         </label>
                         <label style="display: flex; align-items: center; font-size: 0.875rem;">
@@ -2087,7 +2087,7 @@
                             📄 PDF Documents
                         </label>
                         <label style="display: flex; align-items: center; font-size: 0.875rem;">
-                            <input type="checkbox" name="edit-file-types" value="docx" style="margin-right: 6px;">
+                            <input type="checkbox" name="edit-file-types" value="word" style="margin-right: 6px;">
                             📝 Word Documents
                         </label>
                         <label style="display: flex; align-items: center; font-size: 0.875rem;">
