@@ -455,7 +455,22 @@ class TaskController extends Controller
             $validationRules['files.*'] = 'file|max:50000|mimes:jpg,jpeg,png,gif,pdf,doc,docx,mp4,mov,avi,xls,xlsx';
         }
 
-        $request->validate($validationRules);
+        try {
+            $request->validate($validationRules);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Check if this is an AJAX request
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Validation failed',
+                    'errors' => $e->errors()
+                ], 422);
+            }
+            
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        }
 
         try {
             $filePaths = [];
@@ -491,10 +506,28 @@ class TaskController extends Controller
             // Update task status
             $task->updateStatus('submitted');
 
+            // Check if this is an AJAX request
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Task submitted successfully!',
+                    'task' => $task->fresh()
+                ]);
+            }
+            
             return redirect()->route('tasks.show', $task)->with('success', 'Task submitted successfully!');
             
         } catch (\Exception $e) {
             Log::error('Task submission error: ' . $e->getMessage());
+            
+            // Check if this is an AJAX request
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to submit task: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return redirect()->back()->with('error', 'Failed to submit task: ' . $e->getMessage());
         }
     }

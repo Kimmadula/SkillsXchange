@@ -3804,7 +3804,9 @@ function showTaskSubmissionModal(taskId) {
         fetch(`/tasks/${taskId}/submit`, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
             },
             body: formData
         })
