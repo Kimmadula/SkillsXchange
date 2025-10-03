@@ -55,11 +55,21 @@ class User extends Authenticatable
         'bdate' => 'date',
     ];
 
+    /**
+     * Get the user's primary skill.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function skill()
     {
         return $this->belongsTo(\App\Models\Skill::class, 'skill_id', 'skill_id');
     }
 
+    /**
+     * Get all skills associated with the user.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
     public function skills()
     {
         return $this->belongsToMany(\App\Models\Skill::class, 'user_skills', 'user_id', 'skill_id', 'id', 'skill_id');
