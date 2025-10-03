@@ -563,19 +563,39 @@ class TaskController extends Controller
         
         // Check if user is the creator of this task
         if ($task->created_by !== $user->id) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['error' => 'You can only evaluate tasks you created.'], 403);
+            }
             return redirect()->back()->with('error', 'You can only evaluate tasks you created.');
         }
 
         if (!$task->canBeEvaluated()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['error' => 'This task is not ready for evaluation.'], 400);
+            }
             return redirect()->back()->with('error', 'This task is not ready for evaluation.');
         }
 
-        $request->validate([
-            'score_percentage' => 'required|integer|min:0|max:' . $task->max_score,
-            'status' => 'required|in:pass,fail,needs_improvement',
-            'feedback' => 'nullable|string|max:2000',
-            'improvement_notes' => 'nullable|string|max:2000'
-        ]);
+        try {
+            $request->validate([
+                'score_percentage' => 'required|integer|min:0|max:' . $task->max_score,
+                'status' => 'required|in:pass,fail,needs_improvement',
+                'feedback' => 'nullable|string|max:2000',
+                'improvement_notes' => 'nullable|string|max:2000'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Validation failed',
+                    'errors' => $e->errors()
+                ], 422);
+            }
+            
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        }
 
         try {
             $latestSubmission = $task->latestSubmission;
@@ -607,10 +627,29 @@ class TaskController extends Controller
             $task->updateStatus($newTaskStatus);
 
             $message = $status === 'pass' ? 'Task evaluated and marked as passed!' : 'Task evaluation completed.';
+            
+            // Check if this is an AJAX request
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'task' => $task->fresh()
+                ]);
+            }
+            
             return redirect()->route('tasks.show', $task)->with('success', $message);
             
         } catch (\Exception $e) {
             Log::error('Task evaluation error: ' . $e->getMessage());
+            
+            // Check if this is an AJAX request
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to evaluate task: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return redirect()->back()->with('error', 'Failed to evaluate task: ' . $e->getMessage());
         }
     }

@@ -3892,7 +3892,9 @@ document.getElementById('submission-evaluation-form').addEventListener('submit',
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
         },
         body: JSON.stringify({
             score_percentage: parseInt(scorePercentage),
