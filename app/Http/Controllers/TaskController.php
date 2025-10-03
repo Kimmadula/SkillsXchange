@@ -215,26 +215,59 @@ class TaskController extends Controller
     {
         $user = Auth::user();
         
+        // Debug logging
+        Log::info('Task update request received', [
+            'task_id' => $task->id,
+            'user_id' => $user->id,
+            'request_data' => $request->all(),
+            'is_ajax' => $request->ajax(),
+            'wants_json' => $request->wantsJson()
+        ]);
+        
         // Check if user is the creator of this task
         if ($task->created_by !== $user->id) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['error' => 'You can only edit tasks you created.'], 403);
+            }
             return redirect()->back()->with('error', 'You can only edit tasks you created.');
         }
 
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string|max:1000',
-            'priority' => 'nullable|in:low,medium,high',
-            'due_date' => 'nullable|date|after:today',
-            'associated_skills' => 'nullable|array',
-            'associated_skills.*' => 'exists:skills,skill_id',
-            'requires_submission' => 'boolean',
-            'submission_instructions' => 'nullable|string|max:1000',
-            'max_score' => 'nullable|integer|min:1|max:1000',
-            'passing_score' => 'nullable|integer|min:1|max:1000',
-            'allowed_file_types' => 'nullable|array',
-            'allowed_file_types.*' => 'in:image,video,pdf,word,excel',
-            'strict_file_types' => 'boolean'
-        ]);
+        try {
+            $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string|max:1000',
+                'priority' => 'nullable|in:low,medium,high',
+                'due_date' => 'nullable|date|after_or_equal:today',
+                'associated_skills' => 'nullable|array',
+                'associated_skills.*' => 'exists:skills,skill_id',
+                'requires_submission' => 'boolean',
+                'submission_instructions' => 'nullable|string|max:1000',
+                'max_score' => 'nullable|integer|min:1|max:1000',
+                'passing_score' => 'nullable|integer|min:1|max:1000',
+                'allowed_file_types' => 'nullable|array',
+                'allowed_file_types.*' => 'in:image,video,pdf,word,excel',
+                'strict_file_types' => 'boolean'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Task update validation failed', [
+                'task_id' => $task->id,
+                'user_id' => $user->id,
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Validation failed',
+                    'errors' => $e->errors()
+                ], 422);
+            }
+            
+            return redirect()->back()
+                ->withErrors($e->errors())
+                ->withInput();
+        }
 
         try {
             // Validate skills if provided
@@ -261,10 +294,33 @@ class TaskController extends Controller
                 'strict_file_types' => $request->boolean('strict_file_types'),
             ]);
 
+            // Check if this is an AJAX request
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Task updated successfully!',
+                    'task' => $task->fresh()
+                ]);
+            }
+            
             return redirect()->route('tasks.show', $task)->with('success', 'Task updated successfully!');
             
         } catch (\Exception $e) {
-            Log::error('Task update error: ' . $e->getMessage());
+            Log::error('Task update error: ' . $e->getMessage(), [
+                'task_id' => $task->id,
+                'user_id' => Auth::id(),
+                'request_data' => $request->all(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Check if this is an AJAX request
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to update task: ' . $e->getMessage()
+                ], 500);
+            }
+            
             return redirect()->back()->with('error', 'Failed to update task: ' . $e->getMessage());
         }
     }

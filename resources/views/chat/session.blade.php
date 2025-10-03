@@ -3426,6 +3426,10 @@ document.getElementById('edit-task-form').addEventListener('submit', function(e)
     console.log('Updating task:', taskId, 'with data:', Object.fromEntries(formData));
     console.log('CSRF Token:', csrfToken);
     console.log('User ID:', window.authUserId);
+    console.log('Form data entries:');
+    for (let [key, value] of formData.entries()) {
+        console.log(key, ':', value);
+    }
     
     // Check if user is authenticated
     if (!window.authUserId) {
