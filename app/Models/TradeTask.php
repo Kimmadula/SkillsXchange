@@ -327,7 +327,12 @@ class TradeTask extends Model
         $mimeTypesString = implode(',', array_unique($mimeTypes));
         $extensionsString = implode(',', array_unique($extensions));
 
-        return "file|max:50000|mimes:{$extensionsString}|mimetypes:{$mimeTypesString}";
+        // If no valid types found, return basic file validation
+        if (empty($mimeTypesString) || empty($extensionsString)) {
+            return 'file|max:50000';
+        }
+
+        return "file|max:50000|mimes:{$extensionsString}";
     }
 
     public function getAllowedFileTypesDisplay()
