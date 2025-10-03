@@ -237,7 +237,7 @@ class TaskController extends Controller
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string|max:1000',
                 'priority' => 'nullable|in:low,medium,high',
-                'due_date' => 'nullable|date|after_or_equal:today',
+                'due_date' => 'nullable|date|after_or_equal:today|sometimes',
                 'associated_skills' => 'nullable|array',
                 'associated_skills.*' => 'exists:skills,skill_id',
                 'requires_submission' => 'boolean',

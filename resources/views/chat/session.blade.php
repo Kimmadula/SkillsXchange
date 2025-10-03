@@ -3592,7 +3592,18 @@ function showEditTaskModal(task) {
     document.getElementById('edit-task-title').value = task.title;
     document.getElementById('edit-task-description').value = task.description || '';
     document.getElementById('edit-task-priority').value = task.priority || 'medium';
-    document.getElementById('edit-task-due-date').value = task.due_date ? task.due_date.split(' ')[0] : '';
+    // Format due_date for date input (YYYY-MM-DD)
+    let dueDateValue = '';
+    if (task.due_date) {
+        // If it's already in YYYY-MM-DD format, use it directly
+        if (task.due_date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            dueDateValue = task.due_date;
+        } else {
+            // If it's a datetime string, extract just the date part
+            dueDateValue = task.due_date.split(' ')[0];
+        }
+    }
+    document.getElementById('edit-task-due-date').value = dueDateValue;
     
     // Handle submission requirements
     const requiresSubmission = task.requires_submission;
