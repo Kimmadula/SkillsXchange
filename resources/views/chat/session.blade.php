@@ -3602,11 +3602,15 @@ function showEditTaskModal(task) {
     // Format due_date for date input (YYYY-MM-DD)
     let dueDateValue = '';
     if (task.due_date) {
-        // If it's already in YYYY-MM-DD format, use it directly
+        // Handle different date formats
         if (task.due_date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            // Already in YYYY-MM-DD format
             dueDateValue = task.due_date;
+        } else if (task.due_date.includes('T')) {
+            // ISO datetime format (2025-10-11T00:00:00.000000Z)
+            dueDateValue = task.due_date.split('T')[0];
         } else {
-            // If it's a datetime string, extract just the date part
+            // Other datetime formats, try to extract date part
             dueDateValue = task.due_date.split(' ')[0];
         }
     }
