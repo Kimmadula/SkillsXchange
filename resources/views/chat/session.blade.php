@@ -3392,6 +3392,10 @@ document.getElementById('edit-task-form').addEventListener('submit', function(e)
     const priority = document.getElementById('edit-task-priority').value;
     const dueDate = document.getElementById('edit-task-due-date').value;
     const requiresSubmission = document.getElementById('edit-requires-submission').checked;
+    
+    // Debug logging
+    console.log('Due date from input:', dueDate);
+    console.log('Due date input element:', document.getElementById('edit-task-due-date'));
     const submissionInstructions = document.getElementById('edit-submission-instructions').value;
     
     // Get selected file types
@@ -3411,7 +3415,10 @@ document.getElementById('edit-task-form').addEventListener('submit', function(e)
     formData.append('title', title);
     formData.append('description', description);
     formData.append('priority', priority);
-    formData.append('due_date', dueDate);
+    // Only append due_date if it has a value
+    if (dueDate && dueDate.trim() !== '') {
+        formData.append('due_date', dueDate);
+    }
     formData.append('requires_submission', requiresSubmission ? '1' : '0');
     formData.append('submission_instructions', submissionInstructions);
     
@@ -3604,6 +3611,9 @@ function showEditTaskModal(task) {
         }
     }
     document.getElementById('edit-task-due-date').value = dueDateValue;
+    
+    // Debug log to see what we're setting
+    console.log('Setting due date value:', dueDateValue, 'from task.due_date:', task.due_date);
     
     // Handle submission requirements
     const requiresSubmission = task.requires_submission;
