@@ -242,8 +242,8 @@ class TaskController extends Controller
                 'associated_skills.*' => 'exists:skills,skill_id',
                 'requires_submission' => 'boolean',
                 'submission_instructions' => 'nullable|string|max:1000',
-                'max_score' => 'nullable|integer|min:1|max:1000',
-                'passing_score' => 'nullable|integer|min:1|max:1000',
+                'max_score' => 'nullable|integer|min:1|max:1000|sometimes',
+                'passing_score' => 'nullable|integer|min:1|max:1000|sometimes',
                 'allowed_file_types' => 'nullable|array',
                 'allowed_file_types.*' => 'in:image,video,pdf,word,excel',
                 'strict_file_types' => 'boolean'
