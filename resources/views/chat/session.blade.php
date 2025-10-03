@@ -3472,13 +3472,20 @@ document.getElementById('edit-task-form').addEventListener('submit', function(e)
         return response.json();
     })
     .then(data => {
+        console.log('Response data:', data);
         if (data && data.success) {
             hideEditTaskModal();
             showSuccess('Task updated successfully!');
             // Refresh the page to show updated task
             location.reload();
         } else if (data) {
-            showError('Failed to update task: ' + (data.error || 'Unknown error'));
+            console.log('Error details:', data);
+            if (data.errors) {
+                console.log('Validation errors:', data.errors);
+                showError('Validation failed: ' + JSON.stringify(data.errors));
+            } else {
+                showError('Failed to update task: ' + (data.error || 'Unknown error'));
+            }
         }
     })
     .catch(error => {
