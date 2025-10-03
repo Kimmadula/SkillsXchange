@@ -3404,27 +3404,60 @@ document.getElementById('edit-task-form').addEventListener('submit', function(e)
         return;
     }
     
+    // Create form data for Laravel web routes
+    const formData = new FormData();
+    formData.append('_method', 'PUT');
+    formData.append('_token', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}');
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('priority', priority);
+    formData.append('due_date', dueDate);
+    formData.append('requires_submission', requiresSubmission ? '1' : '0');
+    formData.append('submission_instructions', submissionInstructions);
+    
+    // Add file types
+    selectedFileTypes.forEach(type => {
+        formData.append('allowed_file_types[]', type);
+    });
+    
+    // Add X-CSRF-TOKEN header as well for extra security
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+
+    console.log('Updating task:', taskId, 'with data:', Object.fromEntries(formData));
+    console.log('CSRF Token:', csrfToken);
+    console.log('User ID:', window.authUserId);
+    
+    // Check if user is authenticated
+    if (!window.authUserId) {
+        showError('You must be logged in to update tasks. Please refresh the page and try again.');
+        return;
+    }
+    
     fetch(`/tasks/${taskId}`, {
-        method: 'PUT',
+        method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
         },
-        body: JSON.stringify({
-            title: title,
-            description: description,
-            priority: priority,
-            due_date: dueDate,
-            requires_submission: requiresSubmission,
-            allowed_file_types: selectedFileTypes,
-            submission_instructions: submissionInstructions
-        })
+        body: formData,
+        credentials: 'same-origin' // Ensure cookies are sent
     })
     .then(response => {
+        console.log('Response status:', response.status, 'URL:', response.url);
+        
         if (response.status === 429) {
             showError('Too many requests. Please slow down and try again in a moment.');
             return;
         }
+        
+        if (response.status === 302) {
+            console.log('Redirect detected, checking location header');
+            const location = response.headers.get('Location');
+            console.log('Redirect location:', location);
+            showError('Session expired. Please refresh the page and try again.');
+            return;
+        }
+        
         return response.json();
     })
     .then(data => {
