@@ -63,7 +63,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="needs-validation" novalidate>
+        <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="needs-validation">
             @csrf
             <input type="hidden" name="_method" value="PATCH">
             
@@ -167,7 +167,7 @@
                         </h3>
                         <p class="text-muted mb-4">Ensure your account is using a long, random password to stay secure.</p>
                         
-                        <form method="POST" action="{{ route('profile.password.update') }}" class="needs-validation" novalidate>
+                        <form method="POST" action="{{ route('profile.password.update') }}" class="needs-validation">
                             @csrf
                             <input type="hidden" name="_method" value="PUT">
                             
@@ -285,6 +285,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Debug form submission
             console.log('Form submitting with method:', this.method, 'and _method:', methodField ? methodField.value : 'NOT FOUND');
+            
+            // Add a simple alert to confirm form submission
+            alert('Profile form is submitting...');
         });
     } else {
         console.error('Profile form not found!');
@@ -307,6 +310,9 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 console.error('No _method field found!');
             }
+            
+            // Add a simple alert to confirm form submission
+            alert('Password form is submitting...');
         });
     } else {
         console.error('Password form not found!');
