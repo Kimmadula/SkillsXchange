@@ -109,12 +109,19 @@ class ProfileController extends Controller
                 'email' => $user->email,
                 'photo' => $user->photo,
                 'isDirty' => $user->isDirty(),
-                'changes' => $user->getChanges()
+                'changes' => $user->getChanges(),
+                'original_username' => $user->getOriginal('username'),
+                'original_email' => $user->getOriginal('email')
             ]);
 
             $user->save();
             
-            Log::info('User saved successfully');
+            Log::info('User saved successfully', [
+                'username_after_save' => $user->username,
+                'email_after_save' => $user->email,
+                'fresh_username' => $user->fresh()->username,
+                'fresh_email' => $user->fresh()->email
+            ]);
 
             return Redirect::route('profile.show')->with('status', 'profile-updated');
         } catch (\Exception $e) {
@@ -136,9 +143,9 @@ class ProfileController extends Controller
                 'headers' => $request->headers->all()
             ]);
             
-            $request->validate([
+            $validated = $request->validateWithBag('updatePassword', [
                 'current_password' => ['required', 'current-password'],
-                'password' => ['required', 'confirmed', 'min:8'],
+                'password' => ['required', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
             ]);
 
             $user = $request->user();
@@ -148,7 +155,7 @@ class ProfileController extends Controller
             }
 
             $user->update([
-                'password' => Hash::make($request->password),
+                'password' => Hash::make($validated['password']),
             ]);
 
             Log::info('Password updated successfully', [
