@@ -63,11 +63,16 @@
             </div>
         @endif
 
-        <div class="row">
+        <div class="row profile-sections-container">
             <!-- Personal Info Section -->
             <div class="col-lg-8 mb-4">
-                <div class="profile-card">
-                    <h3 class="profile-card-title">Personal Info</h3>
+                <div class="profile-card personal-info-card">
+                    <div class="card-header-section">
+                        <h3 class="profile-card-title">Personal Info</h3>
+                        <div class="section-indicator personal-info-indicator">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    </div>
                     
                     <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="needs-validation">
                         @csrf
@@ -100,7 +105,7 @@
 
                         <!-- Name Field -->
                         <div class="form-group mb-3">
-                            <label for="username" class="form-label">Name</label>
+                            <label for="username" class="form-label">Username</label>
                             <input type="text" class="form-control @error('username') is-invalid @enderror" 
                                    id="username" name="username" value="{{ old('username', $user->username) }}" required>
                             @error('username')
@@ -113,16 +118,9 @@
                             <label for="email" class="form-label">Email</label>
                             <input type="email" class="form-control @error('email') is-invalid @enderror" 
                                    id="email" name="email" value="{{ old('email', $user->email) }}" required>
-                            <div class="form-text">We'll never share your details</div>
                             @error('email')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                        </div>
-
-                        <!-- Bio Field -->
-                        <div class="form-group mb-4">
-                            <label for="bio" class="form-label">Bio</label>
-                            <textarea class="form-control" id="bio" name="bio" rows="3" placeholder="A bit about yourself and your role">{{ old('bio', $user->bio ?? '') }}</textarea>
                         </div>
 
                         <!-- Skills Display (Read-only) -->
@@ -159,8 +157,13 @@
 
             <!-- Change Password Section -->
             <div class="col-lg-4 mb-4">
-                <div class="profile-card">
-                    <h3 class="profile-card-title">Change password</h3>
+                <div class="profile-card password-card">
+                    <div class="card-header-section">
+                        <h3 class="profile-card-title">Change password</h3>
+                        <div class="section-indicator password-indicator">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                    </div>
                     
                     <form method="POST" action="{{ route('profile.password.update') }}" class="needs-validation">
                         @csrf
@@ -168,8 +171,13 @@
                         
                         <div class="form-group mb-3">
                             <label for="current_password" class="form-label">Old password</label>
-                            <input type="password" class="form-control @error('current_password', 'updatePassword') is-invalid @enderror" 
-                                   id="current_password" name="current_password" required autocomplete="current-password">
+                            <div class="password-input-group">
+                                <input type="password" class="form-control @error('current_password', 'updatePassword') is-invalid @enderror" 
+                                       id="current_password" name="current_password" required autocomplete="current-password">
+                                <button type="button" class="password-toggle-btn" onclick="togglePassword('current_password')">
+                                    <i class="fas fa-eye" id="current_password_icon"></i>
+                                </button>
+                            </div>
                             @error('current_password', 'updatePassword')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -177,9 +185,14 @@
 
                         <div class="form-group mb-4">
                             <label for="password" class="form-label">New password</label>
-                            <input type="password" class="form-control @error('password', 'updatePassword') is-invalid @enderror" 
-                                   id="password" name="password" required autocomplete="new-password">
-                            <div class="form-text">Minimum 6 characters</div>
+                            <div class="password-input-group">
+                                <input type="password" class="form-control @error('password', 'updatePassword') is-invalid @enderror" 
+                                       id="password" name="password" required autocomplete="new-password">
+                                <button type="button" class="password-toggle-btn" onclick="togglePassword('password')">
+                                    <i class="fas fa-eye" id="password_icon"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">Minimum 8 characters</div>
                             @error('password', 'updatePassword')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -187,8 +200,13 @@
 
                         <div class="form-group mb-4">
                             <label for="password_confirmation" class="form-label">Confirm new password</label>
-                            <input type="password" class="form-control @error('password_confirmation', 'updatePassword') is-invalid @enderror" 
-                                   id="password_confirmation" name="password_confirmation" required autocomplete="new-password">
+                            <div class="password-input-group">
+                                <input type="password" class="form-control @error('password_confirmation', 'updatePassword') is-invalid @enderror" 
+                                       id="password_confirmation" name="password_confirmation" required autocomplete="new-password">
+                                <button type="button" class="password-toggle-btn" onclick="togglePassword('password_confirmation')">
+                                    <i class="fas fa-eye" id="password_confirmation_icon"></i>
+                                </button>
+                            </div>
                             @error('password_confirmation', 'updatePassword')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -201,14 +219,6 @@
                         </div>
                     </form>
 
-                    <!-- Delete Account Section -->
-                    <div class="mt-4 pt-3 border-top">
-                        <div class="d-flex justify-content-end">
-                            <button type="button" class="btn btn-link text-muted p-0" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
-                                <i class="fas fa-trash me-1"></i>Delete account
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -279,6 +289,22 @@ function deletePhoto() {
     preview.removeAttribute('alt');
 }
 
+// Password toggle functionality
+function togglePassword(fieldId) {
+    const passwordField = document.getElementById(fieldId);
+    const icon = document.getElementById(fieldId + '_icon');
+    
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        passwordField.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
 // Form submission handling
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, setting up form handling...');
@@ -338,13 +364,74 @@ document.addEventListener('DOMContentLoaded', function() {
     height: fit-content;
 }
 
+/* Personal Info Card - Left Side */
+.personal-info-card {
+    border-left: 4px solid #6366f1;
+    margin-right: 20px;
+}
+
+/* Password Card - Right Side */
+.password-card {
+    border-left: 4px solid #f59e0b;
+    margin-left: 20px;
+    position: relative;
+}
+
+/* Visual Separator */
+.password-card::before {
+    content: '';
+    position: absolute;
+    left: -30px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2px;
+    height: 60%;
+    background: linear-gradient(to bottom, transparent, #d1d5db, transparent);
+    z-index: 1;
+}
+
+/* Profile Sections Container */
+.profile-sections-container {
+    gap: 0;
+    position: relative;
+}
+
+/* Card Header Section */
+.card-header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
 .profile-card-title {
     font-size: 1.25rem;
     font-weight: 600;
     color: #1f2937;
-    margin-bottom: 24px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #e5e7eb;
+    margin: 0;
+}
+
+/* Section Indicators */
+.section-indicator {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.personal-info-indicator {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+}
+
+.password-indicator {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
 }
 
 /* Profile Photo Styles */
@@ -410,6 +497,43 @@ document.addEventListener('DOMContentLoaded', function() {
     border-color: #6366f1;
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
     outline: none;
+}
+
+/* Password Input Group */
+.password-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-group .form-control {
+    padding-right: 45px; /* Make room for the toggle button */
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.password-toggle-btn:hover {
+    color: #374151;
+    background: #f3f4f6;
+}
+
+.password-toggle-btn:focus {
+    outline: none;
+    color: #6366f1;
+    background: #f0f0ff;
 }
 
 .form-text {
@@ -583,6 +707,40 @@ document.addEventListener('DOMContentLoaded', function() {
 .dark-theme .skills-display-container {
     background: #374151;
     border-color: #4b5563;
+}
+
+.dark-theme .password-toggle-btn {
+    color: #9ca3af;
+}
+
+.dark-theme .password-toggle-btn:hover {
+    color: #e5e7eb;
+    background: #4b5563;
+}
+
+.dark-theme .password-toggle-btn:focus {
+    color: #6366f1;
+    background: #374151;
+}
+
+.dark-theme .card-header-section {
+    border-bottom-color: #374151;
+}
+
+.dark-theme .profile-card-title {
+    color: #f9fafb;
+}
+
+.dark-theme .personal-info-card {
+    border-left-color: #6366f1;
+}
+
+.dark-theme .password-card {
+    border-left-color: #f59e0b;
+}
+
+.dark-theme .password-card::before {
+    background: linear-gradient(to bottom, transparent, #4b5563, transparent);
 }
 </style>
 @endpush
