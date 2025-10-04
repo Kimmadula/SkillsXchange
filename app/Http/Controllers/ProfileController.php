@@ -71,7 +71,8 @@ class ProfileController extends Controller
             Log::info('Profile update request received', [
                 'method' => $request->method(),
                 'user_id' => $request->user()?->id,
-                'data' => $request->validated()
+                'all_data' => $request->all(),
+                'validated_data' => $request->validated()
             ]);
             
             $user = $request->user();

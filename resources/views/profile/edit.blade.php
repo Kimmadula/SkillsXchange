@@ -53,7 +53,7 @@
 
         <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="needs-validation" novalidate>
             @csrf
-            @method('PATCH')
+            <input type="hidden" name="_method" value="PATCH">
             
             <!-- Debug info -->
             <input type="hidden" name="debug" value="1">
@@ -157,7 +157,7 @@
                         
                         <form method="POST" action="{{ route('password.update') }}" class="needs-validation" novalidate>
                             @csrf
-                            @method('PUT')
+                            <input type="hidden" name="_method" value="PUT">
                             
                             <div class="row">
                                 <div class="col-md-4 mb-3">
@@ -243,9 +243,12 @@ function previewPhoto(input) {
 
 // Debug form submission
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, setting up form debugging...');
+    
     const profileForm = document.querySelector('form[action="{{ route('profile.update') }}"]');
     if (profileForm) {
         console.log('Profile form found:', profileForm);
+        console.log('Profile form method field:', profileForm.querySelector('input[name="_method"]'));
         
         profileForm.addEventListener('submit', function(e) {
             console.log('Profile form submitted');
@@ -266,6 +269,9 @@ document.addEventListener('DOMContentLoaded', function() {
             for (let [key, value] of formData.entries()) {
                 console.log(key + ': ' + value);
             }
+            
+            // Prevent default submission to test
+            // e.preventDefault();
         });
     } else {
         console.error('Profile form not found!');
@@ -274,6 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordForm = document.querySelector('form[action="{{ route('password.update') }}"]');
     if (passwordForm) {
         console.log('Password form found:', passwordForm);
+        console.log('Password form method field:', passwordForm.querySelector('input[name="_method"]'));
         
         passwordForm.addEventListener('submit', function(e) {
             console.log('Password form submitted');
