@@ -40,7 +40,10 @@
 
         <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="needs-validation" novalidate>
             @csrf
-            @method('patch')
+            @method('PATCH')
+            
+            <!-- Debug info -->
+            <input type="hidden" name="debug" value="1">
 
             <div class="row">
                 <!-- Profile Photo -->
@@ -141,7 +144,7 @@
                         
                         <form method="POST" action="{{ route('password.update') }}" class="needs-validation" novalidate>
                             @csrf
-                            @method('put')
+                            @method('PUT')
                             
                             <div class="row">
                                 <div class="col-md-4 mb-3">
@@ -200,9 +203,9 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
                 </div>
             </div>
+        </div>
         </form>
     </div>
     @endif
@@ -224,6 +227,35 @@ function previewPhoto(input) {
         reader.readAsDataURL(file);
     }
 }
+
+// Debug form submission
+document.addEventListener('DOMContentLoaded', function() {
+    const profileForm = document.querySelector('form[action="{{ route('profile.update') }}"]');
+    if (profileForm) {
+        profileForm.addEventListener('submit', function(e) {
+            console.log('Profile form submitted');
+            console.log('Form method:', this.method);
+            console.log('Form action:', this.action);
+            
+            // Check if the hidden _method field exists
+            const methodField = this.querySelector('input[name="_method"]');
+            if (methodField) {
+                console.log('Method field value:', methodField.value);
+            } else {
+                console.error('No _method field found!');
+            }
+        });
+    }
+    
+    const passwordForm = document.querySelector('form[action="{{ route('password.update') }}"]');
+    if (passwordForm) {
+        passwordForm.addEventListener('submit', function(e) {
+            console.log('Password form submitted');
+            console.log('Form method:', this.method);
+            console.log('Form action:', this.action);
+        });
+    }
+});
 </script>
 @endpush
 
