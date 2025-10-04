@@ -257,6 +257,9 @@
 
 @push('scripts')
 <script>
+// Ensure functions are available immediately
+console.log('Script loading started...');
+
 // Global functions - defined outside of DOMContentLoaded to ensure they're available immediately
 
 // Photo preview functionality
@@ -384,6 +387,50 @@ console.log('Global functions available:', {
     deletePhoto: typeof window.deletePhoto,
     togglePassword: typeof window.togglePassword
 });
+
+// Test the function immediately
+console.log('Testing togglePassword function...');
+if (typeof window.togglePassword === 'function') {
+    console.log('✅ togglePassword is available globally');
+} else {
+    console.error('❌ togglePassword is NOT available globally');
+}
+
+// Alternative: Define function directly on window object as backup
+window.togglePassword = function(fieldId) {
+    try {
+        console.log('togglePassword called for field:', fieldId);
+        
+        const passwordField = document.getElementById(fieldId);
+        const icon = document.getElementById(fieldId + '_icon');
+        
+        if (!passwordField) {
+            console.error('Password field not found:', fieldId);
+            return;
+        }
+        
+        if (!icon) {
+            console.error('Password icon not found:', fieldId + '_icon');
+            return;
+        }
+        
+        if (passwordField.type === 'password') {
+            passwordField.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+            console.log('Password shown for:', fieldId);
+        } else {
+            passwordField.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+            console.log('Password hidden for:', fieldId);
+        }
+    } catch (error) {
+        console.error('Error in togglePassword:', error);
+    }
+};
+
+console.log('✅ togglePassword function redefined on window object');
 
 // Form submission handling
 document.addEventListener('DOMContentLoaded', function() {

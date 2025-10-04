@@ -167,7 +167,7 @@
                     <div class="responsive-item responsive-item--purple">
                         <div class="text-center">
                             <i class="fas fa-user mb-2" style="font-size: 1.5rem;"></i>
-                            <h6 class="mb-1">View Profile</h6>
+                            <h6 class="mb-1">Profile</h6>
                             <small>Manage your skills and info</small>
                         </div>
                     </div>
