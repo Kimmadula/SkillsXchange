@@ -330,6 +330,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    
+    // Test route to verify form submission
+    Route::post('/profile/test', function(\Illuminate\Http\Request $request) {
+        \Log::info('Test profile route hit', [
+            'method' => $request->method(),
+            'all_data' => $request->all(),
+            'user_id' => $request->user()?->id
+        ]);
+        return response()->json(['message' => 'Test route hit successfully', 'data' => $request->all()]);
+    })->name('profile.test');
 
     // Trades (user dashboard area) - Restricted to regular users only
     Route::middleware('user.only')->group(function () {

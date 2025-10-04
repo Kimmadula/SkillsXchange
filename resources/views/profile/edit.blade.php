@@ -63,7 +63,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="needs-validation" novalidate>
+        <form method="POST" action="{{ route('profile.test') }}" enctype="multipart/form-data" class="needs-validation" novalidate>
             @csrf
             <input type="hidden" name="_method" value="PATCH">
             

@@ -21,9 +21,11 @@ class ProfileUpdateRequest extends FormRequest
             'all_data' => $this->all()
         ]);
         
+        $userId = $this->user()?->id;
+        
         return [
-            'username' => ['required', 'string', 'max:50', Rule::unique(User::class)->ignore($this->user()->id)],
-            'email' => ['required', 'email', 'max:255', Rule::unique(User::class)->ignore($this->user()->id)],
+            'username' => ['required', 'string', 'max:50', Rule::unique(User::class)->ignore($userId)],
+            'email' => ['required', 'email', 'max:255', Rule::unique(User::class)->ignore($userId)],
             'photo' => ['nullable', 'image', 'max:2048'],
         ];
     }

@@ -93,14 +93,27 @@ class ProfileController extends Controller
             }
 
             // Update only allowed fields (username, email)
-            $user->username = $request->validated()['username'];
-            $user->email = $request->validated()['email'];
+            $validatedData = $request->validated();
+            Log::info('Validated data for profile update:', $validatedData);
+            
+            $user->username = $validatedData['username'];
+            $user->email = $validatedData['email'];
 
             if ($user->isDirty('email')) {
                 $user->email_verified_at = null;
             }
 
+            Log::info('User data before save:', [
+                'username' => $user->username,
+                'email' => $user->email,
+                'photo' => $user->photo,
+                'isDirty' => $user->isDirty(),
+                'changes' => $user->getChanges()
+            ]);
+
             $user->save();
+            
+            Log::info('User saved successfully');
 
             return Redirect::route('profile.show')->with('status', 'profile-updated');
         } catch (\Exception $e) {
