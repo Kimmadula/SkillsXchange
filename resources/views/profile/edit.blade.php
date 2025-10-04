@@ -63,54 +63,44 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="needs-validation">
-            @csrf
-            <input type="hidden" name="_method" value="PATCH">
-            
-            <!-- Debug info -->
-            <input type="hidden" name="debug" value="1">
-
-            <div class="row">
-                <!-- Profile Photo -->
-                <div class="col-lg-6 mb-4">
-                    <div class="dashboard-card">
-                        <h3 class="h5 fw-bold text-gradient mb-4">
-                            <i class="fas fa-camera me-2"></i>Profile Photo
-                        </h3>
+        <div class="row">
+            <!-- Personal Info Section -->
+            <div class="col-lg-8 mb-4">
+                <div class="profile-card">
+                    <h3 class="profile-card-title">Personal Info</h3>
+                    
+                    <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="needs-validation">
+                        @csrf
+                        @method('PATCH')
                         
-                        <div class="mb-4">
-                            <label class="form-label">Upload Profile Photo</label>
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="profile-photo-preview">
-                                    @if($user->photo && file_exists(storage_path('app/public/' . $user->photo)))
-                                        <img src="{{ asset('storage/' . $user->photo) }}" alt="Current Photo" id="photoPreview" class="preview-image">
-                                    @else
-                                        <div id="photoPreview" class="preview-placeholder">
-                                            <i class="fas fa-user"></i>
-                                        </div>
-                                    @endif
-                                </div>
-                                <div>
-                                    <input type="file" class="form-control" id="photo" name="photo" accept="image/*" onchange="previewPhoto(this)">
-                                    <div class="form-text">Upload a profile photo (max 2MB)</div>
-                                </div>
+                        <!-- Profile Photo -->
+                        <div class="profile-photo-section mb-4">
+                            <div class="profile-photo-container">
+                                @if($user->photo && file_exists(storage_path('app/public/' . $user->photo)))
+                                    <img src="{{ asset('storage/' . $user->photo) }}" alt="Profile Photo" id="photoPreview" class="profile-photo">
+                                @else
+                                    <div id="photoPreview" class="profile-photo-placeholder">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="profile-photo-actions">
+                                <label for="photo" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-upload me-1"></i>Upload new picture
+                                </label>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="deletePhoto()">
+                                    <i class="fas fa-trash me-1"></i>Delete
+                                </button>
+                                <input type="file" class="d-none" id="photo" name="photo" accept="image/*" onchange="previewPhoto(this)">
                             </div>
                             @error('photo')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
+                                <div class="text-danger small mt-2">{{ $message }}</div>
                             @enderror
                         </div>
-                    </div>
-                </div>
 
-                <!-- Account Information -->
-                <div class="col-lg-6 mb-4">
-                    <div class="dashboard-card">
-                        <h3 class="h5 fw-bold text-gradient mb-4">
-                            <i class="fas fa-cog me-2"></i>Account Information
-                        </h3>
-
-                        <div class="mb-3">
-                            <label for="username" class="form-label">Username *</label>
+                        <!-- Name Field -->
+                        <div class="form-group mb-3">
+                            <label for="username" class="form-label">Name</label>
                             <input type="text" class="form-control @error('username') is-invalid @enderror" 
                                    id="username" name="username" value="{{ old('username', $user->username) }}" required>
                             @error('username')
@@ -118,120 +108,134 @@
                             @enderror
                         </div>
 
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email Address *</label>
+                        <!-- Email Field -->
+                        <div class="form-group mb-3">
+                            <label for="email" class="form-label">Email</label>
                             <input type="email" class="form-control @error('email') is-invalid @enderror" 
                                    id="email" name="email" value="{{ old('email', $user->email) }}" required>
+                            <div class="form-text">We'll never share your details</div>
                             @error('email')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
-                    </div>
+
+                        <!-- Bio Field -->
+                        <div class="form-group mb-4">
+                            <label for="bio" class="form-label">Bio</label>
+                            <textarea class="form-control" id="bio" name="bio" rows="3" placeholder="A bit about yourself and your role">{{ old('bio', $user->bio ?? '') }}</textarea>
+                        </div>
+
+                        <!-- Skills Display (Read-only) -->
+                        <div class="skills-section mb-4">
+                            <label class="form-label">Skills & Expertise</label>
+                            <div class="skills-display-container">
+                                @if($user->skills->count() > 0)
+                                    <div class="skills-container">
+                                        @foreach($user->skills as $skill)
+                                            <span class="skill-badge {{ $skill->skill_id == $user->skill_id ? 'skill-badge-primary' : 'skill-badge-secondary' }}">
+                                                {{ $skill->skill_name }}
+                                                @if($skill->skill_id == $user->skill_id)
+                                                    <i class="fas fa-star ms-1" title="Primary Skill"></i>
+                                                @endif
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                    <small class="text-muted">Skills cannot be edited from profile. Contact admin to modify skills.</small>
+                                @else
+                                    <p class="text-muted">No skills assigned. Contact admin to add skills to your profile.</p>
+                                @endif
+                            </div>
+                        </div>
+
+                        <!-- Save Button -->
+                        <div class="d-flex justify-content-start">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save personal info
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
-            <!-- Skills Display (Read-only) -->
-            <div class="row">
-                <div class="col-12 mb-4">
-                    <div class="dashboard-card">
-                        <h3 class="h5 fw-bold text-gradient mb-4">
-                            <i class="fas fa-tools me-2"></i>Skills & Expertise
-                        </h3>
-                        <div class="skills-display-container">
-                            @if($user->skills->count() > 0)
-                                <div class="skills-container">
-                                    @foreach($user->skills as $skill)
-                                        <span class="skill-badge {{ $skill->skill_id == $user->skill_id ? 'skill-badge-primary' : 'skill-badge-secondary' }}">
-                                            {{ $skill->skill_name }}
-                                            @if($skill->skill_id == $user->skill_id)
-                                                <i class="fas fa-star ms-1" title="Primary Skill"></i>
-                                            @endif
-                                        </span>
-                                    @endforeach
-                                </div>
-                                <small class="text-muted">Skills cannot be edited from profile. Contact admin to modify skills.</small>
-                            @else
-                                <p class="text-muted">No skills assigned. Contact admin to add skills to your profile.</p>
-                            @endif
+            <!-- Change Password Section -->
+            <div class="col-lg-4 mb-4">
+                <div class="profile-card">
+                    <h3 class="profile-card-title">Change password</h3>
+                    
+                    <form method="POST" action="{{ route('profile.password.update') }}" class="needs-validation">
+                        @csrf
+                        @method('PUT')
+                        
+                        <div class="form-group mb-3">
+                            <label for="current_password" class="form-label">Old password</label>
+                            <input type="password" class="form-control @error('current_password', 'updatePassword') is-invalid @enderror" 
+                                   id="current_password" name="current_password" required autocomplete="current-password">
+                            @error('current_password', 'updatePassword')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="form-group mb-4">
+                            <label for="password" class="form-label">New password</label>
+                            <input type="password" class="form-control @error('password', 'updatePassword') is-invalid @enderror" 
+                                   id="password" name="password" required autocomplete="new-password">
+                            <div class="form-text">Minimum 6 characters</div>
+                            @error('password', 'updatePassword')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="form-group mb-4">
+                            <label for="password_confirmation" class="form-label">Confirm new password</label>
+                            <input type="password" class="form-control @error('password_confirmation', 'updatePassword') is-invalid @enderror" 
+                                   id="password_confirmation" name="password_confirmation" required autocomplete="new-password">
+                            @error('password_confirmation', 'updatePassword')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary">
+                                Change
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Delete Account Section -->
+                    <div class="mt-4 pt-3 border-top">
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-link text-muted p-0" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+                                <i class="fas fa-trash me-1"></i>Delete account
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Password Update Section -->
-            <div class="row">
-                <div class="col-12">
-                    <div class="dashboard-card">
-                        <h3 class="h5 fw-bold text-gradient mb-4">
-                            <i class="fas fa-lock me-2"></i>Update Password
-                        </h3>
-                        <p class="text-muted mb-4">Ensure your account is using a long, random password to stay secure.</p>
-                        
-                        <form method="POST" action="{{ route('profile.password.update') }}" class="needs-validation">
+        <!-- Delete Account Modal -->
+        <div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deleteAccountModalLabel">Delete Account</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to delete your account? This action cannot be undone.</p>
+                        <p class="text-danger"><strong>Warning:</strong> All your data will be permanently removed.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <form method="POST" action="{{ route('profile.destroy') }}" class="d-inline">
                             @csrf
-                            <input type="hidden" name="_method" value="PUT">
-                            
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label for="current_password" class="form-label">Current Password *</label>
-                                    <input type="password" class="form-control @error('current_password', 'updatePassword') is-invalid @enderror" 
-                                           id="current_password" name="current_password" required autocomplete="current-password">
-                                    @error('current_password', 'updatePassword')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="password" class="form-label">New Password *</label>
-                                    <input type="password" class="form-control @error('password', 'updatePassword') is-invalid @enderror" 
-                                           id="password" name="password" required autocomplete="new-password">
-                                    @error('password', 'updatePassword')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="password_confirmation" class="form-label">Confirm New Password *</label>
-                                    <input type="password" class="form-control @error('password_confirmation', 'updatePassword') is-invalid @enderror" 
-                                           id="password_confirmation" name="password_confirmation" required autocomplete="new-password">
-                                    @error('password_confirmation', 'updatePassword')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                            
-                            <div class="d-flex justify-content-end">
-                                <button type="submit" class="btn btn-warning">
-                                    <i class="fas fa-key me-2"></i>Update Password
-                                </button>
-                            </div>
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-danger">Delete Account</button>
                         </form>
                     </div>
                 </div>
             </div>
-
-            <!-- Action Buttons -->
-            <div class="row">
-                <div class="col-12">
-                    <div class="dashboard-card">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h3 class="h5 fw-bold text-gradient mb-0">
-                                    <i class="fas fa-save me-2"></i>Save Changes
-                                </h3>
-                                <p class="text-muted mb-0">Update your profile information</p>
-                            </div>
-                            <div class="d-flex gap-2">
-                                <a href="{{ route('profile.show') }}" class="btn btn-outline-secondary">
-                                    <i class="fas fa-times me-2"></i>Cancel
-                                </a>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save me-2"></i>Save Changes
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </form>
+        </div>
         </div>
     </div>
     @endif
@@ -248,23 +252,44 @@ function previewPhoto(input) {
     if (file) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            preview.innerHTML = `<img src="${e.target.result}" alt="Preview" class="preview-image">`;
+            if (preview.classList.contains('profile-photo-placeholder')) {
+                preview.className = 'profile-photo';
+                preview.src = e.target.result;
+                preview.alt = 'Profile Photo';
+            } else {
+                preview.src = e.target.result;
+            }
         };
         reader.readAsDataURL(file);
     }
 }
 
-// Debug form submission
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, setting up form debugging...');
+// Delete photo functionality
+function deletePhoto() {
+    const preview = document.getElementById('photoPreview');
+    const fileInput = document.getElementById('photo');
     
-    const profileForm = document.querySelector('form[action="{{ route('profile.update') }}"]');
+    // Reset file input
+    fileInput.value = '';
+    
+    // Reset preview to placeholder
+    preview.className = 'profile-photo-placeholder';
+    preview.innerHTML = '<i class="fas fa-user"></i>';
+    preview.removeAttribute('src');
+    preview.removeAttribute('alt');
+}
+
+// Form submission handling
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, setting up form handling...');
+    
+    // Profile form handling
+    const profileForm = document.querySelector('form[action="{{ route("profile.update") }}"]');
     if (profileForm) {
-        console.log('Profile form found:', profileForm);
-        console.log('Profile form method field:', profileForm.querySelector('input[name="_method"]'));
+        console.log('Profile form found');
         
         profileForm.addEventListener('submit', function(e) {
-            console.log('Profile form submitted');
+            console.log('Profile form submitting...');
             console.log('Form method:', this.method);
             console.log('Form action:', this.action);
             
@@ -275,31 +300,16 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 console.error('No _method field found!');
             }
-            
-            // Check all form data
-            const formData = new FormData(this);
-            console.log('Form data:');
-            for (let [key, value] of formData.entries()) {
-                console.log(key + ': ' + value);
-            }
-            
-            // Debug form submission
-            console.log('Form submitting with method:', this.method, 'and _method:', methodField ? methodField.value : 'NOT FOUND');
-            
-            // Add a simple alert to confirm form submission
-            alert('Profile form is submitting...');
         });
-    } else {
-        console.error('Profile form not found!');
     }
     
-    const passwordForm = document.querySelector('form[action="{{ route('profile.password.update') }}"]');
+    // Password form handling
+    const passwordForm = document.querySelector('form[action="{{ route("profile.password.update") }}"]');
     if (passwordForm) {
-        console.log('Password form found:', passwordForm);
-        console.log('Password form method field:', passwordForm.querySelector('input[name="_method"]'));
+        console.log('Password form found');
         
         passwordForm.addEventListener('submit', function(e) {
-            console.log('Password form submitted');
+            console.log('Password form submitting...');
             console.log('Form method:', this.method);
             console.log('Form action:', this.action);
             
@@ -310,12 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 console.error('No _method field found!');
             }
-            
-            // Add a simple alert to confirm form submission
-            alert('Password form is submitting...');
         });
-    } else {
-        console.error('Password form not found!');
     }
 });
 </script>
@@ -323,74 +328,261 @@ document.addEventListener('DOMContentLoaded', function() {
 
 @push('styles')
 <style>
-.profile-photo-preview {
+/* Profile Card Styles */
+.profile-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+    height: fit-content;
+}
+
+.profile-card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+/* Profile Photo Styles */
+.profile-photo-section {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.profile-photo-container {
+    flex-shrink: 0;
+}
+
+.profile-photo {
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    overflow: hidden;
-    border: 3px solid #e9ecef;
+    object-fit: cover;
+    border: 3px solid #e5e7eb;
+}
+
+.profile-photo-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #f3f4f6;
+    border: 3px solid #e5e7eb;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f8f9fa;
-}
-
-.preview-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.preview-placeholder {
     font-size: 2rem;
-    color: #6c757d;
+    color: #9ca3af;
 }
 
+.profile-photo-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+/* Form Styles */
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.form-control {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    outline: none;
+}
+
+.form-text {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+/* Skills Display */
 .skills-display-container {
-    padding: 1rem;
-    border: 1px solid #dee2e6;
-    border-radius: 0.375rem;
-    background: #f8f9fa;
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
 }
 
 .skills-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
+    gap: 8px;
+    margin-bottom: 8px;
 }
 
 .skill-badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.5rem 1rem;
-    border-radius: 25px;
-    font-size: 0.875rem;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
     font-weight: 500;
     text-decoration: none;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 }
 
 .skill-badge-primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
 }
 
 .skill-badge-secondary {
-    background: #e9ecef;
-    color: #6c757d;
-    border: 1px solid #dee2e6;
+    background: #e5e7eb;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
 }
 
-.needs-validation .form-control:invalid,
-.needs-validation .form-select:invalid {
-    border-color: #dc3545;
+/* Button Styles */
+.btn-primary {
+    background: #6366f1;
+    border: 1px solid #6366f1;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
 }
 
-.needs-validation .form-control:valid,
-.needs-validation .form-select:valid {
-    border-color: #198754;
+.btn-primary:hover {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    transform: translateY(-1px);
+}
+
+.btn-outline-primary {
+    border: 1px solid #6366f1;
+    color: #6366f1;
+    background: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-primary:hover {
+    background: #6366f1;
+    color: white;
+}
+
+.btn-outline-secondary {
+    border: 1px solid #d1d5db;
+    color: #6b7280;
+    background: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-outline-secondary:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.btn-link {
+    color: #6b7280;
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: color 0.2s ease;
+}
+
+.btn-link:hover {
+    color: #dc2626;
+}
+
+/* Validation Styles */
+.needs-validation .form-control:invalid {
+    border-color: #dc2626;
+}
+
+.needs-validation .form-control:valid {
+    border-color: #10b981;
+}
+
+.invalid-feedback {
+    color: #dc2626;
+    font-size: 0.75rem;
+    margin-top: 4px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .profile-photo-section {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .profile-photo-actions {
+        flex-direction: row;
+        justify-content: center;
+    }
+    
+    .profile-card {
+        padding: 16px;
+    }
+}
+
+/* Dark theme adjustments */
+.dark-theme .profile-card {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+.dark-theme .profile-card-title {
+    color: #f9fafb;
+    border-bottom-color: #374151;
+}
+
+.dark-theme .form-label {
+    color: #e5e7eb;
+}
+
+.dark-theme .form-control {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+}
+
+.dark-theme .form-control:focus {
+    border-color: #6366f1;
+    background: #374151;
+}
+
+.dark-theme .form-text {
+    color: #9ca3af;
+}
+
+.dark-theme .skills-display-container {
+    background: #374151;
+    border-color: #4b5563;
 }
 </style>
 @endpush
