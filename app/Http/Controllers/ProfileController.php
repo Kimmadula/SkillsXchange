@@ -7,6 +7,7 @@ use App\Models\Skill;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
@@ -92,10 +93,19 @@ class ProfileController extends Controller
                 $user->photo = $photoPath;
             }
 
-            // Update only allowed fields (username, email)
+            // Update all validated fields
             $validatedData = $request->validated();
             Log::info('Validated data for profile update:', $validatedData);
             
+            // Update personal information
+            $user->firstname = $validatedData['firstname'];
+            $user->lastname = $validatedData['lastname'];
+            $user->middlename = $validatedData['middlename'] ?? null;
+            $user->gender = $validatedData['gender'];
+            $user->bdate = $validatedData['bdate'];
+            $user->address = $validatedData['address'] ?? null;
+            
+            // Update account information
             $user->username = $validatedData['username'];
             $user->email = $validatedData['email'];
 
@@ -119,6 +129,44 @@ class ProfileController extends Controller
         } catch (\Exception $e) {
             Log::error('Profile update error: ' . $e->getMessage());
             return Redirect::back()->withErrors(['error' => 'Failed to update profile. Please try again.']);
+        }
+    }
+
+    /**
+     * Update the user's password.
+     */
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        try {
+            $request->validate([
+                'current_password' => ['required', 'current-password'],
+                'password' => ['required', 'confirmed', 'min:8'],
+            ]);
+
+            $user = $request->user();
+            
+            if (!$user) {
+                abort(404, 'User not found');
+            }
+
+            $user->update([
+                'password' => Hash::make($request->password),
+            ]);
+
+            Log::info('Password updated successfully', [
+                'user_id' => $user->id,
+                'ip' => $request->ip()
+            ]);
+
+            return Redirect::route('profile.edit')->with('status', 'password-updated');
+            
+        } catch (\Exception $e) {
+            Log::error('Password update error: ' . $e->getMessage(), [
+                'user_id' => $request->user()?->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return Redirect::back()->withErrors(['password' => 'Failed to update password. Please try again.']);
         }
     }
 
