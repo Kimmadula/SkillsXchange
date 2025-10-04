@@ -83,6 +83,12 @@
                         @endif
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}"
+                        href="{{ route('profile.show') }}">
+                        <i class="fas fa-user me-1"></i>Profile
+                    </a>
+                </li>
                 @endif
             </ul>
 
@@ -103,8 +109,11 @@
                         </div>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ route('profile.show') }}">
+                                <i class="fas fa-user me-2"></i>View Profile
+                            </a></li>
                         <li><a class="dropdown-item" href="{{ route('profile.edit') }}">
-                                <i class="fas fa-user-edit me-2"></i>Profile
+                                <i class="fas fa-user-edit me-2"></i>Edit Profile
                             </a></li>
                         <li>
                             <hr class="dropdown-divider">

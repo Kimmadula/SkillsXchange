@@ -163,11 +163,11 @@
                 </a>
                 @endif
 
-                <a href="{{ route('profile.edit') }}" class="text-decoration-none">
+                <a href="{{ route('profile.show') }}" class="text-decoration-none">
                     <div class="responsive-item responsive-item--purple">
                         <div class="text-center">
-                            <i class="fas fa-user-edit mb-2" style="font-size: 1.5rem;"></i>
-                            <h6 class="mb-1">Update Profile</h6>
+                            <i class="fas fa-user mb-2" style="font-size: 1.5rem;"></i>
+                            <h6 class="mb-1">View Profile</h6>
                             <small>Manage your skills and info</small>
                         </div>
                     </div>
