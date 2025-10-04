@@ -51,6 +51,18 @@
             </div>
         @endif
 
+        @if($errors->has('username'))
+            <div class="alert alert-danger">
+                Username errors: {{ $errors->first('username') }}
+            </div>
+        @endif
+
+        @if($errors->has('email'))
+            <div class="alert alert-danger">
+                Email errors: {{ $errors->first('email') }}
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="needs-validation" novalidate>
             @csrf
             <input type="hidden" name="_method" value="PATCH">
@@ -216,10 +228,11 @@
                                 </button>
                             </div>
                         </div>
+                    </div>
                 </div>
             </div>
-        </div>
         </form>
+        </div>
     </div>
     @endif
 </div>
@@ -270,8 +283,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(key + ': ' + value);
             }
             
-            // Prevent default submission to test
-            // e.preventDefault();
+            // Debug form submission
+            console.log('Form submitting with method:', this.method, 'and _method:', methodField ? methodField.value : 'NOT FOUND');
         });
     } else {
         console.error('Profile form not found!');

@@ -15,6 +15,12 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
+        \Log::info('ProfileUpdateRequest rules called', [
+            'method' => $this->method(),
+            'user_id' => $this->user()?->id,
+            'all_data' => $this->all()
+        ]);
+        
         return [
             'username' => ['required', 'string', 'max:50', Rule::unique(User::class)->ignore($this->user()->id)],
             'email' => ['required', 'email', 'max:255', Rule::unique(User::class)->ignore($this->user()->id)],
