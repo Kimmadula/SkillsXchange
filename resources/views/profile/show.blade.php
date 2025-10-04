@@ -25,7 +25,6 @@
                         </div>
                         <div class="col-md-6">
                             <h1 class="h2 fw-bold text-gradient mb-2">{{ $user->name }}</h1>
-                            <p class="text-muted mb-2">@{{ $user->username }}</p>
                             <p class="text-muted mb-3">{{ $user->email }}</p>
                             <div class="profile-badges">
                                 <span class="badge bg-primary me-2">{{ ucfirst($user->role) }}</span>
@@ -108,65 +107,6 @@
             </div>
         </div>
 
-        <!-- Account Information -->
-        <div class="row">
-            <div class="col-lg-6 mb-4">
-                <div class="dashboard-card">
-                    <h3 class="h5 fw-bold text-gradient mb-4">
-                        <i class="fas fa-cog me-2"></i>Account Settings
-                    </h3>
-                    <div class="profile-info-grid">
-                        <div class="info-item">
-                            <label class="info-label">Username</label>
-                            <div class="info-value">@{{ $user->username }}</div>
-                        </div>
-                        <div class="info-item">
-                            <label class="info-label">Email</label>
-                            <div class="info-value">{{ $user->email }}</div>
-                        </div>
-                        <div class="info-item">
-                            <label class="info-label">Account Status</label>
-                            <div class="info-value">
-                                @if($user->is_verified)
-                                    <span class="text-success">Verified</span>
-                                @else
-                                    <span class="text-warning">Pending Verification</span>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="info-item">
-                            <label class="info-label">Token Balance</label>
-                            <div class="info-value">{{ number_format($user->token_balance) }} tokens</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="col-lg-6 mb-4">
-                <div class="dashboard-card">
-                    <h3 class="h5 fw-bold text-gradient mb-4">
-                        <i class="fas fa-bolt me-2"></i>Quick Actions
-                    </h3>
-                    <div class="quick-actions">
-                        <a href="{{ route('profile.edit') }}" class="btn btn-outline-primary btn-sm me-2 mb-2">
-                            <i class="fas fa-edit me-1"></i>Edit Profile
-                        </a>
-                        @if(auth()->user()->role !== 'admin')
-                            <a href="{{ route('trades.create') }}" class="btn btn-outline-success btn-sm me-2 mb-2">
-                                <i class="fas fa-plus me-1"></i>Create Trade
-                            </a>
-                            <a href="{{ route('trades.matches') }}" class="btn btn-outline-info btn-sm me-2 mb-2">
-                                <i class="fas fa-search me-1"></i>Find Matches
-                            </a>
-                        @endif
-                        <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm me-2 mb-2">
-                            <i class="fas fa-home me-1"></i>Dashboard
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Danger Zone -->
         <div class="row">
@@ -317,11 +257,6 @@
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 
-.quick-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
 
 .dashboard-card.border-danger {
     border: 2px solid #dc3545 !important;
