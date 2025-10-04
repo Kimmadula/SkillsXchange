@@ -72,8 +72,7 @@ class ProfileController extends Controller
             Log::info('Profile update request received', [
                 'method' => $request->method(),
                 'user_id' => $request->user()?->id,
-                'all_data' => $request->all(),
-                'validated_data' => $request->validated()
+                'all_data' => $request->all()
             ]);
             
             $user = $request->user();
@@ -138,6 +137,13 @@ class ProfileController extends Controller
     public function updatePassword(Request $request): RedirectResponse
     {
         try {
+            Log::info('Password update request received', [
+                'method' => $request->method(),
+                'user_id' => $request->user()?->id,
+                'all_data' => $request->all(),
+                'headers' => $request->headers->all()
+            ]);
+            
             $request->validate([
                 'current_password' => ['required', 'current-password'],
                 'password' => ['required', 'confirmed', 'min:8'],
