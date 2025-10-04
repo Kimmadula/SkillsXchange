@@ -167,7 +167,7 @@
                         </h3>
                         <p class="text-muted mb-4">Ensure your account is using a long, random password to stay secure.</p>
                         
-                        <form method="POST" action="{{ route('password.update') }}" class="needs-validation" novalidate>
+                        <form method="POST" action="{{ route('profile.password.update') }}" class="needs-validation" novalidate>
                             @csrf
                             <input type="hidden" name="_method" value="PUT">
                             
@@ -290,7 +290,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Profile form not found!');
     }
     
-    const passwordForm = document.querySelector('form[action="{{ route('password.update') }}"]');
+    const passwordForm = document.querySelector('form[action="{{ route('profile.password.update') }}"]');
     if (passwordForm) {
         console.log('Password form found:', passwordForm);
         console.log('Password form method field:', passwordForm.querySelector('input[name="_method"]'));
