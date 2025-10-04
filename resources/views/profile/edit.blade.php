@@ -174,7 +174,7 @@
                             <div class="password-input-group">
                                 <input type="password" class="form-control @error('current_password', 'updatePassword') is-invalid @enderror" 
                                        id="current_password" name="current_password" required autocomplete="current-password">
-                                <button type="button" class="password-toggle-btn" onclick="togglePassword('current_password')">
+                                <button type="button" class="password-toggle-btn" data-field="current_password">
                                     <i class="fas fa-eye" id="current_password_icon"></i>
                                 </button>
                             </div>
@@ -188,7 +188,7 @@
                             <div class="password-input-group">
                                 <input type="password" class="form-control @error('password', 'updatePassword') is-invalid @enderror" 
                                        id="password" name="password" required autocomplete="new-password">
-                                <button type="button" class="password-toggle-btn" onclick="togglePassword('password')">
+                                <button type="button" class="password-toggle-btn" data-field="password">
                                     <i class="fas fa-eye" id="password_icon"></i>
                                 </button>
                             </div>
@@ -203,7 +203,7 @@
                             <div class="password-input-group">
                                 <input type="password" class="form-control @error('password_confirmation', 'updatePassword') is-invalid @enderror" 
                                        id="password_confirmation" name="password_confirmation" required autocomplete="new-password">
-                                <button type="button" class="password-toggle-btn" onclick="togglePassword('password_confirmation')">
+                                <button type="button" class="password-toggle-btn" data-field="password_confirmation">
                                     <i class="fas fa-eye" id="password_confirmation_icon"></i>
                                 </button>
                             </div>
@@ -254,6 +254,8 @@
 
 @push('scripts')
 <script>
+// Global functions - defined outside of DOMContentLoaded to ensure they're available immediately
+
 // Photo preview functionality
 function previewPhoto(input) {
     const preview = document.getElementById('photoPreview');
@@ -289,25 +291,58 @@ function deletePhoto() {
     preview.removeAttribute('alt');
 }
 
-// Password toggle functionality
+// Password toggle functionality - Global scope
 function togglePassword(fieldId) {
-    const passwordField = document.getElementById(fieldId);
-    const icon = document.getElementById(fieldId + '_icon');
-    
-    if (passwordField.type === 'password') {
-        passwordField.type = 'text';
-        icon.classList.remove('fa-eye');
-        icon.classList.add('fa-eye-slash');
-    } else {
-        passwordField.type = 'password';
-        icon.classList.remove('fa-eye-slash');
-        icon.classList.add('fa-eye');
+    try {
+        console.log('togglePassword called for field:', fieldId);
+        
+        const passwordField = document.getElementById(fieldId);
+        const icon = document.getElementById(fieldId + '_icon');
+        
+        if (!passwordField) {
+            console.error('Password field not found:', fieldId);
+            return;
+        }
+        
+        if (!icon) {
+            console.error('Password icon not found:', fieldId + '_icon');
+            return;
+        }
+        
+        if (passwordField.type === 'password') {
+            passwordField.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+            console.log('Password shown for:', fieldId);
+        } else {
+            passwordField.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+            console.log('Password hidden for:', fieldId);
+        }
+    } catch (error) {
+        console.error('Error in togglePassword:', error);
     }
 }
+
+// Make functions globally available
+window.togglePassword = togglePassword;
+window.previewPhoto = previewPhoto;
+window.deletePhoto = deletePhoto;
 
 // Form submission handling
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, setting up form handling...');
+    
+    // Password toggle button event listeners
+    const passwordToggleButtons = document.querySelectorAll('.password-toggle-btn');
+    passwordToggleButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const fieldId = this.getAttribute('data-field');
+            console.log('Password toggle button clicked for field:', fieldId);
+            togglePassword(fieldId);
+        });
+    });
     
     // Profile form handling
     const profileForm = document.querySelector('form[action="{{ route("profile.update") }}"]');
@@ -507,33 +542,58 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .password-input-group .form-control {
-    padding-right: 45px; /* Make room for the toggle button */
+    padding-right: 40px; /* Make room for the toggle button inside */
+    padding-left: 12px;
 }
 
 .password-toggle-btn {
     position: absolute;
-    right: 12px;
+    right: 8px;
     top: 50%;
     transform: translateY(-50%);
     background: none;
     border: none;
     color: #6b7280;
     cursor: pointer;
-    padding: 4px;
+    padding: 6px;
     border-radius: 4px;
     transition: all 0.2s ease;
     z-index: 10;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
 }
 
 .password-toggle-btn:hover {
     color: #374151;
-    background: #f3f4f6;
+    background: rgba(0, 0, 0, 0.05);
 }
 
 .password-toggle-btn:focus {
     outline: none;
     color: #6366f1;
-    background: #f0f0ff;
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.password-toggle-btn:active {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* Make the eye icon look more integrated */
+.password-toggle-btn i {
+    transition: all 0.2s ease;
+}
+
+.password-toggle-btn:hover i {
+    transform: scale(1.1);
+}
+
+/* Ensure the input field doesn't interfere with the button */
+.password-input-group .form-control:focus + .password-toggle-btn {
+    color: #6366f1;
 }
 
 .form-text {
@@ -715,12 +775,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .dark-theme .password-toggle-btn:hover {
     color: #e5e7eb;
-    background: #4b5563;
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .dark-theme .password-toggle-btn:focus {
     color: #6366f1;
-    background: #374151;
+    background: rgba(99, 102, 241, 0.2);
+}
+
+.dark-theme .password-toggle-btn:active {
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .dark-theme .card-header-section {
