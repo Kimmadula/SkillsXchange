@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class ProfileUpdateRequest extends FormRequest
@@ -15,7 +16,7 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        \Log::info('ProfileUpdateRequest rules called', [
+        Log::info('ProfileUpdateRequest rules called', [
             'method' => $this->method(),
             'user_id' => $this->user()?->id,
             'all_data' => $this->all()

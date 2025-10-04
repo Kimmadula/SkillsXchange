@@ -332,8 +332,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     
     // Test route to verify form submission
-    Route::post('/profile/test', function(\Illuminate\Http\Request $request) {
-        \Log::info('Test profile route hit', [
+    Route::post('/profile/test', function(Request $request) {
+        Log::info('Test profile route hit', [
             'method' => $request->method(),
             'all_data' => $request->all(),
             'user_id' => $request->user()?->id
