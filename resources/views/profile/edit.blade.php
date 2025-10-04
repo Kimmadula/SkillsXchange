@@ -38,6 +38,19 @@
             </div>
         @endif
 
+        @if($errors->any())
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Please fix the following errors:</strong>
+                <ul class="mb-0 mt-2">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="needs-validation" novalidate>
             @csrf
             @method('PATCH')
@@ -232,6 +245,8 @@ function previewPhoto(input) {
 document.addEventListener('DOMContentLoaded', function() {
     const profileForm = document.querySelector('form[action="{{ route('profile.update') }}"]');
     if (profileForm) {
+        console.log('Profile form found:', profileForm);
+        
         profileForm.addEventListener('submit', function(e) {
             console.log('Profile form submitted');
             console.log('Form method:', this.method);
@@ -244,16 +259,37 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 console.error('No _method field found!');
             }
+            
+            // Check all form data
+            const formData = new FormData(this);
+            console.log('Form data:');
+            for (let [key, value] of formData.entries()) {
+                console.log(key + ': ' + value);
+            }
         });
+    } else {
+        console.error('Profile form not found!');
     }
     
     const passwordForm = document.querySelector('form[action="{{ route('password.update') }}"]');
     if (passwordForm) {
+        console.log('Password form found:', passwordForm);
+        
         passwordForm.addEventListener('submit', function(e) {
             console.log('Password form submitted');
             console.log('Form method:', this.method);
             console.log('Form action:', this.action);
+            
+            // Check if the hidden _method field exists
+            const methodField = this.querySelector('input[name="_method"]');
+            if (methodField) {
+                console.log('Method field value:', methodField.value);
+            } else {
+                console.error('No _method field found!');
+            }
         });
+    } else {
+        console.error('Password form not found!');
     }
 });
 </script>
