@@ -28,9 +28,11 @@
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <i class="fas fa-check-circle me-2"></i>
                 @if(session('status') === 'profile-updated')
-                    Profile updated successfully!
+                    <strong>Profile updated successfully!</strong><br>
+                    <small>Your username and email have been updated.</small>
                 @elseif(session('status') === 'password-updated')
-                    Password updated successfully!
+                    <strong>Password updated successfully!</strong><br>
+                    <small>Your password has been changed.</small>
                 @else
                     {{ session('status') }}
                 @endif

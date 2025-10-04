@@ -123,7 +123,7 @@ class ProfileController extends Controller
                 'fresh_email' => $user->fresh()->email
             ]);
 
-            return Redirect::route('profile.show')->with('status', 'profile-updated');
+            return Redirect::route('profile.edit')->with('status', 'profile-updated');
         } catch (\Exception $e) {
             Log::error('Profile update error: ' . $e->getMessage());
             return Redirect::back()->withErrors(['error' => 'Failed to update profile. Please try again.']);
