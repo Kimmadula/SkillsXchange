@@ -92,17 +92,9 @@ class ProfileController extends Controller
                 $user->photo = $photoPath;
             }
 
-            // Update all validated fields
+            // Update validated fields
             $validatedData = $request->validated();
             Log::info('Validated data for profile update:', $validatedData);
-            
-            // Update personal information
-            $user->firstname = $validatedData['firstname'];
-            $user->lastname = $validatedData['lastname'];
-            $user->middlename = $validatedData['middlename'] ?? null;
-            $user->gender = $validatedData['gender'];
-            $user->bdate = $validatedData['bdate'];
-            $user->address = $validatedData['address'] ?? null;
             
             // Update account information
             $user->username = $validatedData['username'];
