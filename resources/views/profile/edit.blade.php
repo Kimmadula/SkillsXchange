@@ -93,7 +93,7 @@
                                 <label for="photo" class="btn btn-outline-primary btn-sm">
                                     <i class="fas fa-upload me-1"></i>Upload new picture
                                 </label>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="deletePhoto()">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="deletePhotoBtn">
                                     <i class="fas fa-trash me-1"></i>Delete
                                 </button>
                                 <input type="file" class="d-none" id="photo" name="photo" accept="image/*" onchange="previewPhoto(this)">
@@ -169,12 +169,13 @@
                         @csrf
                         @method('PUT')
                         
+                        <!-- Old Password Field -->
                         <div class="form-group mb-3">
                             <label for="current_password" class="form-label">Old password</label>
                             <div class="password-input-group">
                                 <input type="password" class="form-control @error('current_password', 'updatePassword') is-invalid @enderror" 
                                        id="current_password" name="current_password" required autocomplete="current-password">
-                                <button type="button" class="password-toggle-btn" data-field="current_password">
+                                <button type="button" class="password-toggle-btn" onclick="togglePassword('current_password')">
                                     <i class="fas fa-eye" id="current_password_icon"></i>
                                 </button>
                             </div>
@@ -183,12 +184,13 @@
                             @enderror
                         </div>
 
+                        <!-- New Password Field -->
                         <div class="form-group mb-4">
                             <label for="password" class="form-label">New password</label>
                             <div class="password-input-group">
                                 <input type="password" class="form-control @error('password', 'updatePassword') is-invalid @enderror" 
                                        id="password" name="password" required autocomplete="new-password">
-                                <button type="button" class="password-toggle-btn" data-field="password">
+                                <button type="button" class="password-toggle-btn" onclick="togglePassword('password')">
                                     <i class="fas fa-eye" id="password_icon"></i>
                                 </button>
                             </div>
@@ -198,12 +200,13 @@
                             @enderror
                         </div>
 
+                        <!-- Confirm New Password Field -->
                         <div class="form-group mb-4">
                             <label for="password_confirmation" class="form-label">Confirm new password</label>
                             <div class="password-input-group">
                                 <input type="password" class="form-control @error('password_confirmation', 'updatePassword') is-invalid @enderror" 
                                        id="password_confirmation" name="password_confirmation" required autocomplete="new-password">
-                                <button type="button" class="password-toggle-btn" data-field="password_confirmation">
+                                <button type="button" class="password-toggle-btn" onclick="togglePassword('password_confirmation')">
                                     <i class="fas fa-eye" id="password_confirmation_icon"></i>
                                 </button>
                             </div>
@@ -258,37 +261,75 @@
 
 // Photo preview functionality
 function previewPhoto(input) {
-    const preview = document.getElementById('photoPreview');
-    const file = input.files[0];
-    
-    if (file) {
+    try {
+        console.log('previewPhoto function called');
+        const preview = document.getElementById('photoPreview');
+        const file = input.files[0];
+        
+        if (!preview) {
+            console.error('Photo preview element not found');
+            return;
+        }
+        
+        if (!file) {
+            console.log('No file selected');
+            return;
+        }
+        
+        console.log('File selected:', file.name, file.type);
+        
         const reader = new FileReader();
         reader.onload = function(e) {
+            console.log('File read successfully');
             if (preview.classList.contains('profile-photo-placeholder')) {
                 preview.className = 'profile-photo';
                 preview.src = e.target.result;
                 preview.alt = 'Profile Photo';
+                console.log('Updated preview to image');
             } else {
                 preview.src = e.target.result;
+                console.log('Updated existing image preview');
             }
         };
+        reader.onerror = function(e) {
+            console.error('Error reading file:', e);
+        };
         reader.readAsDataURL(file);
+    } catch (error) {
+        console.error('Error in previewPhoto:', error);
     }
 }
 
 // Delete photo functionality
 function deletePhoto() {
-    const preview = document.getElementById('photoPreview');
-    const fileInput = document.getElementById('photo');
-    
-    // Reset file input
-    fileInput.value = '';
-    
-    // Reset preview to placeholder
-    preview.className = 'profile-photo-placeholder';
-    preview.innerHTML = '<i class="fas fa-user"></i>';
-    preview.removeAttribute('src');
-    preview.removeAttribute('alt');
+    try {
+        console.log('deletePhoto function called');
+        const preview = document.getElementById('photoPreview');
+        const fileInput = document.getElementById('photo');
+        
+        if (!preview) {
+            console.error('Photo preview element not found');
+            return;
+        }
+        
+        if (!fileInput) {
+            console.error('File input element not found');
+            return;
+        }
+        
+        // Reset file input
+        fileInput.value = '';
+        
+        // Reset preview to placeholder
+        preview.className = 'profile-photo-placeholder';
+        preview.innerHTML = '<i class="fas fa-user"></i>';
+        preview.removeAttribute('src');
+        preview.removeAttribute('alt');
+        
+        console.log('Photo deleted successfully');
+    } catch (error) {
+        console.error('Error in deletePhoto:', error);
+    }
 }
 
 // Password toggle functionality - Global scope
@@ -330,9 +371,47 @@ window.togglePassword = togglePassword;
 window.previewPhoto = previewPhoto;
 window.deletePhoto = deletePhoto;
 
+// Debug: Check if functions are available
+console.log('Functions available:', {
+    previewPhoto: typeof previewPhoto,
+    deletePhoto: typeof deletePhoto,
+    togglePassword: typeof togglePassword
+});
+
+// Test if functions are accessible from global scope
+console.log('Global functions available:', {
+    previewPhoto: typeof window.previewPhoto,
+    deletePhoto: typeof window.deletePhoto,
+    togglePassword: typeof window.togglePassword
+});
+
 // Form submission handling
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, setting up form handling...');
+    
+    // Photo functionality event listeners
+    const photoInput = document.getElementById('photo');
+    const deletePhotoBtn = document.getElementById('deletePhotoBtn');
+    
+    if (photoInput) {
+        console.log('Photo input found, adding event listener');
+        photoInput.addEventListener('change', function() {
+            console.log('Photo input changed, calling previewPhoto');
+            previewPhoto(this);
+        });
+    } else {
+        console.error('Photo input not found');
+    }
+    
+    if (deletePhotoBtn) {
+        console.log('Delete photo button found, adding event listener');
+        deletePhotoBtn.addEventListener('click', function() {
+            console.log('Delete photo button clicked, calling deletePhoto');
+            deletePhoto();
+        });
+    } else {
+        console.error('Delete photo button not found');
+    }
     
     // Password toggle button event listeners
     const passwordToggleButtons = document.querySelectorAll('.password-toggle-btn');
@@ -526,6 +605,17 @@ document.addEventListener('DOMContentLoaded', function() {
     padding: 12px 16px;
     font-size: 0.875rem;
     transition: all 0.2s ease;
+}
+
+/* Specific styling for profile form inputs */
+.personal-info-card .form-control {
+    max-width: 400px; /* Limit the maximum width */
+    width: 100%;
+}
+
+/* Make email field slightly wider than username */
+.personal-info-card .form-control[name="email"] {
+    max-width: 450px;
 }
 
 .form-control:focus {
@@ -731,6 +821,22 @@ document.addEventListener('DOMContentLoaded', function() {
     
     .profile-card {
         padding: 16px;
+    }
+    
+    /* On mobile, make inputs full width again */
+    .personal-info-card .form-control {
+        max-width: 100%;
+    }
+}
+
+/* On larger screens, keep the limited width */
+@media (min-width: 769px) {
+    .personal-info-card .form-control {
+        max-width: 400px;
+    }
+    
+    .personal-info-card .form-control[name="email"] {
+        max-width: 450px;
     }
 }
 
