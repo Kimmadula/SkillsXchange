@@ -27,7 +27,13 @@
         @if(session('status'))
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <i class="fas fa-check-circle me-2"></i>
-                {{ session('status') === 'profile-updated' ? 'Profile updated successfully!' : session('status') }}
+                @if(session('status') === 'profile-updated')
+                    Profile updated successfully!
+                @elseif(session('status') === 'password-updated')
+                    Password updated successfully!
+                @else
+                    {{ session('status') }}
+                @endif
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         @endif
@@ -37,16 +43,15 @@
             @method('patch')
 
             <div class="row">
-                <!-- Personal Information -->
+                <!-- Profile Photo -->
                 <div class="col-lg-6 mb-4">
                     <div class="dashboard-card">
                         <h3 class="h5 fw-bold text-gradient mb-4">
-                            <i class="fas fa-user me-2"></i>Personal Information
+                            <i class="fas fa-camera me-2"></i>Profile Photo
                         </h3>
                         
-                        <!-- Profile Photo -->
                         <div class="mb-4">
-                            <label class="form-label">Profile Photo</label>
+                            <label class="form-label">Upload Profile Photo</label>
                             <div class="d-flex align-items-center gap-3">
                                 <div class="profile-photo-preview">
                                     @if($user->photo && file_exists(storage_path('app/public/' . $user->photo)))
@@ -64,67 +69,6 @@
                             </div>
                             @error('photo')
                                 <div class="text-danger small mt-1">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <!-- Name Fields -->
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="firstname" class="form-label">First Name *</label>
-                                <input type="text" class="form-control @error('firstname') is-invalid @enderror" 
-                                       id="firstname" name="firstname" value="{{ old('firstname', $user->firstname) }}" required>
-                                @error('firstname')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="lastname" class="form-label">Last Name *</label>
-                                <input type="text" class="form-control @error('lastname') is-invalid @enderror" 
-                                       id="lastname" name="lastname" value="{{ old('lastname', $user->lastname) }}" required>
-                                @error('lastname')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="middlename" class="form-label">Middle Name</label>
-                            <input type="text" class="form-control @error('middlename') is-invalid @enderror" 
-                                   id="middlename" name="middlename" value="{{ old('middlename', $user->middlename) }}">
-                            @error('middlename')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="gender" class="form-label">Gender *</label>
-                                <select class="form-select @error('gender') is-invalid @enderror" id="gender" name="gender" required>
-                                    <option value="">Select Gender</option>
-                                    <option value="male" {{ old('gender', $user->gender) == 'male' ? 'selected' : '' }}>Male</option>
-                                    <option value="female" {{ old('gender', $user->gender) == 'female' ? 'selected' : '' }}>Female</option>
-                                    <option value="other" {{ old('gender', $user->gender) == 'other' ? 'selected' : '' }}>Other</option>
-                                </select>
-                                @error('gender')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="bdate" class="form-label">Birth Date *</label>
-                                <input type="date" class="form-control @error('bdate') is-invalid @enderror" 
-                                       id="bdate" name="bdate" value="{{ old('bdate', $user->bdate?->format('Y-m-d')) }}" required>
-                                @error('bdate')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="address" class="form-label">Address *</label>
-                            <textarea class="form-control @error('address') is-invalid @enderror" 
-                                      id="address" name="address" rows="3" required>{{ old('address', $user->address) }}</textarea>
-                            @error('address')
-                                <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
@@ -154,32 +98,33 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+                    </div>
+                </div>
+            </div>
 
-                        <!-- Skills Selection -->
-                        <div class="mb-3">
-                            <label class="form-label">Skills & Expertise *</label>
-                            <div class="skills-selection-container">
-                                <div class="selected-skills" id="selectedSkills">
+            <!-- Skills Display (Read-only) -->
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <div class="dashboard-card">
+                        <h3 class="h5 fw-bold text-gradient mb-4">
+                            <i class="fas fa-tools me-2"></i>Skills & Expertise
+                        </h3>
+                        <div class="skills-display-container">
+                            @if($user->skills->count() > 0)
+                                <div class="skills-container">
                                     @foreach($user->skills as $skill)
-                                        <span class="selected-skill" data-skill-id="{{ $skill->skill_id }}">
+                                        <span class="skill-badge {{ $skill->skill_id == $user->skill_id ? 'skill-badge-primary' : 'skill-badge-secondary' }}">
                                             {{ $skill->skill_name }}
-                                            <button type="button" class="remove-skill" onclick="removeSkill({{ $skill->skill_id }})">
-                                                <i class="fas fa-times"></i>
-                                            </button>
+                                            @if($skill->skill_id == $user->skill_id)
+                                                <i class="fas fa-star ms-1" title="Primary Skill"></i>
+                                            @endif
                                         </span>
                                     @endforeach
                                 </div>
-                                <div class="skills-search-container">
-                                    <input type="text" class="form-control" id="skillSearch" placeholder="Search skills..." autocomplete="off">
-                                    <div class="skills-dropdown" id="skillsDropdown" style="display: none;">
-                                        <!-- Skills will be populated here -->
-                                    </div>
-                                </div>
-                                <input type="hidden" name="selected_skills" id="selectedSkillsInput" value="{{ $user->skills->pluck('skill_id')->toJson() }}">
-                            </div>
-                            @error('selected_skills')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
-                            @enderror
+                                <small class="text-muted">Skills cannot be edited from profile. Contact admin to modify skills.</small>
+                            @else
+                                <p class="text-muted">No skills assigned. Contact admin to add skills to your profile.</p>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -279,84 +224,6 @@ function previewPhoto(input) {
         reader.readAsDataURL(file);
     }
 }
-
-// Skills selection functionality
-let selectedSkills = @json($user->skills->pluck('skill_id')->toArray());
-let allSkills = @json($skills);
-
-function updateSelectedSkillsInput() {
-    document.getElementById('selectedSkillsInput').value = JSON.stringify(
-        selectedSkills.map(skillId => ({ id: skillId }))
-    );
-}
-
-function addSkill(skillId, skillName) {
-    if (!selectedSkills.includes(skillId)) {
-        selectedSkills.push(skillId);
-        const selectedSkillsContainer = document.getElementById('selectedSkills');
-        const skillElement = document.createElement('span');
-        skillElement.className = 'selected-skill';
-        skillElement.setAttribute('data-skill-id', skillId);
-        skillElement.innerHTML = `
-            ${skillName}
-            <button type="button" class="remove-skill" onclick="removeSkill(${skillId})">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-        selectedSkillsContainer.appendChild(skillElement);
-        updateSelectedSkillsInput();
-    }
-    hideSkillsDropdown();
-}
-
-function removeSkill(skillId) {
-    selectedSkills = selectedSkills.filter(id => id !== skillId);
-    const skillElement = document.querySelector(`[data-skill-id="${skillId}"]`);
-    if (skillElement) {
-        skillElement.remove();
-    }
-    updateSelectedSkillsInput();
-}
-
-function showSkillsDropdown() {
-    document.getElementById('skillsDropdown').style.display = 'block';
-}
-
-function hideSkillsDropdown() {
-    document.getElementById('skillsDropdown').style.display = 'none';
-    document.getElementById('skillSearch').value = '';
-}
-
-function filterSkills(searchTerm) {
-    const dropdown = document.getElementById('skillsDropdown');
-    const filteredSkills = allSkills.filter(skill => 
-        skill.skill_name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !selectedSkills.includes(skill.skill_id)
-    );
-    
-    dropdown.innerHTML = filteredSkills.map(skill => 
-        `<div class="skill-option" onclick="addSkill(${skill.skill_id}, '${skill.skill_name}')">
-            ${skill.skill_name}
-        </div>`
-    ).join('');
-}
-
-// Event listeners
-document.getElementById('skillSearch').addEventListener('focus', showSkillsDropdown);
-document.getElementById('skillSearch').addEventListener('input', function(e) {
-    filterSkills(e.target.value);
-    showSkillsDropdown();
-});
-
-// Close dropdown when clicking outside
-document.addEventListener('click', function(e) {
-    if (!e.target.closest('.skills-selection-container')) {
-        hideSkillsDropdown();
-    }
-});
-
-// Initialize selected skills input
-updateSelectedSkillsInput();
 </script>
 @endpush
 
@@ -385,84 +252,41 @@ updateSelectedSkillsInput();
     color: #6c757d;
 }
 
-.skills-selection-container {
-    position: relative;
-}
-
-.selected-skills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    min-height: 40px;
-    padding: 0.5rem;
+.skills-display-container {
+    padding: 1rem;
     border: 1px solid #dee2e6;
     border-radius: 0.375rem;
     background: #f8f9fa;
 }
 
-.selected-skill {
+.skills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.skill-badge {
     display: inline-flex;
     align-items: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
     font-size: 0.875rem;
     font-weight: 500;
+    text-decoration: none;
+    transition: all 0.3s ease;
 }
 
-.remove-skill {
-    background: none;
-    border: none;
+.skill-badge-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
-    margin-left: 0.5rem;
-    cursor: pointer;
-    padding: 0;
-    width: 16px;
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    transition: background-color 0.2s;
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
 }
 
-.remove-skill:hover {
-    background-color: rgba(255,255,255,0.2);
-}
-
-.skills-search-container {
-    position: relative;
-}
-
-.skills-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
+.skill-badge-secondary {
+    background: #e9ecef;
+    color: #6c757d;
     border: 1px solid #dee2e6;
-    border-top: none;
-    border-radius: 0 0 0.375rem 0.375rem;
-    max-height: 200px;
-    overflow-y: auto;
-    z-index: 1000;
-}
-
-.skill-option {
-    padding: 0.75rem 1rem;
-    cursor: pointer;
-    border-bottom: 1px solid #f8f9fa;
-    transition: background-color 0.2s;
-}
-
-.skill-option:hover {
-    background-color: #f8f9fa;
-}
-
-.skill-option:last-child {
-    border-bottom: none;
 }
 
 .needs-validation .form-control:invalid,

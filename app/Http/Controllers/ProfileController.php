@@ -67,44 +67,39 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $user = $request->user();
-        
-        // Handle photo upload
-        if ($request->hasFile('photo')) {
-            // Delete old photo if exists
-            if ($user->photo && Storage::disk('public')->exists($user->photo)) {
-                Storage::disk('public')->delete($user->photo);
+        try {
+            $user = $request->user();
+            
+            if (!$user) {
+                abort(404, 'User not found');
             }
             
-            $photoPath = $request->file('photo')->store('photos', 'public');
-            $user->photo = $photoPath;
-        }
-
-        // Update basic profile information
-        $user->fill($request->validated());
-
-        if ($user->isDirty('email')) {
-            $user->email_verified_at = null;
-        }
-
-        $user->save();
-
-        // Handle skills update
-        if ($request->has('selected_skills')) {
-            $selectedSkills = json_decode($request->selected_skills, true);
-            if ($selectedSkills && is_array($selectedSkills)) {
-                $skillIds = array_column($selectedSkills, 'id');
-                $user->skills()->sync($skillIds);
-                
-                // Update primary skill (first selected skill)
-                if (!empty($skillIds)) {
-                    $user->skill_id = $skillIds[0];
-                    $user->save();
+            // Handle photo upload
+            if ($request->hasFile('photo')) {
+                // Delete old photo if exists
+                if ($user->photo && Storage::disk('public')->exists($user->photo)) {
+                    Storage::disk('public')->delete($user->photo);
                 }
+                
+                $photoPath = $request->file('photo')->store('photos', 'public');
+                $user->photo = $photoPath;
             }
-        }
 
-        return Redirect::route('profile.show')->with('status', 'profile-updated');
+            // Update only allowed fields (username, email)
+            $user->username = $request->validated()['username'];
+            $user->email = $request->validated()['email'];
+
+            if ($user->isDirty('email')) {
+                $user->email_verified_at = null;
+            }
+
+            $user->save();
+
+            return Redirect::route('profile.show')->with('status', 'profile-updated');
+        } catch (\Exception $e) {
+            Log::error('Profile update error: ' . $e->getMessage());
+            return Redirect::back()->withErrors(['error' => 'Failed to update profile. Please try again.']);
+        }
     }
 
     /**
