@@ -11,6 +11,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
  
@@ -82,6 +84,7 @@ class RegisteredUserController extends Controller
             'photo' => $photoPath,
             'skill_id' => $skillIds[0], // Keep the first skill as primary for backward compatibility
             'is_verified' => false, // stays false until admin approves
+            'email_verified_at' => null, // Email not verified yet
             'role' => 'user',
             'plan' => 'free',
             'token_balance' => 0,
@@ -90,8 +93,31 @@ class RegisteredUserController extends Controller
         // Attach all selected skills to the user
         $user->skills()->attach($skillIds);
 
+        // Generate email verification token
+        $verificationToken = Str::random(60);
+        $user->update(['email_verification_token' => $verificationToken]);
+
+        // Send verification email
+        $this->sendVerificationEmail($user, $verificationToken);
+
         event(new Registered($user));
 
-        return redirect()->route('login')->with('status', 'Your registration is pending approval by an admin.');
+        return redirect()->route('login')->with('status', 'Registration successful! Please check your email to verify your account.');
+    }
+
+    /**
+     * Send email verification
+     */
+    private function sendVerificationEmail($user, $token)
+    {
+        $verificationUrl = route('email.verify', ['token' => $token]);
+        
+        Mail::send('emails.verify-email', [
+            'user' => $user,
+            'verificationUrl' => $verificationUrl
+        ], function ($message) use ($user) {
+            $message->to($user->email, $user->firstname . ' ' . $user->lastname)
+                    ->subject('Verify Your Email Address - SkillsXchange');
+        });
     }
 }

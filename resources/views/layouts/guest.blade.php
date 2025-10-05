@@ -321,10 +321,8 @@
         }
     </style>
     
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="{{ asset('firebase-config.js') }}"></script>
+       <!-- Google OAuth Configuration -->
+       <script src="{{ asset('firebase-config.js') }}"></script>
 </head>
 
 <body class="font-sans text-gray-900 antialiased">

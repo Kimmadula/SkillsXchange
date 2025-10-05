@@ -118,11 +118,31 @@
                         <!-- Email Field -->
                         <div class="form-group mb-3">
                             <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control @error('email') is-invalid @enderror" 
-                                   id="email" name="email" value="{{ old('email', $user->email) }}" required>
+                            <div class="input-group">
+                                <input type="email" class="form-control @error('email') is-invalid @enderror" 
+                                       id="email" name="email" value="{{ old('email', $user->email) }}" required>
+                                @if($user->email_verified_at)
+                                    <span class="input-group-text text-success">
+                                        <i class="fas fa-check-circle"></i> Verified
+                                    </span>
+                                @else
+                                    <span class="input-group-text text-warning">
+                                        <i class="fas fa-exclamation-triangle"></i> Unverified
+                                    </span>
+                                @endif
+                            </div>
                             @error('email')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                            @if(!$user->email_verified_at)
+                                <div class="form-text text-warning">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Your email is not verified. Please check your inbox for a verification email.
+                                    <a href="{{ route('email.resend') }}" class="btn btn-sm btn-outline-warning ms-2">
+                                        Resend Verification
+                                    </a>
+                                </div>
+                            @endif
                         </div>
 
                         <!-- Skills Display (Read-only) -->

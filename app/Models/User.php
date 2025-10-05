@@ -33,6 +33,8 @@ class User extends Authenticatable
         'token_balance',
         'skill_id',
         'is_verified',
+        'email_verified_at',
+        'email_verification_token',
         'firebase_uid',
         'firebase_provider',
     ];

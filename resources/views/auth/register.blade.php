@@ -572,28 +572,10 @@
     </div>
 
     <script>
-        // Google Registration functionality
-        document.getElementById('google-register-btn').addEventListener('click', function() {
-            // Initialize Firebase and Google Sign-In
-            if (typeof firebase !== 'undefined') {
-                const provider = new firebase.auth.GoogleAuthProvider();
-                firebase.auth().signInWithPopup(provider)
-                    .then((result) => {
-                        // Send the Firebase token to your backend
-                        const firebaseToken = result.user.getIdToken();
-                        return firebaseToken;
-                    })
-                    .then((firebaseToken) => {
-                        // Redirect to Google username page for profile completion
-                        window.location.href = '{{ route("firebase.google-username") }}?token=' + firebaseToken + '&is_registration=true';
-                    })
-                    .catch((error) => {
-                        console.error('Google Sign-In Error:', error);
-                        alert('Google Registration failed. Please try again or use the registration form.');
-                    });
-            } else {
-                alert('Firebase is not loaded. Please refresh the page and try again.');
-            }
-        });
+           // Google Registration functionality
+           document.getElementById('google-register-btn').addEventListener('click', function() {
+               // Redirect to Google OAuth with registration flag
+               window.location.href = '{{ route("google.redirect") }}?registration=true';
+           });
     </script>
 </x-guest-layout>

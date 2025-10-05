@@ -9,6 +9,8 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\EmailVerificationController;
+use App\Http\Controllers\GoogleAuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -19,6 +21,18 @@ Route::middleware('guest')->group(function () {
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
                 ->name('login');
+                
+    // Email verification routes
+    Route::get('email/verify', [EmailVerificationController::class, 'verify'])
+                ->name('email.verify');
+    Route::post('email/resend', [EmailVerificationController::class, 'resend'])
+                ->name('email.resend');
+                
+    // Google OAuth routes
+    Route::get('auth/google', [GoogleAuthController::class, 'redirectToGoogle'])
+                ->name('google.redirect');
+    Route::get('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback'])
+                ->name('google.callback');
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
