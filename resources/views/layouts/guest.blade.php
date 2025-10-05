@@ -255,34 +255,45 @@
             font-size: 0.875rem;
         }
 
-        .firebase-auth-section {
+        .google-auth-section {
             text-align: center;
             margin-top: 1rem;
         }
 
-        .btn-firebase {
+        .btn-google {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             padding: 0.75rem 1.5rem;
-            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
-            color: white;
-            text-decoration: none;
+            background: white;
+            color: #333;
+            border: 1px solid #dadce0;
             border-radius: 8px;
-            font-weight: 600;
+            font-weight: 500;
             font-size: 0.95rem;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 10px rgba(255, 107, 53, 0.3);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            width: 100%;
+            max-width: 300px;
         }
 
-        .btn-firebase:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px rgba(255, 107, 53, 0.4);
-            color: white;
-            text-decoration: none;
+        .btn-google:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            background: #f8f9fa;
         }
 
-        .firebase-description {
+        .btn-google:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .google-icon {
+            margin-right: 0.75rem;
+        }
+
+        .google-description {
             margin-top: 0.75rem;
             color: #6b7280;
             font-size: 0.875rem;
@@ -309,6 +320,11 @@
             }
         }
     </style>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="{{ asset('firebase-config.js') }}"></script>
 </head>
 
 <body class="font-sans text-gray-900 antialiased">
