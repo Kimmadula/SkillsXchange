@@ -24,26 +24,9 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(LoginRequest $request): RedirectResponse
     {
-        $request->validate([
-            'login' => ['required', 'string'],
-            'password' => ['required', 'string'],
-        ]);
-
-        $login = $request->input('login');
-        $password = $request->input('password');
-        $remember = $request->boolean('remember');
-
-        // Determine if login is email or username
-        $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
-        
-        // Attempt authentication with the determined field
-        if (!Auth::attempt([$field => $login, 'password' => $password], $remember)) {
-            throw ValidationException::withMessages([
-                'login' => __('auth.failed'),
-            ]);
-        }
+        $request->authenticate();
 
         $user = Auth::user();
 

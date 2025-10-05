@@ -9,10 +9,10 @@
     const CONFIG = {
         SESSION_LIFETIME_MINUTES: 525600, // 1 year - sessions persist until logout
         WARNING_THRESHOLD_MINUTES: 0, // No warnings - sessions don't expire automatically
-        REFRESH_INTERVAL_SECONDS: 300, // Check session every 5 minutes (reduced frequency)
-        KEEP_ALIVE_INTERVAL_SECONDS: 1800, // Send keep-alive every 30 minutes
-        MAX_RETRY_ATTEMPTS: 3,
-        RETRY_DELAY_MS: 1000,
+        REFRESH_INTERVAL_SECONDS: 600, // Check session every 10 minutes (reduced frequency)
+        KEEP_ALIVE_INTERVAL_SECONDS: 3600, // Send keep-alive every 60 minutes (reduced frequency)
+        MAX_RETRY_ATTEMPTS: 2, // Reduced retry attempts
+        RETRY_DELAY_MS: 2000, // Increased delay between retries
         PERSISTENT_SESSION: true // Sessions persist until explicit logout
     };
 
@@ -26,7 +26,8 @@
         retryCount: 0,
         isSessionExpired: false,
         isWarningShown: false,
-        isOnline: navigator.onLine
+        isOnline: navigator.onLine,
+        isRequestInProgress: false // Prevent duplicate requests
     };
 
     // Initialize the session monitor
@@ -229,7 +230,9 @@
      * Check session status
      */
     function checkSessionStatus() {
-        if (!state.isOnline || state.isSessionExpired) return;
+        if (!state.isOnline || state.isSessionExpired || state.isRequestInProgress) return;
+        
+        state.isRequestInProgress = true;
 
         fetch('/user/session-status', {
             method: 'GET',
@@ -250,6 +253,7 @@
             return response.json();
         })
         .then(data => {
+            state.isRequestInProgress = false; // Reset request flag
             if (data && data.expired && !CONFIG.PERSISTENT_SESSION) {
                 handleSessionExpiration();
             } else if (data && data.status === 'authenticated') {
@@ -258,6 +262,7 @@
             }
         })
         .catch(error => {
+            state.isRequestInProgress = false; // Reset request flag
             console.error('Session status check failed:', error);
             handleSessionCheckError();
         });

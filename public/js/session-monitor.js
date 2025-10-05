@@ -182,6 +182,7 @@ class SessionMonitor {
 }
 
 // Initialize session monitor when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.sessionMonitor = new SessionMonitor();
-});
+// DISABLED: Using enhanced session monitor instead
+// document.addEventListener('DOMContentLoaded', () => {
+//     window.sessionMonitor = new SessionMonitor();
+// });

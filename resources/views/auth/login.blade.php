@@ -20,7 +20,7 @@
     </div>
     @endif
 
-    <form method="POST" action="{{ route('login') }}">
+    <form method="POST" action="{{ route('login') }}" id="loginForm">
         @csrf
 
         <!-- Username or Email -->
@@ -79,4 +79,25 @@
             Use Firebase Authentication for enhanced security and social login options
         </p>
     </div>
+
+    <script>
+        // Prevent double form submission
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn.disabled) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Disable submit button to prevent double submission
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Logging in...';
+            
+            // Re-enable after 5 seconds as fallback
+            setTimeout(() => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'LOG IN';
+            }, 5000);
+        });
+    </script>
 </x-guest-layout>

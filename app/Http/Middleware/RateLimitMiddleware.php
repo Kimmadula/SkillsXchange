@@ -21,6 +21,11 @@ class RateLimitMiddleware
      */
     public function handle(Request $request, Closure $next)
     {
+        // Skip rate limiting for authenticated users on protected routes
+        if (auth()->check() && $this->isProtectedRoute($request)) {
+            return $next($request);
+        }
+        
         $key = $this->resolveRequestSignature($request);
         
         // Different rate limits for different types of requests
@@ -100,7 +105,7 @@ class RateLimitMiddleware
         }
         
         // General web requests - very lenient for normal usage
-        return 1000; // 1000 requests per 1 minute
+        return 2000; // 2000 requests per 1 minute (increased for better user experience)
     }
     
     /**
@@ -122,5 +127,32 @@ class RateLimitMiddleware
         
         // General requests - much shorter decay
         return 1; // 1 minute
+    }
+    
+    /**
+     * Check if the request is to a protected route that should be exempt from rate limiting
+     */
+    protected function isProtectedRoute(Request $request)
+    {
+        $path = $request->path();
+        
+        // Protected routes that authenticated users should be able to access without rate limiting
+        $protectedRoutes = [
+            'dashboard',
+            'profile',
+            'trades',
+            'admin',
+            'user',
+            'session',
+            'logout'
+        ];
+        
+        foreach ($protectedRoutes as $route) {
+            if (str_starts_with($path, $route)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 }
