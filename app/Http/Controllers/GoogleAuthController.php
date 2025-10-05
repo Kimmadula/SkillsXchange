@@ -26,7 +26,6 @@ class GoogleAuthController extends Controller
         }
         
         return Socialite::driver('google')
-            ->scopes(['email', 'profile'])
             ->redirect();
     }
     
