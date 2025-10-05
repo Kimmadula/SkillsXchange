@@ -29,19 +29,7 @@ Route::middleware('guest')->group(function () {
     Route::post('email/resend', [EmailVerificationController::class, 'resend'])
                 ->name('email.resend');
                 
-    // Google OAuth routes
-    Route::get('auth/google', [GoogleAuthController::class, 'redirectToGoogle'])
-                ->name('google.redirect');
-    Route::get('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback'])
-                ->name('google.callback');
-                
-    // Google Email Verification routes (for authenticated users)
-    Route::middleware('auth')->group(function () {
-        Route::get('google/verify', [GoogleEmailVerificationController::class, 'redirectToGoogle'])
-                    ->name('google.verify');
-        Route::get('google/verify/callback', [GoogleEmailVerificationController::class, 'handleGoogleCallback'])
-                    ->name('google.verify.callback');
-    });
+    // Firebase Authentication Routes (replacing Laravel Socialite)
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 

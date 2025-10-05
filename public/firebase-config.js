@@ -72,7 +72,7 @@ function authenticateWithLaravel(idToken, provider, isRegistration = false) {
         body: JSON.stringify({
             firebase_token: idToken,
             provider: provider,
-            is_registration: isRegistration
+            is_registration: isRegistration || window.location.pathname.includes('register')
         })
     })
     .then(response => response.json())

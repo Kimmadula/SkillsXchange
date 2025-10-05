@@ -59,31 +59,26 @@ class FirebaseAuthController extends Controller
                 ]);
             }
 
-            // Check email verification for new registrations
+            // New user verification flow - allow all users to access dashboard
             if ($isNewUser || $isRegistration) {
-                $emailVerified = $firebaseUser['email_verified'] ?? false;
-                
-                if (!$emailVerified) {
-                    // Don't log in unverified users
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Email verification required',
-                        'verification_required' => true,
-                        'redirect_url' => route('firebase.verify-email')
-                    ], 403);
-                }
+                // Set user as verified by default (new flow)
+                $user->update([
+                    'is_verified' => true,
+                    'google_verified' => true,
+                    'email_verified_at' => now()
+                ]);
             }
 
             // Log the user in
             Auth::login($user);
 
-            // Determine redirect URL based on registration status and profile completion
-            $redirectUrl = route('dashboard');
+            // Determine redirect URL based on registration status
             if ($isNewUser || $isRegistration) {
-                // Check if user needs to complete profile
-                if (!$user->firstname || !$user->lastname || !$user->address) {
-                    $redirectUrl = route('firebase.profile.complete');
-                }
+                // New users go to profile edit to complete their profile
+                $redirectUrl = route('profile.edit');
+            } else {
+                // Existing users go to dashboard
+                $redirectUrl = route('dashboard');
             }
 
             return response()->json([
