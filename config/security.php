@@ -227,7 +227,7 @@ return [
         |
         */
         'allowed_origins' => [
-            'https://skillsxchange-13vk.onrender.com',
+            'https://skillsxchange-crus.onrender.com',
             'https://your-railway-app.railway.app',
         ],
         'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
