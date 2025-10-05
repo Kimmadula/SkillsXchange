@@ -207,7 +207,9 @@
                             @if($user->photo && file_exists(storage_path('app/public/' . $user->photo)))
                                 <img src="{{ asset('storage/' . $user->photo) }}" alt="Profile Photo" class="avatar-image">
                             @else
-                                <div class="avatar-fallback">{{ substr($user->firstname, 0, 1) }}{{ substr($user->lastname, 0, 1) }}</div>
+                                <div class="avatar-fallback">
+                                    <i class="fas fa-user"></i>
+                                </div>
                             @endif
                         </div>
                         <div class="profile-info">

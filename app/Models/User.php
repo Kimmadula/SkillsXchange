@@ -33,6 +33,8 @@ class User extends Authenticatable
         'token_balance',
         'skill_id',
         'is_verified',
+        'firebase_uid',
+        'firebase_provider',
     ];
 
     /**
@@ -89,5 +91,48 @@ class User extends Authenticatable
     public function findForPassport($username)
     {
         return $this->where('username', $username)->orWhere('email', $username)->first();
+    }
+
+    /**
+     * Find user by Firebase UID.
+     */
+    public function findByFirebaseUid($uid)
+    {
+        return $this->where('firebase_uid', $uid)->first();
+    }
+
+    /**
+     * Create or update user from Firebase auth data.
+     */
+    public function createOrUpdateFromFirebase($firebaseUser, $provider = 'email')
+    {
+        $userData = [
+            'firebase_uid' => $firebaseUser['uid'],
+            'firebase_provider' => $provider,
+            'email' => $firebaseUser['email'] ?? null,
+            'is_verified' => $firebaseUser['email_verified'] ?? false,
+        ];
+
+        // Extract name parts if available
+        if (isset($firebaseUser['display_name']) && $firebaseUser['display_name']) {
+            $nameParts = explode(' ', $firebaseUser['display_name'], 2);
+            $userData['firstname'] = $nameParts[0] ?? '';
+            $userData['lastname'] = $nameParts[1] ?? '';
+        }
+
+        // Generate username if not provided
+        if (!isset($userData['username']) && isset($userData['email'])) {
+            $userData['username'] = explode('@', $userData['email'])[0];
+        }
+
+        // Set default values
+        $userData['role'] = $userData['role'] ?? 'user';
+        $userData['plan'] = $userData['plan'] ?? 'free';
+        $userData['token_balance'] = $userData['token_balance'] ?? 0;
+
+        return $this->updateOrCreate(
+            ['firebase_uid' => $firebaseUser['uid']],
+            $userData
+        );
     }
 }

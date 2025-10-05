@@ -14,16 +14,7 @@
             <div class="col-12">
                 <div class="profile-header-card">
                     <div class="row align-items-center">
-                        <div class="col-md-3 text-center text-md-start mb-3 mb-md-0">
-                            <div class="profile-avatar-large">
-                                @if($user->photo && file_exists(storage_path('app/public/' . $user->photo)))
-                                    <img src="{{ asset('storage/' . $user->photo) }}" alt="Profile Photo" class="avatar-image-large">
-                                @else
-                                    <div class="avatar-fallback-large">{{ substr($user->firstname, 0, 1) }}{{ substr($user->lastname, 0, 1) }}</div>
-                                @endif
-                            </div>
-                        </div>
-                        <div class="col-md-6">
+                        <div class="col-md-9">
                             <h1 class="h2 fw-bold text-gradient mb-2">{{ $user->name }}</h1>
                             <p class="text-muted mb-3">{{ $user->email }}</p>
                             <div class="profile-badges">
@@ -165,34 +156,6 @@
     box-shadow: 0 10px 30px rgba(0,0,0,0.1);
 }
 
-.profile-avatar-large {
-    position: relative;
-    display: inline-block;
-}
-
-.avatar-image-large {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 4px solid rgba(255,255,255,0.3);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
-
-.avatar-fallback-large {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2.5rem;
-    font-weight: bold;
-    color: white;
-    border: 4px solid rgba(255,255,255,0.3);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-}
 
 .profile-badges .badge {
     font-size: 0.875rem;
@@ -265,16 +228,6 @@
 @media (max-width: 768px) {
     .profile-header-card {
         padding: 1.5rem;
-    }
-    
-    .avatar-image-large,
-    .avatar-fallback-large {
-        width: 80px;
-        height: 80px;
-    }
-    
-    .avatar-fallback-large {
-        font-size: 1.8rem;
     }
 }
 </style>

@@ -72,5 +72,6 @@ class Kernel extends HttpKernel
         'user.only' => \App\Http\Middleware\UserOnlyMiddleware::class,
         'rate.limit' => \App\Http\Middleware\RateLimitMiddleware::class,
         'ddos.protection' => \App\Http\Middleware\DDoSProtectionMiddleware::class,
+        'firebase.email.verified' => \App\Http\Middleware\FirebaseEmailVerified::class,
     ];
 }

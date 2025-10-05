@@ -64,4 +64,19 @@
             </div>
         </div>
     </form>
+
+    <!-- Firebase Authentication Option -->
+    <div class="auth-divider">
+        <span>or</span>
+    </div>
+
+    <div class="firebase-auth-section">
+        <a href="{{ route('firebase.login') }}" class="btn-firebase">
+            <i class="fas fa-fire me-2"></i>
+            Sign in with Firebase
+        </a>
+        <p class="firebase-description">
+            Use Firebase Authentication for enhanced security and social login options
+        </p>
+    </div>
 </x-guest-layout>

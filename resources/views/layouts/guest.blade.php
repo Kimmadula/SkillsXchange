@@ -231,6 +231,64 @@
             text-decoration: underline;
         }
 
+        /* Firebase Authentication Styles */
+        .auth-divider {
+            text-align: center;
+            margin: 1.5rem 0;
+            position: relative;
+        }
+
+        .auth-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e5e7eb;
+        }
+
+        .auth-divider span {
+            background: #f5f5f5;
+            padding: 0 1rem;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .firebase-auth-section {
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .btn-firebase {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(255, 107, 53, 0.3);
+        }
+
+        .btn-firebase:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(255, 107, 53, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+
+        .firebase-description {
+            margin-top: 0.75rem;
+            color: #6b7280;
+            font-size: 0.875rem;
+            line-height: 1.4;
+        }
+
         @media (max-width: 640px) {
             .auth-container {
                 padding: 1rem;

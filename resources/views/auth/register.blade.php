@@ -544,6 +544,21 @@
         </div>
     </form>
 
+    <!-- Firebase Registration Option -->
+    <div class="auth-divider">
+        <span>or</span>
+    </div>
+
+    <div class="firebase-auth-section">
+        <a href="{{ route('firebase.register') }}" class="btn-firebase">
+            <i class="fas fa-fire me-2"></i>
+            Register with Firebase
+        </a>
+        <p class="firebase-description">
+            Use Firebase Authentication for quick registration with email or social accounts
+        </p>
+    </div>
+
     <!-- Back button outside form -->
     <div class="form-back-button">
         <a href="{{ url('/') }}" class="btn-secondary">
