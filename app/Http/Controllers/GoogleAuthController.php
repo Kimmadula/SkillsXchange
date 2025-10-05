@@ -129,7 +129,7 @@ class GoogleAuthController extends Controller
             });
         } catch (\Exception $e) {
             // Log error but don't fail registration
-            \Log::error('Welcome email failed: ' . $e->getMessage());
+            Log::error('Welcome email failed: ' . $e->getMessage());
         }
     }
 }
