@@ -22,9 +22,8 @@ else
     echo "⚠️ Asset build failed, using fallback CSS"
 fi
 
-# Run database migrations
-echo "Running database migrations..."
-php artisan migrate --force
+# Skip database migrations during build (will run on startup)
+echo "Skipping database migrations during build (will run on startup)..."
 
 # Clear and cache Laravel configurations
 echo "Clearing and caching Laravel configurations..."

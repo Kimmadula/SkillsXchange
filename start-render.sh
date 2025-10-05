@@ -9,6 +9,18 @@ chmod -R 755 storage bootstrap/cache
 # Ensure Firebase files are accessible
 chmod 644 public/firebase-config.js public/firebase-video-integration.js public/firebase-video-call.js
 
+# Wait for database to be ready
+echo "Waiting for database to be ready..."
+sleep 10
+
+# Test database connection
+echo "Testing database connection..."
+php test-db-connection.php || echo "Database not ready, will retry..."
+
+# Run database migrations
+echo "Running database migrations..."
+php artisan migrate --force || echo "Migration failed, continuing..."
+
 # Clear and cache configurations
 php artisan config:clear
 php artisan cache:clear
