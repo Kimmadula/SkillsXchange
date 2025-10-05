@@ -57,10 +57,10 @@
         <ul>
             <li><strong>Email:</strong> {{ $user->email }}</li>
             <li><strong>Username:</strong> {{ $user->username }}</li>
-            <li><strong>Status:</strong> Pending admin approval</li>
+            <li><strong>Status:</strong> Account active - ready to explore!</li>
         </ul>
         
-        <p>Please complete your profile by adding your skills and personal information. Your account will be reviewed by an admin before you can start using the platform.</p>
+        <p>Your account is ready to use! You can immediately access your dashboard and start exploring the platform. To unlock full trading and skill exchange features, verify your email with Google in your profile settings.</p>
         
         <div style="text-align: center;">
             <a href="{{ $loginUrl }}" class="button">Complete Your Profile</a>
@@ -69,7 +69,7 @@
         <p><strong>Next Steps:</strong></p>
         <ol>
             <li>Complete your profile with your skills and expertise</li>
-            <li>Wait for admin approval (usually within 24 hours)</li>
+            <li>Verify your email with Google to unlock trading features</li>
             <li>Start connecting with other users and sharing skills!</li>
         </ol>
     </div>

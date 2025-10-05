@@ -65,6 +65,50 @@
             </div>
         @endif
 
+        <!-- Google Email Verification Prompt -->
+        @if(!$user->google_verified)
+        <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+            <div class="d-flex align-items-start">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-envelope-open-text fa-2x text-primary"></i>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                    <h5 class="alert-heading mb-2">
+                        <i class="fas fa-shield-alt me-2"></i>Verify Your Email with Google
+                    </h5>
+                    <p class="mb-3">
+                        To unlock full access to trading and skill exchange features, verify your email address using Google authentication. 
+                        This ensures secure communication and transaction notifications.
+                    </p>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <a href="{{ route('google.redirect', ['registration' => false]) }}" class="btn btn-primary">
+                            <i class="fab fa-google me-2"></i>Verify with Google
+                        </a>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="alert">
+                            <i class="fas fa-times me-2"></i>Maybe Later
+                        </button>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="fas fa-info-circle me-1"></i>
+                        You can still explore the platform and edit your profile without verification.
+                    </small>
+                </div>
+            </div>
+        </div>
+        @else
+        <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-check-circle fa-2x text-success me-3"></i>
+                <div>
+                    <h6 class="alert-heading mb-1">
+                        <i class="fas fa-shield-check me-2"></i>Email Verified with Google
+                    </h6>
+                    <p class="mb-0">Your email is verified! You have full access to all platform features.</p>
+                </div>
+            </div>
+        </div>
+        @endif
+
         <div class="row profile-sections-container">
             <!-- Personal Info Section -->
             <div class="col-lg-8 mb-4">

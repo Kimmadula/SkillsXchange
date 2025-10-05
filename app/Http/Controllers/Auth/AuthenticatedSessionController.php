@@ -34,10 +34,8 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
-        if (!$user->is_verified) {
-            Auth::logout();
-            return redirect()->route('login')->with('status', 'Your registration is pending approval by an admin.');
-        }
+        // Allow users to access dashboard even if not verified
+        // Email verification is now optional and can be done in profile
 
         $request->session()->regenerate();
 

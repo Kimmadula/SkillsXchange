@@ -46,11 +46,25 @@ class GoogleAuthController extends Controller
             $user = User::where('email', $googleUser->getEmail())->first();
             
             if ($user) {
-                // User exists - log them in
-                Auth::login($user);
-                
-                return redirect()->intended('/dashboard')
-                    ->with('status', 'Welcome back! You have been logged in successfully.');
+                // User exists - check if this is a verification flow
+                if (!$isRegistration && !$user->google_verified) {
+                    // This is an email verification flow
+                    $user->update([
+                        'google_verified' => true,
+                        'email_verified_at' => now()
+                    ]);
+                    
+                    Auth::login($user);
+                    
+                    return redirect()->route('profile.edit')
+                        ->with('status', 'Email verified successfully with Google! You now have full access to all platform features.');
+                } else {
+                    // Regular login
+                    Auth::login($user);
+                    
+                    return redirect()->intended('/dashboard')
+                        ->with('status', 'Welcome back! You have been logged in successfully.');
+                }
             } else {
                 if ($isRegistration) {
                     // Create new user account
@@ -98,8 +112,9 @@ class GoogleAuthController extends Controller
             'role' => 'user',
             'plan' => 'free',
             'token_balance' => 0,
-            'is_verified' => false, // Admin approval still required
+            'is_verified' => true, // Users can access dashboard immediately
             'email_verified_at' => now(), // Google email is already verified
+            'google_verified' => true, // Google users are automatically verified
             'skill_id' => $defaultSkill ? $defaultSkill->skill_id : null,
         ]);
         

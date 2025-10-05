@@ -83,7 +83,7 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
             'photo' => $photoPath,
             'skill_id' => $skillIds[0], // Keep the first skill as primary for backward compatibility
-            'is_verified' => false, // stays false until admin approves
+            'is_verified' => true, // Users can access dashboard immediately
             'email_verified_at' => null, // Email not verified yet
             'role' => 'user',
             'plan' => 'free',
@@ -95,7 +95,8 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
-        return redirect()->route('login')->with('status', 'Registration successful! You can now log in and explore the platform. Verify your email with Google to unlock all features.');
+        Auth::login($user);
+        return redirect()->route('profile.edit')->with('status', 'Registration successful! Complete your profile and verify your email with Google to unlock all features.');
     }
 
     /**

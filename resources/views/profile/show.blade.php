@@ -19,10 +19,14 @@
                             <p class="text-muted mb-3">{{ $user->email }}</p>
                             <div class="profile-badges">
                                 <span class="badge bg-primary me-2">{{ ucfirst($user->role) }}</span>
-                                @if($user->is_verified)
-                                    <span class="badge bg-success me-2">Verified</span>
+                                @if($user->google_verified)
+                                    <span class="badge bg-success me-2">
+                                        <i class="fab fa-google me-1"></i>Email Verified
+                                    </span>
                                 @else
-                                    <span class="badge bg-warning me-2">Pending Verification</span>
+                                    <span class="badge bg-warning me-2">
+                                        <i class="fas fa-envelope me-1"></i>Email Not Verified
+                                    </span>
                                 @endif
                                 <span class="badge bg-info">{{ ucfirst($user->plan) }} Plan</span>
                             </div>
