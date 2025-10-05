@@ -9,10 +9,11 @@
     const CONFIG = {
         SESSION_LIFETIME_MINUTES: 525600, // 1 year - sessions persist until logout
         WARNING_THRESHOLD_MINUTES: 0, // No warnings - sessions don't expire automatically
-        REFRESH_INTERVAL_SECONDS: 600, // Check session every 10 minutes (reduced frequency)
+        REFRESH_INTERVAL_SECONDS: 900, // Check session every 15 minutes (further reduced frequency)
         KEEP_ALIVE_INTERVAL_SECONDS: 3600, // Send keep-alive every 60 minutes (reduced frequency)
         MAX_RETRY_ATTEMPTS: 2, // Reduced retry attempts
-        RETRY_DELAY_MS: 2000, // Increased delay between retries
+        RETRY_DELAY_MS: 3000, // Increased delay between retries
+        REQUEST_THROTTLE_MS: 2000, // Minimum delay between requests
         PERSISTENT_SESSION: true // Sessions persist until explicit logout
     };
 
@@ -27,7 +28,8 @@
         isSessionExpired: false,
         isWarningShown: false,
         isOnline: navigator.onLine,
-        isRequestInProgress: false // Prevent duplicate requests
+        isRequestInProgress: false, // Prevent duplicate requests
+        lastRequestTime: 0 // Track last request time for throttling
     };
 
     // Initialize the session monitor
@@ -232,7 +234,15 @@
     function checkSessionStatus() {
         if (!state.isOnline || state.isSessionExpired || state.isRequestInProgress) return;
         
+        // Throttle requests to prevent rate limiting
+        const now = Date.now();
+        if (now - state.lastRequestTime < CONFIG.REQUEST_THROTTLE_MS) {
+            console.log('Request throttled to prevent rate limiting');
+            return;
+        }
+        
         state.isRequestInProgress = true;
+        state.lastRequestTime = now;
 
         fetch('/user/session-status', {
             method: 'GET',
@@ -273,6 +283,15 @@
      */
     function sendKeepAlive() {
         if (!state.isOnline || state.isSessionExpired) return;
+        
+        // Throttle requests to prevent rate limiting
+        const now = Date.now();
+        if (now - state.lastRequestTime < CONFIG.REQUEST_THROTTLE_MS) {
+            console.log('Keep-alive request throttled to prevent rate limiting');
+            return;
+        }
+        
+        state.lastRequestTime = now;
 
         fetch('/user/keep-alive', {
             method: 'POST',

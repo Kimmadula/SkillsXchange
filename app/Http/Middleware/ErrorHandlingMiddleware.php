@@ -105,7 +105,7 @@ class ErrorHandlingMiddleware
         Session::put($key, $requests);
         
         // Adjust threshold based on request type
-        $threshold = 30; // Default threshold
+        $threshold = 100; // Increased threshold to prevent false positives
         
         // Higher threshold for chat message polling
         if (str_contains($request->path(), 'chat') && str_contains($request->path(), 'messages')) {

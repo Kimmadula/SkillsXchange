@@ -26,6 +26,11 @@ class RateLimitMiddleware
             return $next($request);
         }
         
+        // Skip rate limiting for browser preconnections and static assets
+        if ($this->isBrowserPreconnection($request) || $this->isStaticAsset($request)) {
+            return $next($request);
+        }
+        
         $key = $this->resolveRequestSignature($request);
         
         // Different rate limits for different types of requests
@@ -105,7 +110,7 @@ class RateLimitMiddleware
         }
         
         // General web requests - very lenient for normal usage
-        return 2000; // 2000 requests per 1 minute (increased for better user experience)
+        return 5000; // 5000 requests per 1 minute (increased for better user experience)
     }
     
     /**
@@ -151,6 +156,51 @@ class RateLimitMiddleware
             if (str_starts_with($path, $route)) {
                 return true;
             }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Check if request is a browser preconnection
+     */
+    protected function isBrowserPreconnection(Request $request)
+    {
+        // Check for browser preconnection headers
+        $userAgent = $request->userAgent();
+        $connectionHeader = $request->header('Connection');
+        
+        // Chrome and other browsers send preconnections
+        if (str_contains($userAgent, 'Chrome') && $connectionHeader === 'keep-alive') {
+            // Check if it's a speculative preconnection (no actual request data)
+            $contentLength = $request->header('Content-Length', 0);
+            if ($contentLength == 0 && $request->method() === 'GET') {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Check if request is for static assets
+     */
+    protected function isStaticAsset(Request $request)
+    {
+        $path = $request->path();
+        
+        // Common static asset extensions
+        $staticExtensions = ['css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'svg', 'ico', 'woff', 'woff2', 'ttf', 'eot'];
+        
+        foreach ($staticExtensions as $extension) {
+            if (str_ends_with($path, '.' . $extension)) {
+                return true;
+            }
+        }
+        
+        // Check for build assets
+        if (str_starts_with($path, 'build/') || str_starts_with($path, 'assets/')) {
+            return true;
         }
         
         return false;
