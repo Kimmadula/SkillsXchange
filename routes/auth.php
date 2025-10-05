@@ -35,6 +35,10 @@ Route::middleware('guest')->group(function () {
         return view('auth.firebase-verify-email');
     })->name('firebase.verify-email');
 
+    Route::get('firebase/google-username', function () {
+        return view('auth.google-username');
+    })->name('firebase.google-username');
+
     Route::post('auth/firebase/callback', [App\Http\Controllers\Auth\FirebaseAuthController::class, 'callback'])
                 ->name('firebase.callback');
 
@@ -83,6 +87,9 @@ Route::middleware('auth')->group(function () {
     Route::post('auth/firebase/verify-status', [App\Http\Controllers\Auth\FirebaseAuthController::class, 'updateVerificationStatus'])
                 ->name('firebase.verify-status');
 
+    Route::post('auth/firebase/google-callback', [App\Http\Controllers\Auth\FirebaseAuthController::class, 'googleCallback'])
+                ->name('firebase.google-callback');
+
     // Firebase Profile Completion Routes (requires email verification)
     Route::get('profile/complete', [App\Http\Controllers\Auth\FirebaseAuthController::class, 'showProfileComplete'])
                 ->middleware('firebase.email.verified')
@@ -90,5 +97,5 @@ Route::middleware('auth')->group(function () {
 
     Route::post('profile/complete', [App\Http\Controllers\Auth\FirebaseAuthController::class, 'completeProfile'])
                 ->middleware('firebase.email.verified')
-                ->name('firebase.profile.complete');
+                ->name('firebase.profile.complete.post');
 });

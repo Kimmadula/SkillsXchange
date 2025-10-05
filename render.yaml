@@ -67,6 +67,28 @@ services:
       - key: VITE_PUSHER_APP_CLUSTER
         value: "ap1"
 
+      # ✅ Firebase Authentication Configuration
+      - key: FIREBASE_PROJECT_ID
+        value: "skillsxchange-26855"
+      - key: FIREBASE_API_KEY
+        value: "AIzaSyAL1qfUGstU2DzY864pTzZwxf812JN4jkM"
+      - key: FIREBASE_AUTH_DOMAIN
+        value: "skillsxchange-26855.firebaseapp.com"
+      - key: FIREBASE_DATABASE_URL
+        value: "https://skillsxchange-26855-default-rtdb.asia-southeast1.firebasedatabase.app"
+      - key: FIREBASE_STORAGE_BUCKET
+        value: "skillsxchange-26855.firebasestorage.app"
+      - key: FIREBASE_MESSAGING_SENDER_ID
+        value: "61175608249"
+      - key: FIREBASE_APP_ID
+        value: "1:61175608249:web:ebd30cdd178d9896d2fc68"
+      - key: FIREBASE_MEASUREMENT_ID
+        value: "G-V1WLV98X63"
+      - key: FIREBASE_AUTH_ENABLED
+        value: "true"
+      - key: FIREBASE_EMAIL_VERIFICATION_REQUIRED
+        value: "true"
+
   # ✅ WebSocket service removed - Firebase handles video call signaling
   # Firebase Realtime Database provides real-time communication
   # No additional services needed for video calling

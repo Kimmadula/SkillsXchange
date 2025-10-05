@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Http\Request;
 
+// Include health check routes
+require_once __DIR__ . '/health.php';
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes

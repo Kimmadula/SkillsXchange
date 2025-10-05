@@ -93,6 +93,17 @@ function handleFirebaseRegistration(user) {
     });
 }
 
+// Handle Google sign in with username requirement
+function handleGoogleSignIn(user) {
+    // Get the ID token
+    user.getIdToken().then(function(idToken) {
+        // Redirect to username input page
+        window.location.href = '/firebase/google-username';
+    }).catch(function(error) {
+        console.error('❌ Error getting ID token:', error);
+    });
+}
+
 // Handle Firebase sign out
 function handleFirebaseSignOut() {
     // Redirect to login page
@@ -149,7 +160,12 @@ window.firebaseAuthMethods = {
     // Sign in with Google
     signInWithGoogle: function() {
         const provider = new firebase.auth.GoogleAuthProvider();
-        return window.firebaseAuth.signInWithPopup(provider);
+        return window.firebaseAuth.signInWithPopup(provider)
+            .then(function(result) {
+                // Handle Google sign-in with username requirement
+                handleGoogleSignIn(result.user);
+                return result;
+            });
     },
     
     // Sign out

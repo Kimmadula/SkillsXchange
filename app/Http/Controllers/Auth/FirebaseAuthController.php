@@ -259,6 +259,96 @@ class FirebaseAuthController extends Controller
     }
 
     /**
+     * Handle Google sign-in with username requirement
+     */
+    public function googleCallback(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'firebase_token' => 'required|string',
+            'username' => 'required|string|min:3|max:50|regex:/^[a-zA-Z0-9_]+$/',
+            'provider' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid request data',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        try {
+            $firebaseToken = $request->input('firebase_token');
+            $username = $request->input('username');
+            $provider = $request->input('provider');
+            
+            $firebaseUser = $this->decodeFirebaseToken($firebaseToken);
+            
+            if (!$firebaseUser) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid Firebase token'
+                ], 401);
+            }
+
+            // Check if username already exists
+            $existingUser = User::where('username', $username)->first();
+            if ($existingUser) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Username already exists'
+                ], 409);
+            }
+
+            // Check if user already exists with this Firebase UID
+            $user = User::findByFirebaseUid($firebaseUser['uid']);
+            
+            if ($user) {
+                // Update existing user with new username if it's different
+                if ($user->username !== $username) {
+                    $user->update(['username' => $username]);
+                }
+            } else {
+                // Create new user from Firebase data
+                $user = User::create([
+                    'firebase_uid' => $firebaseUser['uid'],
+                    'firebase_provider' => $provider,
+                    'email' => $firebaseUser['email'],
+                    'username' => $username,
+                    'firstname' => $firebaseUser['display_name'] ? explode(' ', $firebaseUser['display_name'])[0] : null,
+                    'lastname' => $firebaseUser['display_name'] ? substr($firebaseUser['display_name'], strpos($firebaseUser['display_name'], ' ') + 1) : null,
+                    'photo' => $firebaseUser['photo_url'] ?? null,
+                    'is_verified' => $firebaseUser['email_verified'] ?? false,
+                    'role' => 'user',
+                    'plan' => 'free',
+                    'token_balance' => 0,
+                ]);
+            }
+
+            // Log the user in
+            Auth::login($user);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Google sign-in completed successfully',
+                'user' => [
+                    'id' => $user->id,
+                    'username' => $user->username,
+                    'email' => $user->email,
+                    'name' => $user->name,
+                ],
+                'redirect_url' => route('dashboard')
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to complete Google sign-in: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Update user verification status from Firebase
      */
     public function updateVerificationStatus(Request $request)
