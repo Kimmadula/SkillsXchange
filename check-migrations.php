@@ -1,7 +1,7 @@
 <?php
 
-// Database connection test script
-echo "Testing database connection...\n";
+// Check if database needs migrations
+echo "Checking if database needs migrations...\n";
 
 // Load environment variables from .env file
 if (file_exists('.env')) {
@@ -20,11 +20,6 @@ $database = $_ENV['DB_DATABASE'] ?? 'railway';
 $username = $_ENV['DB_USERNAME'] ?? 'root';
 $password = $_ENV['DB_PASSWORD'] ?? 'nBMPUzSWZaJhIrrmNKWhiSoFMgfsBBqI';
 
-echo "Host: $host\n";
-echo "Port: $port\n";
-echo "Database: $database\n";
-echo "Username: $username\n";
-
 try {
     $dsn = "mysql:host=$host;port=$port;dbname=$database;charset=utf8mb4";
     $pdo = new PDO($dsn, $username, $password, [
@@ -33,17 +28,29 @@ try {
         PDO::ATTR_TIMEOUT => 30
     ]);
     
-    echo "✅ Database connection successful!\n";
+    // Check if migrations table exists
+    $stmt = $pdo->query("SHOW TABLES LIKE 'migrations'");
+    $migrationsTable = $stmt->fetch();
     
-    // Test a simple query
-    $stmt = $pdo->query("SELECT 1 as test");
-    $result = $stmt->fetch();
-    echo "✅ Database query successful: " . $result['test'] . "\n";
+    if ($migrationsTable) {
+        // Check if there are any migrations
+        $stmt = $pdo->query("SELECT COUNT(*) as count FROM migrations");
+        $result = $stmt->fetch();
+        
+        if ($result['count'] > 0) {
+            echo "Database has migrations, skipping migration run.\n";
+            exit(0);
+        } else {
+            echo "Database is empty, migrations needed.\n";
+            exit(1);
+        }
+    } else {
+        echo "No migrations table found, migrations needed.\n";
+        exit(1);
+    }
     
 } catch (PDOException $e) {
-    echo "❌ Database connection failed: " . $e->getMessage() . "\n";
-    echo "Error Code: " . $e->getCode() . "\n";
-    exit(1);
+    echo "Database connection failed: " . $e->getMessage() . "\n";
+    echo "Will skip migrations and continue...\n";
+    exit(0);
 }
-
-echo "Database connection test completed successfully!\n";

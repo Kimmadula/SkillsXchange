@@ -15,11 +15,21 @@ sleep 10
 
 # Test database connection
 echo "Testing database connection..."
-php test-db-connection.php || echo "Database not ready, will retry..."
-
-# Run database migrations
-echo "Running database migrations..."
-php artisan migrate --force || echo "Migration failed, continuing..."
+if php test-db-connection.php; then
+    echo "Database connection successful!"
+    
+    # Check if migrations are needed (only run if database is new/empty)
+    echo "Checking if database needs migrations..."
+    if php check-migrations.php; then
+        echo "Database needs migrations, running..."
+        php artisan migrate --force || echo "Migration failed, continuing..."
+    else
+        echo "Database already has migrations, skipping..."
+    fi
+else
+    echo "Database connection failed, skipping migrations..."
+    echo "Application will start without database operations..."
+fi
 
 # Clear and cache configurations
 php artisan config:clear
