@@ -107,8 +107,7 @@
 
            // Google Sign-In functionality
            document.getElementById('google-signin-btn').addEventListener('click', function() {
-               // Redirect to Google OAuth
-               window.location.href = '{{ route("google.redirect") }}';
+               handleGoogleSignIn();
            });
     </script>
 </x-guest-layout>

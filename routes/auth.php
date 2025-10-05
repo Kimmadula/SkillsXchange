@@ -11,6 +11,7 @@ use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\GoogleEmailVerificationController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -33,6 +34,14 @@ Route::middleware('guest')->group(function () {
                 ->name('google.redirect');
     Route::get('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback'])
                 ->name('google.callback');
+                
+    // Google Email Verification routes (for authenticated users)
+    Route::middleware('auth')->group(function () {
+        Route::get('google/verify', [GoogleEmailVerificationController::class, 'redirectToGoogle'])
+                    ->name('google.verify');
+        Route::get('google/verify/callback', [GoogleEmailVerificationController::class, 'handleGoogleCallback'])
+                    ->name('google.verify.callback');
+    });
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 

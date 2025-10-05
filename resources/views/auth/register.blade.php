@@ -574,8 +574,7 @@
     <script>
            // Google Registration functionality
            document.getElementById('google-register-btn').addEventListener('click', function() {
-               // Redirect to Google OAuth with registration flag
-               window.location.href = '{{ route("google.redirect") }}?registration=true';
+               handleGoogleRegistration();
            });
     </script>
 </x-guest-layout>

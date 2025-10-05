@@ -137,10 +137,16 @@
                             @if(!$user->email_verified_at)
                                 <div class="form-text text-warning">
                                     <i class="fas fa-info-circle me-1"></i>
-                                    Your email is not verified. Please check your inbox for a verification email.
-                                    <a href="{{ route('email.resend') }}" class="btn btn-sm btn-outline-warning ms-2">
-                                        Resend Verification
+                                    <strong>Verify your email to unlock all features!</strong> 
+                                    <br>Verify with Google to access trading, notifications, and full platform features.
+                                    <a href="{{ route('google.verify') }}" class="btn btn-sm btn-outline-primary ms-2">
+                                        <i class="fab fa-google me-1"></i>Verify with Google
                                     </a>
+                                </div>
+                            @else
+                                <div class="form-text text-success">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    <strong>Email verified!</strong> You have full access to all platform features.
                                 </div>
                             @endif
                         </div>

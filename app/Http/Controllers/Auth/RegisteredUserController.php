@@ -93,16 +93,9 @@ class RegisteredUserController extends Controller
         // Attach all selected skills to the user
         $user->skills()->attach($skillIds);
 
-        // Generate email verification token
-        $verificationToken = Str::random(60);
-        $user->update(['email_verification_token' => $verificationToken]);
-
-        // Send verification email
-        $this->sendVerificationEmail($user, $verificationToken);
-
         event(new Registered($user));
 
-        return redirect()->route('login')->with('status', 'Registration successful! Please check your email to verify your account.');
+        return redirect()->route('login')->with('status', 'Registration successful! You can now log in and explore the platform. Verify your email with Google to unlock all features.');
     }
 
     /**
