@@ -23,7 +23,7 @@ services:
       - key: LOG_CHANNEL
         value: stderr
 
-      # ✅ MySQL on Railway (public proxy connection for Render)
+      # ✅ MySQL on Railway (optimized connection for Render)
       - key: DB_CONNECTION
         value: mysql
       - key: DB_HOST
@@ -37,6 +37,12 @@ services:
       - key: DB_PASSWORD
         value: nBMPUzSWZaJhIrrmNKWhiSoFMgfsBBqI
       - key: DB_TIMEOUT
+        value: "60"
+      - key: DB_CONNECT_TIMEOUT
+        value: "30"
+      - key: DB_READ_TIMEOUT
+        value: "30"
+      - key: DB_WRITE_TIMEOUT
         value: "30"
 
       # ✅ Laravel-specific configs
