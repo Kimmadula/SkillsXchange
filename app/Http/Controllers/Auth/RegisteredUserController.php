@@ -83,8 +83,8 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
             'photo' => $photoPath,
             'skill_id' => $skillIds[0], // Keep the first skill as primary for backward compatibility
-            'is_verified' => true, // Users can access dashboard immediately
-            'email_verified_at' => null, // Email not verified yet
+            'is_verified' => false, // Requires admin approval
+            'email_verified_at' => null, // Email not verified yet - Laravel will handle this
             'role' => 'user',
             'plan' => 'free',
             'token_balance' => 0,
@@ -96,22 +96,11 @@ class RegisteredUserController extends Controller
         event(new Registered($user));
 
         Auth::login($user);
-        return redirect()->route('profile.edit')->with('status', 'Registration successful! Complete your profile and verify your email with Google to unlock all features.');
+        
+        // Send email verification notification using Laravel's built-in system
+        $user->sendEmailVerificationNotification();
+        
+        return redirect()->route('verification.notice')->with('status', 'Registration successful! Please verify your email address and wait for admin approval to access all features.');
     }
 
-    /**
-     * Send email verification
-     */
-    private function sendVerificationEmail($user, $token)
-    {
-        $verificationUrl = route('email.verify', ['token' => $token]);
-        
-        Mail::send('emails.verify-email', [
-            'user' => $user,
-            'verificationUrl' => $verificationUrl
-        ], function ($message) use ($user) {
-            $message->to($user->email, $user->firstname . ' ' . $user->lastname)
-                    ->subject('Verify Your Email Address - SkillsXchange');
-        });
-    }
 }

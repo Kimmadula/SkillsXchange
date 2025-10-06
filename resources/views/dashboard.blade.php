@@ -9,6 +9,19 @@
             <p class="text-muted">Here's what's happening with your skill trades today.</p>
         </div>
 
+        <!-- Admin Approval Notice -->
+        @if(!auth()->user()->is_verified)
+        <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-clock me-2"></i>
+                <div>
+                    <strong>Account Pending Approval</strong><br>
+                    <small>Your account is currently pending admin approval. You can browse the site, but some features may be limited until your account is approved by an administrator.</small>
+                </div>
+            </div>
+        </div>
+        @endif
+
         @if(auth()->user()->role === 'admin')
         <!-- Admin Stats Cards -->
         <div class="stats-grid">

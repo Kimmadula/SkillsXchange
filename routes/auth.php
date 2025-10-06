@@ -9,7 +9,6 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
-use App\Http\Controllers\EmailVerificationController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\GoogleEmailVerificationController;
 use Illuminate\Support\Facades\Route;
@@ -23,11 +22,6 @@ Route::middleware('guest')->group(function () {
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
                 ->name('login');
                 
-    // Email verification routes
-    Route::get('email/verify', [EmailVerificationController::class, 'verify'])
-                ->name('email.verify');
-    Route::post('email/resend', [EmailVerificationController::class, 'resend'])
-                ->name('email.resend');
                 
     // Firebase Authentication Routes (replacing Laravel Socialite)
 
@@ -55,13 +49,14 @@ Route::middleware('guest')->group(function () {
 
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
                 ->name('password.email');
-
-    Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
-                ->name('password.reset');
-
-    Route::post('reset-password', [NewPasswordController::class, 'store'])
-                ->name('password.store');
 });
+
+// Password reset routes (accessible to both guests and authenticated users)
+Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
+            ->name('password.reset');
+
+Route::post('reset-password', [NewPasswordController::class, 'store'])
+            ->name('password.store');
 
 Route::middleware('auth')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)

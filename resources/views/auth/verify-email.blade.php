@@ -1,7 +1,13 @@
 <x-guest-layout>
     <div class="mb-4 text-sm text-gray-600">
-        {{ __('Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.') }}
+        {{ __('Thanks for signing up! Please verify your email address by clicking the link we sent to you. After email verification, your account will be reviewed by an administrator for approval.') }}
     </div>
+    
+    @if (session('status'))
+        <div class="mb-4 font-medium text-sm text-blue-600">
+            {{ session('status') }}
+        </div>
+    @endif
 
     @if (session('status') == 'verification-link-sent')
         <div class="mb-4 font-medium text-sm text-green-600">

@@ -19,6 +19,13 @@ class NewPasswordController extends Controller
      */
     public function create(Request $request): View
     {
+        // If user is already logged in, log them out first to ensure clean password reset
+        if (auth()->check()) {
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+        
         return view('auth.reset-password', ['request' => $request]);
     }
 

@@ -23,6 +23,7 @@ class VerifyEmailController extends Controller
             event(new Verified($request->user()));
         }
 
-        return redirect()->intended(RouteServiceProvider::HOME.'?verified=1');
+        // After email verification, redirect to dashboard with admin approval message
+        return redirect()->intended(RouteServiceProvider::HOME)->with('status', 'Email verified successfully! Your account is now pending admin approval. You can browse the site but some features may be limited until approved.');
     }
 }
