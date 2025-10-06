@@ -102,39 +102,50 @@ function authenticateWithLaravel(idToken, provider, isRegistration = false) {
 
 // Google Sign-In functionality
 function handleGoogleSignIn() {
-    if (typeof firebase !== 'undefined') {
+    if (typeof firebase === 'undefined' || !firebase.auth) {
+        console.error('❌ Firebase is not loaded');
+        alert('Firebase is not loaded. Please refresh the page and try again.');
+        return;
+    }
+
+    try {
         const provider = new firebase.auth.GoogleAuthProvider();
+        
+        // Add additional scopes if needed
+        provider.addScope('email');
+        provider.addScope('profile');
+        
+        // Set custom parameters
+        provider.setCustomParameters({
+            prompt: 'select_account'
+        });
+
         firebase.auth().signInWithPopup(provider)
             .then((result) => {
                 console.log('✅ Google Sign-In successful');
+                // The handleFirebaseSignIn will be called automatically via onAuthStateChanged
             })
             .catch((error) => {
                 console.error('❌ Google Sign-In Error:', error);
-                alert('Google Sign-In failed. Please try again.');
+                
+                // Handle specific error cases
+                if (error.code === 'auth/popup-closed-by-user') {
+                    console.log('ℹ️ User closed the popup');
+                    return; // Don't show error for user cancellation
+                } else if (error.code === 'auth/cancelled-popup-request') {
+                    console.log('ℹ️ Popup request was cancelled');
+                    return; // Don't show error for cancellation
+                } else if (error.code === 'auth/popup-blocked') {
+                    alert('Popup was blocked by your browser. Please allow popups for this site and try again.');
+                } else {
+                    alert('Google Sign-In failed: ' + error.message);
+                }
             });
-    } else {
-        alert('Firebase is not loaded. Please refresh the page and try again.');
+    } catch (error) {
+        console.error('❌ Error initializing Google Sign-In:', error);
+        alert('Error initializing Google Sign-In. Please refresh the page and try again.');
     }
 }
 
-// Google Registration functionality  
-function handleGoogleRegistration() {
-    if (typeof firebase !== 'undefined') {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        firebase.auth().signInWithPopup(provider)
-            .then((result) => {
-                console.log('✅ Google Registration successful');
-                // The handleFirebaseSignIn will be called automatically
-            })
-            .catch((error) => {
-                console.error('❌ Google Registration Error:', error);
-                alert('Google Registration failed. Please try again.');
-            });
-    } else {
-        alert('Firebase is not loaded. Please refresh the page and try again.');
-    }
-}
-
-// Make functions globally available
+// Make function globally available
 window.handleGoogleSignIn = handleGoogleSignIn;
-window.handleGoogleRegistration = handleGoogleRegistration;
