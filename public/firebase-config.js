@@ -48,8 +48,11 @@ function handleFirebaseSignIn(user) {
     // Get the ID token
     user.getIdToken().then(function(idToken) {
         console.log('✅ Firebase ID token obtained');
+        // Determine provider based on sign-in method
+        const provider = user.providerData && user.providerData.length > 0 ? 
+            user.providerData[0].providerId.replace('google.com', 'google') : 'google';
         // Send token to Laravel backend
-        authenticateWithLaravel(idToken, 'google');
+        authenticateWithLaravel(idToken, provider);
     }).catch(function(error) {
         console.error('❌ Error getting ID token:', error);
     });
@@ -78,7 +81,10 @@ function authenticateWithLaravel(idToken, provider, isRegistration = false) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            if (isRegistration) {
+            // Use the redirect URL from the server response
+            if (data.redirect_url) {
+                window.location.href = data.redirect_url;
+            } else if (isRegistration) {
                 window.location.href = '/profile/edit';
             } else {
                 window.location.href = '/dashboard';

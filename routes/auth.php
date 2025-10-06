@@ -38,9 +38,6 @@ Route::middleware('guest')->group(function () {
         return view('auth.firebase-login');
     })->name('firebase.login');
 
-    Route::get('firebase-register', function () {
-        return view('auth.firebase-register');
-    })->name('firebase.register');
 
     Route::get('firebase/verify-email', function () {
         return view('auth.firebase-verify-email');

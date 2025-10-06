@@ -34,6 +34,14 @@ class FirebaseAuthController extends Controller
             $provider = $request->input('provider');
             $isRegistration = $request->input('is_registration', false);
             
+            // Block Google registration - only allow Google login
+            if ($provider === 'google' && $isRegistration) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Google registration is not available. Please use email registration or sign in with your existing Google account.'
+                ], 403);
+            }
+            
             // Decode Firebase token (simplified for development)
             $firebaseUser = $this->decodeFirebaseToken($firebaseToken);
             
@@ -49,8 +57,27 @@ class FirebaseAuthController extends Controller
             $isNewUser = false;
             
             if (!$user) {
-                $user = User::createOrUpdateFromFirebase($firebaseUser, $provider);
-                $isNewUser = true;
+                // For Google login, create user but require profile completion
+                if ($provider === 'google') {
+                    $user = User::create([
+                        'firebase_uid' => $firebaseUser['uid'],
+                        'firebase_provider' => $provider,
+                        'email' => $firebaseUser['email'],
+                        'firstname' => $firebaseUser['display_name'] ? explode(' ', $firebaseUser['display_name'])[0] : null,
+                        'lastname' => $firebaseUser['display_name'] ? substr($firebaseUser['display_name'], strpos($firebaseUser['display_name'], ' ') + 1) : null,
+                        'photo' => $firebaseUser['photo_url'] ?? null,
+                        'is_verified' => $firebaseUser['email_verified'] ?? false,
+                        'role' => 'user',
+                        'plan' => 'free',
+                        'token_balance' => 0,
+                        'google_verified' => true,
+                        'email_verified_at' => now()
+                    ]);
+                    $isNewUser = true;
+                } else {
+                    $user = User::createOrUpdateFromFirebase($firebaseUser, $provider);
+                    $isNewUser = true;
+                }
             } else {
                 // Update existing user with latest Firebase data
                 $user->update([
@@ -72,13 +99,19 @@ class FirebaseAuthController extends Controller
             // Log the user in
             Auth::login($user);
 
-            // Determine redirect URL based on registration status
+            // Determine redirect URL based on user status
             if ($isNewUser || $isRegistration) {
-                // New users go to profile edit to complete their profile
-                $redirectUrl = route('profile.edit');
+                // New users go to profile completion
+                $redirectUrl = route('firebase.profile.complete');
             } else {
-                // Existing users go to dashboard
-                $redirectUrl = route('dashboard');
+                // Check if existing user has complete profile
+                if (!$user->firstname || !$user->lastname || !$user->address || !$user->username) {
+                    // Incomplete profile - redirect to completion
+                    $redirectUrl = route('firebase.profile.complete');
+                } else {
+                    // Complete profile - go to dashboard
+                    $redirectUrl = route('dashboard');
+                }
             }
 
             return response()->json([

@@ -5,6 +5,12 @@
     <div class="auth-header">
         <h2 class="auth-title">Complete Your Profile</h2>
         <p class="auth-subtitle">Add your skills and preferences to get started</p>
+        @if(auth()->user()->firebase_provider === 'google')
+            <div class="google-user-notice">
+                <i class="fab fa-google me-2"></i>
+                <strong>Google Account Connected:</strong> Please complete your profile information below to continue.
+            </div>
+        @endif
     </div>
 
     <div class="auth-body">
@@ -160,6 +166,21 @@
 .skills-container label.checked {
     background-color: #e3f2fd;
     border-color: #2196f3;
+}
+
+.google-user-notice {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    padding: 1rem;
+    color: #0369a1;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: 1rem;
+}
+
+.google-user-notice i {
+    color: #4285f4;
 }
 </style>
 

@@ -35,17 +35,6 @@
                 </form>
             </div>
 
-            <!-- Social Registration -->
-            <div class="auth-form-section">
-                <div class="divider">
-                    <span>or</span>
-                </div>
-                <div class="social-auth">
-                    <button class="btn btn-google" id="google-register-btn">
-                        <i class="fab fa-google me-2"></i>Register with Google
-                    </button>
-                </div>
-            </div>
 
             <!-- Profile Completion Notice -->
             <div class="auth-form-section">
@@ -211,7 +200,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const registerForm = document.getElementById('email-register-form');
     const registerBtn = document.getElementById('register-btn');
-    const googleRegisterBtn = document.getElementById('google-register-btn');
     const loadingDiv = document.getElementById('register-loading');
     const errorDiv = document.getElementById('register-error');
     const successDiv = document.getElementById('register-success');
@@ -285,25 +273,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     });
 
-    // Register with Google
-    googleRegisterBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        showLoading();
-
-        window.firebaseAuthMethods.signInWithGoogle()
-            .then(function(result) {
-                console.log('Google registration successful:', result.user);
-                showSuccess('Google registration successful! Redirecting to profile completion...');
-                
-                // Handle Firebase registration
-                handleFirebaseRegistration(result.user);
-            })
-            .catch(function(error) {
-                console.error('Google registration error:', error);
-                hideLoading();
-                showError(getErrorMessage(error.code));
-            });
-    });
 
     // Real-time password confirmation validation
     document.getElementById('reg-confirm-password').addEventListener('input', function() {
