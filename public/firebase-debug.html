@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Debug - SkillsXchange</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        #console-output { background: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h1>Firebase Authentication Debug</h1>
+    
+    <div class="debug-section info">
+        <h3>Current Configuration</h3>
+        <p><strong>Domain:</strong> <span id="current-domain"></span></p>
+        <p><strong>Firebase Project:</strong> skillsxchange-26855</p>
+        <p><strong>Auth Domain:</strong> skillsxchange-26855.firebaseapp.com</p>
+    </div>
+
+    <div class="debug-section" id="firebase-status">
+        <h3>Firebase Status</h3>
+        <p id="firebase-loading">Loading Firebase...</p>
+    </div>
+
+    <div class="debug-section">
+        <h3>OAuth Configuration Check</h3>
+        <p>Expected redirect URIs in Google Cloud Console should include:</p>
+        <ul>
+            <li><code>https://skillsxchange-26855.firebaseapp.com/__/auth/handler</code></li>
+            <li><code>https://skillsxchange-crus.onrender.com/auth/firebase/callback</code></li>
+        </ul>
+    </div>
+
+    <div class="debug-section">
+        <h3>Test Google Sign-In</h3>
+        <button onclick="testGoogleSignIn()">Test Google Sign-In (Popup)</button>
+        <button onclick="testGoogleSignInRedirect()">Test Google Sign-In (Redirect)</button>
+        <button onclick="clearConsole()">Clear Console</button>
+    </div>
+
+    <div class="debug-section">
+        <h3>Console Output</h3>
+        <div id="console-output"></div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAL1qfUGstU2DzY864pTzZwxf812JN4jkM",
+            authDomain: "skillsxchange-26855.firebaseapp.com",
+            databaseURL: "https://skillsxchange-26855-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "skillsxchange-26855",
+            storageBucket: "skillsxchange-26855.firebasestorage.app",
+            messagingSenderId: "61175608249",
+            appId: "1:61175608249:web:ebd30cdd178d9896d2fc68",
+            measurementId: "G-V1WLV98X63"
+        };
+
+        // Console logging
+        const originalLog = console.log;
+        const originalError = console.error;
+        const consoleOutput = document.getElementById('console-output');
+
+        function addToConsole(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : 'ℹ️';
+            consoleOutput.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToConsole(args.join(' '), 'log');
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToConsole(args.join(' '), 'error');
+        };
+
+        // Initialize Firebase
+        document.getElementById('current-domain').textContent = window.location.origin;
+
+        if (typeof firebase !== 'undefined') {
+            try {
+                firebase.initializeApp(firebaseConfig);
+                const auth = firebase.auth();
+                
+                document.getElementById('firebase-status').innerHTML = `
+                    <h3>Firebase Status</h3>
+                    <p class="success">✅ Firebase initialized successfully</p>
+                    <p>Auth available: ${auth ? 'Yes' : 'No'}</p>
+                `;
+                
+                console.log('Firebase initialized successfully');
+                console.log('Firebase config:', firebaseConfig);
+                
+            } catch (error) {
+                document.getElementById('firebase-status').innerHTML = `
+                    <h3>Firebase Status</h3>
+                    <p class="error">❌ Firebase initialization failed: ${error.message}</p>
+                `;
+                console.error('Firebase initialization failed:', error);
+            }
+        } else {
+            document.getElementById('firebase-status').innerHTML = `
+                <h3>Firebase Status</h3>
+                <p class="error">❌ Firebase SDK not loaded</p>
+            `;
+            console.error('Firebase SDK not loaded');
+        }
+
+        // Test functions
+        function testGoogleSignIn() {
+            console.log('Testing Google Sign-In (Popup)...');
+            
+            if (typeof firebase === 'undefined' || !firebase.auth) {
+                console.error('Firebase not available');
+                return;
+            }
+
+            const provider = new firebase.auth.GoogleAuthProvider();
+            provider.addScope('email');
+            provider.addScope('profile');
+            provider.setCustomParameters({
+                prompt: 'select_account'
+            });
+
+            firebase.auth().signInWithPopup(provider)
+                .then((result) => {
+                    console.log('Google Sign-In successful:', result);
+                })
+                .catch((error) => {
+                    console.error('Google Sign-In failed:', error);
+                    console.error('Error code:', error.code);
+                    console.error('Error message:', error.message);
+                });
+        }
+
+        function testGoogleSignInRedirect() {
+            console.log('Testing Google Sign-In (Redirect)...');
+            
+            if (typeof firebase === 'undefined' || !firebase.auth) {
+                console.error('Firebase not available');
+                return;
+            }
+
+            const provider = new firebase.auth.GoogleAuthProvider();
+            provider.addScope('email');
+            provider.addScope('profile');
+
+            firebase.auth().signInWithRedirect(provider)
+                .then(() => {
+                    console.log('Redirect initiated');
+                })
+                .catch((error) => {
+                    console.error('Redirect failed:', error);
+                });
+        }
+
+        function clearConsole() {
+            consoleOutput.textContent = '';
+        }
+
+        // Handle redirect result
+        if (typeof firebase !== 'undefined' && firebase.auth) {
+            firebase.auth().getRedirectResult()
+                .then((result) => {
+                    if (result.credential) {
+                        console.log('Redirect sign-in successful:', result);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Redirect sign-in error:', error);
+                });
+        }
+    </script>
+</body>
+</html>

@@ -28,6 +28,10 @@ Route::get('/test', function () {
     return 'Test route working!';
 });
 
+Route::get('/firebase-debug', function () {
+    return response()->file(public_path('firebase-debug.html'));
+});
+
 Route::get('/legitimacy', function () {
     return response()->file(public_path('legitimacy.html'));
 });

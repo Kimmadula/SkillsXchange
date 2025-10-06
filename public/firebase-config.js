@@ -13,9 +13,21 @@ const firebaseConfig = {
 
 // Initialize Firebase
 if (typeof firebase !== 'undefined') {
-    firebase.initializeApp(firebaseConfig);
-    window.firebaseAuth = firebase.auth();
-    console.log('✅ Firebase v9 (compat) initialized successfully');
+    try {
+        firebase.initializeApp(firebaseConfig);
+        window.firebaseAuth = firebase.auth();
+        console.log('✅ Firebase v9 (compat) initialized successfully');
+        console.log('🔍 Firebase config:', firebaseConfig);
+        
+        // Test Firebase Auth availability
+        if (window.firebaseAuth) {
+            console.log('✅ Firebase Auth is available');
+        } else {
+            console.error('❌ Firebase Auth is not available');
+        }
+    } catch (error) {
+        console.error('❌ Firebase initialization error:', error);
+    }
 } else {
     console.error('❌ Firebase SDK not loaded');
 }
@@ -23,6 +35,20 @@ if (typeof firebase !== 'undefined') {
 // Initialize authentication when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     initializeFirebaseAuth();
+    
+    // Handle redirect result if user was redirected back from Google
+    if (window.firebaseAuth) {
+        firebase.auth().getRedirectResult()
+            .then((result) => {
+                if (result.credential) {
+                    console.log('✅ Redirect sign-in successful:', result);
+                    // The handleFirebaseSignIn will be called automatically via onAuthStateChanged
+                }
+            })
+            .catch((error) => {
+                console.error('❌ Redirect sign-in error:', error);
+            });
+    }
 });
 
 function initializeFirebaseAuth() {
@@ -102,31 +128,44 @@ function authenticateWithLaravel(idToken, provider, isRegistration = false) {
 
 // Google Sign-In functionality
 function handleGoogleSignIn() {
+    console.log('🔍 Starting Google Sign-In process...');
+    
     if (typeof firebase === 'undefined' || !firebase.auth) {
         console.error('❌ Firebase is not loaded');
         alert('Firebase is not loaded. Please refresh the page and try again.');
         return;
     }
 
+    console.log('✅ Firebase is loaded, proceeding with Google Sign-In...');
+
     try {
         const provider = new firebase.auth.GoogleAuthProvider();
+        console.log('✅ Google Auth Provider created');
         
         // Add additional scopes if needed
         provider.addScope('email');
         provider.addScope('profile');
+        console.log('✅ Scopes added to provider');
         
         // Set custom parameters
         provider.setCustomParameters({
             prompt: 'select_account'
         });
+        console.log('✅ Custom parameters set');
 
+        console.log('🔄 Attempting Google Sign-In popup...');
         firebase.auth().signInWithPopup(provider)
             .then((result) => {
-                console.log('✅ Google Sign-In successful');
+                console.log('✅ Google Sign-In successful:', result);
                 // The handleFirebaseSignIn will be called automatically via onAuthStateChanged
             })
             .catch((error) => {
-                console.error('❌ Google Sign-In Error:', error);
+                console.error('❌ Google Sign-In Error Details:', {
+                    code: error.code,
+                    message: error.message,
+                    email: error.email,
+                    credential: error.credential
+                });
                 
                 // Handle specific error cases
                 if (error.code === 'auth/popup-closed-by-user') {
@@ -137,6 +176,19 @@ function handleGoogleSignIn() {
                     return; // Don't show error for cancellation
                 } else if (error.code === 'auth/popup-blocked') {
                     alert('Popup was blocked by your browser. Please allow popups for this site and try again.');
+                } else if (error.code === 'auth/internal-error') {
+                    console.error('❌ Internal error details:', error);
+                    console.log('🔄 Trying redirect method as fallback...');
+                    
+                    // Try redirect method as fallback
+                    firebase.auth().signInWithRedirect(provider)
+                        .then(() => {
+                            console.log('✅ Redirect initiated');
+                        })
+                        .catch((redirectError) => {
+                            console.error('❌ Redirect also failed:', redirectError);
+                            alert('Google Sign-In configuration error. Please contact support or try again later.');
+                        });
                 } else {
                     alert('Google Sign-In failed: ' + error.message);
                 }

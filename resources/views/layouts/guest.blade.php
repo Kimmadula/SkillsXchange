@@ -322,8 +322,8 @@
     </style>
     
        <!-- Firebase SDK -->
-       <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-       <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+       <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+       <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
        <script src="{{ asset('firebase-config.js') }}"></script>
 </head>
 
