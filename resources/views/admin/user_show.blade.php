@@ -3,233 +3,244 @@
 use Illuminate\Support\Facades\Storage;
 @endphp
 
-@extends('layouts.app')
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
-@section('content')
-<div class="admin-dashboard">
-    <!-- Sidebar -->
-    <div class="admin-sidebar">
-        <div class="sidebar-header">
-            <div class="logo">
-                <span class="logo-text">SkillsXchange Admin</span>
-            </div>
-        </div>
-        
-        <nav class="sidebar-nav">
-            <a href="{{ route('admin.dashboard') }}" class="nav-item">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-            </a>
-            <a href="{{ route('admin.users.index') }}" class="nav-item active">
-                <i class="fas fa-users"></i>
-                <span>Users</span>
-            </a>
-            <a href="{{ route('admin.skills.index') }}" class="nav-item">
-                <i class="fas fa-graduation-cap"></i>
-                <span>Skills</span>
-            </a>
-            <a href="{{ route('admin.exchanges.index') }}" class="nav-item">
-                <i class="fas fa-exchange-alt"></i>
-                <span>Exchanges</span>
-            </a>
-            <a href="{{ route('admin.reports.index') }}" class="nav-item">
-                <i class="fas fa-chart-bar"></i>
-                <span>Reports</span>
-            </a>
-            <a href="{{ route('admin.messages.index') }}" class="nav-item">
-                <i class="fas fa-envelope"></i>
-                <span>Messages</span>
-            </a>
-            <a href="{{ route('admin.settings.index') }}" class="nav-item">
-                <i class="fas fa-cog"></i>
-                <span>Settings</span>
-            </a>
-        </nav>
-    </div>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ config('app.name', 'Laravel') }} - Admin</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
 
-    <!-- Main Content -->
-    <div class="admin-main">
-        <!-- Header -->
-        <div class="admin-header">
-            <div class="header-left">
-                <h1 class="page-title">User Details</h1>
-                <p class="page-subtitle">View detailed information about this user</p>
+<body class="font-sans antialiased">
+    <div class="admin-dashboard">
+        <!-- Sidebar -->
+        <div class="admin-sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <!-- LOGO IS HERE 
+                    <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="admin-logo">
+                    -->                    
+                    <span class="logo-text">SkillsXchange Admin</span>
+                </div>
             </div>
-            <div class="header-right">
-                <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Users
+
+            <nav class="sidebar-nav">
+                <a href="{{ route('admin.dashboard') }}" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 3h18v18H3zM9 9h6v6H9z" />
+                    </svg>
+                    <span>Overview</span>
                 </a>
-            </div>
+                <a href="{{ route('admin.users.index') }}" class="nav-item active">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    <span>Users</span>
+                </a>
+                <a href="{{ route('admin.skills.index') }}" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                    </svg>
+                    <span>Skills</span>
+                </a>
+                <a href="{{ route('admin.exchanges.index') }}" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <path d="M16 2v4M8 2v4M3 10h18" />
+                    </svg>
+                    <span>Exchanges</span>
+                </a>
+                <a href="{{ route('admin.reports.index') }}" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 20V10M12 20V4M6 20v-6" />
+                    </svg>
+                    <span>Reports</span>
+                </a>
+                <a href="{{ route('admin.messages.index') }}" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                        <polyline points="22,6 12,13 2,6" />
+                    </svg>
+                    <span>Messages</span>
+                </a>
+                <a href="{{ route('admin.settings.index') }}" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <span>Settings</span>
+                </a>
+            </nav>
         </div>
 
-        <!-- User Details Content -->
-        <div class="dashboard-content">
-            <div class="row">
-                <!-- User Profile Card -->
-                <div class="col-lg-4 mb-4">
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h3 class="card-title">Profile Information</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="text-center mb-4">
+        <!-- Main Content -->
+        <div class="admin-main">
+            <!-- Header -->
+            <div class="admin-header">
+                <div class="header-left">
+                    <h1 class="page-title">User Details</h1>
+                    <p class="page-subtitle">View detailed information about this user</p>
+                </div>
+                <div class="header-right">
+                    <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">
+                        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7" />
+                        </svg>
+                        Back to Users
+                    </a>
+                </div>
+            </div>
+
+            <!-- User Details Content -->
+            <div class="dashboard-content">
+                <div class="user-details-card">
+                    <div class="card-header">
+                        <h3 class="card-title">User Information</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="user-profile-section">
+                            <div class="user-avatar-large">
                                 @if($user->photo && Storage::disk('public')->exists($user->photo))
                                     <img src="{{ Storage::disk('public')->url($user->photo) }}" 
                                          alt="User Photo" 
-                                         class="user-profile-photo"
+                                         class="user-photo-large"
                                          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                    <div class="user-profile-placeholder" style="display: none;">
-                                        <i class="fas fa-user"></i>
+                                    <div class="user-avatar-fallback-large" style="display: none;">
+                                        {{ substr($user->firstname, 0, 1) }}{{ substr($user->lastname, 0, 1) }}
                                     </div>
                                 @else
-                                    <div class="user-profile-placeholder">
-                                        <i class="fas fa-user"></i>
+                                    <div class="user-avatar-fallback-large">
+                                        {{ substr($user->firstname, 0, 1) }}{{ substr($user->lastname, 0, 1) }}
                                     </div>
                                 @endif
                             </div>
                             
-                            <div class="user-info">
-                                <div class="info-item">
-                                    <label class="info-label">Full Name</label>
-                                    <div class="info-value">{{ $user->name }}</div>
+                            <div class="user-details-grid">
+                                <div class="detail-item">
+                                    <label class="detail-label">Full Name</label>
+                                    <div class="detail-value">{{ $user->name }}</div>
                                 </div>
                                 
-                                <div class="info-item">
-                                    <label class="info-label">Email</label>
-                                    <div class="info-value">{{ $user->email }}</div>
+                                <div class="detail-item">
+                                    <label class="detail-label">Email</label>
+                                    <div class="detail-value">{{ $user->email }}</div>
                                 </div>
                                 
-                                <div class="info-item">
-                                    <label class="info-label">Username</label>
-                                    <div class="info-value">{{ $user->username }}</div>
+                                <div class="detail-item">
+                                    <label class="detail-label">Username</label>
+                                    <div class="detail-value">{{ $user->username }}</div>
                                 </div>
                                 
-                                <div class="info-item">
-                                    <label class="info-label">Role</label>
-                                    <div class="info-value">
-                                        <span class="badge badge-{{ $user->role === 'admin' ? 'danger' : 'primary' }}">
+                                <div class="detail-item">
+                                    <label class="detail-label">Role</label>
+                                    <div class="detail-value">
+                                        <span class="status-badge status-{{ $user->role === 'admin' ? 'admin' : 'user' }}">
                                             {{ ucfirst($user->role) }}
                                         </span>
                                     </div>
                                 </div>
                                 
-                                <div class="info-item">
-                                    <label class="info-label">Status</label>
-                                    <div class="info-value">
-                                        <span class="badge badge-{{ $user->is_verified ? 'success' : 'warning' }}">
+                                <div class="detail-item">
+                                    <label class="detail-label">Status</label>
+                                    <div class="detail-value">
+                                        <span class="status-badge status-{{ $user->is_verified ? 'verified' : 'pending' }}">
                                             {{ $user->is_verified ? 'Verified' : 'Pending' }}
                                         </span>
                                     </div>
                                 </div>
                                 
-                                <div class="info-item">
-                                    <label class="info-label">Plan</label>
-                                    <div class="info-value">
-                                        <span class="badge badge-info">{{ ucfirst($user->plan) }}</span>
+                                <div class="detail-item">
+                                    <label class="detail-label">Plan</label>
+                                    <div class="detail-value">
+                                        <span class="status-badge status-plan">{{ ucfirst($user->plan) }}</span>
                                     </div>
+                                </div>
+                                
+                                <div class="detail-item">
+                                    <label class="detail-label">Gender</label>
+                                    <div class="detail-value">{{ $user->gender ? ucfirst($user->gender) : 'Not provided' }}</div>
+                                </div>
+                                
+                                <div class="detail-item">
+                                    <label class="detail-label">Birth Date</label>
+                                    <div class="detail-value">{{ $user->bdate ? $user->bdate->format('F j, Y') : 'Not provided' }}</div>
+                                </div>
+                                
+                                <div class="detail-item">
+                                    <label class="detail-label">Age</label>
+                                    <div class="detail-value">{{ $user->bdate ? $user->bdate->age . ' years old' : 'Not provided' }}</div>
+                                </div>
+                                
+                                <div class="detail-item">
+                                    <label class="detail-label">Member Since</label>
+                                    <div class="detail-value">{{ $user->created_at->format('F j, Y') }}</div>
+                                </div>
+                                
+                                <div class="detail-item full-width">
+                                    <label class="detail-label">Address</label>
+                                    <div class="detail-value">{{ $user->address ?: 'Not provided' }}</div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Personal Details -->
-                <div class="col-lg-8 mb-4">
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h3 class="card-title">Personal Details</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="info-item">
-                                        <label class="info-label">Gender</label>
-                                        <div class="info-value">{{ $user->gender ? ucfirst($user->gender) : 'Not provided' }}</div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="info-item">
-                                        <label class="info-label">Birth Date</label>
-                                        <div class="info-value">{{ $user->bdate ? $user->bdate->format('F j, Y') : 'Not provided' }}</div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="info-item">
-                                        <label class="info-label">Age</label>
-                                        <div class="info-value">{{ $user->bdate ? $user->bdate->age . ' years old' : 'Not provided' }}</div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="info-item">
-                                        <label class="info-label">Member Since</label>
-                                        <div class="info-value">{{ $user->created_at->format('F j, Y') }}</div>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="info-item">
-                                        <label class="info-label">Address</label>
-                                        <div class="info-value">{{ $user->address ?: 'Not provided' }}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Skills Information -->
-                <div class="col-12 mb-4">
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h3 class="card-title">Skills & Expertise</h3>
-                        </div>
-                        <div class="card-body">
+                        
+                        <!-- Skills Section -->
+                        <div class="skills-section">
+                            <h4 class="section-title">Skills & Expertise</h4>
                             @if($user->skills->count() > 0)
-                                <div class="skills-container">
+                                <div class="skills-list">
                                     @foreach($user->skills as $skill)
-                                        <span class="skill-badge {{ $skill->skill_id == $user->skill_id ? 'skill-badge-primary' : 'skill-badge-secondary' }}">
+                                        <span class="skill-tag {{ $skill->skill_id == $user->skill_id ? 'skill-tag-primary' : 'skill-tag-secondary' }}">
                                             {{ $skill->skill_name }}
                                             @if($skill->skill_id == $user->skill_id)
-                                                <i class="fas fa-star ms-1" title="Primary Skill"></i>
+                                                <svg class="skill-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+                                                </svg>
                                             @endif
                                         </span>
                                     @endforeach
                                 </div>
                             @else
-                                <p class="text-muted">No skills assigned yet.</p>
+                                <p class="no-skills">No skills assigned yet.</p>
                             @endif
                         </div>
-                    </div>
-                </div>
-
-                <!-- Account Actions -->
-                <div class="col-12">
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h3 class="card-title">Account Actions</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-flex gap-2 flex-wrap">
+                        
+                        <!-- Actions Section -->
+                        <div class="actions-section">
+                            <h4 class="section-title">Account Actions</h4>
+                            <div class="action-buttons">
                                 @if(!$user->is_verified)
                                     <form method="POST" action="{{ route('admin.users.approve', $user) }}" class="d-inline">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="btn btn-success">
-                                            <i class="fas fa-check me-2"></i>Approve User
+                                        <button type="submit" class="btn btn-approve">
+                                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="20,6 9,17 4,12"></polyline>
+                                            </svg>
+                                            Approve User
                                         </button>
                                     </form>
-        @else
+                                @else
                                     <form method="POST" action="{{ route('admin.users.deny', $user) }}" class="d-inline">
                                         @csrf
                                         @method('PATCH')
-                                        <button type="submit" class="btn btn-warning">
-                                            <i class="fas fa-times me-2"></i>Revoke Verification
+                                        <button type="submit" class="btn btn-deny">
+                                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                                            </svg>
+                                            Revoke Verification
                                         </button>
                                     </form>
-        @endif
-                                
-                                <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">
-                                    <i class="fas fa-arrow-left me-2"></i>Back to Users
-                                </a>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -237,117 +248,243 @@ use Illuminate\Support\Facades\Storage;
             </div>
         </div>
     </div>
-</div>
 
-@include('admin.dashboard-styles')
+    <style>
+    .user-details-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
 
-<style>
-.user-profile-photo {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 4px solid #e5e7eb;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
+    .card-header {
+        padding: 24px 32px 16px;
+        border-bottom: 1px solid #e5e7eb;
+    }
 
-.user-profile-placeholder {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    background: #f3f4f6;
-    border: 4px solid #e5e7eb;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 3rem;
-    color: #9ca3af;
-    margin: 0 auto;
-}
+    .card-title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #111827;
+        margin: 0;
+    }
 
-.user-info {
-    display: grid;
-    gap: 1rem;
-}
+    .card-body {
+        padding: 32px;
+    }
 
-.info-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
+    .user-profile-section {
+        display: flex;
+        gap: 32px;
+        margin-bottom: 32px;
+    }
 
-.info-label {
-    font-weight: 600;
-    color: #6c757d;
-    font-size: 0.875rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
+    .user-avatar-large {
+        flex-shrink: 0;
+    }
 
-.info-value {
-    color: #212529;
-    font-size: 1rem;
-}
+    .user-photo-large {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid #e5e7eb;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
 
-.skills-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
+    .user-avatar-fallback-large {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        font-weight: 600;
+        border: 4px solid #e5e7eb;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
 
-.skill-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    border-radius: 25px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    text-decoration: none;
-    transition: all 0.3s ease;
-}
+    .user-details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        flex: 1;
+    }
 
-.skill-badge-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
-}
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
 
-.skill-badge-secondary {
-    background: #f8f9fa;
-    color: #6c757d;
-    border: 1px solid #dee2e6;
-}
+    .detail-item.full-width {
+        grid-column: 1 / -1;
+    }
 
-.badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
+    .detail-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
 
-.badge-success {
-    background-color: #10b981;
-    color: white;
-}
+    .detail-value {
+        font-size: 16px;
+        color: #111827;
+        font-weight: 500;
+    }
 
-.badge-warning {
-    background-color: #f59e0b;
-    color: white;
-}
+    .skills-section, .actions-section {
+        margin-top: 32px;
+        padding-top: 32px;
+        border-top: 1px solid #e5e7eb;
+    }
 
-.badge-info {
-    background-color: #3b82f6;
-    color: white;
-}
+    .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #111827;
+        margin: 0 0 16px 0;
+    }
 
-.badge-primary {
-    background-color: #6366f1;
-    color: white;
-}
+    .skills-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
 
-.badge-danger {
-    background-color: #ef4444;
-    color: white;
-}
-</style>
-@endsection
+    .skill-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .skill-tag-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    .skill-tag-secondary {
+        background: #f3f4f6;
+        color: #6b7280;
+        border: 1px solid #d1d5db;
+    }
+
+    .skill-star {
+        width: 14px;
+        height: 14px;
+        fill: currentColor;
+    }
+
+    .no-skills {
+        color: #9ca3af;
+        font-style: italic;
+        margin: 0;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-icon {
+        width: 16px;
+        height: 16px;
+    }
+
+    .btn-approve {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-approve:hover {
+        background: #059669;
+    }
+
+    .btn-deny {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-deny:hover {
+        background: #dc2626;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .status-verified {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-admin {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-user {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .status-plan {
+        background: #e0e7ff;
+        color: #3730a3;
+    }
+
+    @media (max-width: 768px) {
+        .user-profile-section {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .user-details-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .action-buttons {
+            justify-content: center;
+        }
+    }
+    </style>
+</body>
+</html>
