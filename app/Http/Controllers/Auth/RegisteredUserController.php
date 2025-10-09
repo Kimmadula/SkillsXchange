@@ -71,36 +71,57 @@ class RegisteredUserController extends Controller
                 ->withErrors(['selected_skills' => 'One or more selected skills are invalid.']);
         }
 
-        $user = User::create([
-            'firstname' => $request->firstname,
-            'middlename' => $request->middlename,
-            'lastname' => $request->lastname,
-            'gender' => $request->gender,
-            'bdate' => $request->bdate,
-            'address' => $request->address,
-            'username' => $request->username,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'photo' => $photoPath,
-            'skill_id' => $skillIds[0], // Keep the first skill as primary for backward compatibility
-            'is_verified' => false, // Requires admin approval
-            'email_verified_at' => null, // Email not verified yet - Laravel will handle this
-            'role' => 'user',
-            'plan' => 'free',
-            'token_balance' => 0,
-        ]);
+        // Use database transaction to ensure data integrity
+        try {
+            \DB::beginTransaction();
+            
+            $user = User::create([
+                'firstname' => $request->firstname,
+                'middlename' => $request->middlename,
+                'lastname' => $request->lastname,
+                'gender' => $request->gender,
+                'bdate' => $request->bdate,
+                'address' => $request->address,
+                'username' => $request->username,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'photo' => $photoPath,
+                'skill_id' => $skillIds[0], // Keep the first skill as primary for backward compatibility
+                'is_verified' => false, // Requires admin approval
+                'email_verified_at' => null, // Email not verified yet - Laravel will handle this
+                'role' => 'user',
+                'plan' => 'free',
+                'token_balance' => 0,
+            ]);
 
-        // Attach all selected skills to the user
-        $user->skills()->attach($skillIds);
+            // Attach all selected skills to the user
+            $user->skills()->attach($skillIds);
+            
+            \DB::commit();
+        } catch (\Exception $e) {
+            \DB::rollback();
+            \Log::error('User registration failed: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->withErrors(['error' => 'Registration failed. Please try again.'])
+                ->withInput();
+        }
 
         event(new Registered($user));
 
         Auth::login($user);
         
-        // Send email verification notification using Laravel's built-in system
-        $user->sendEmailVerificationNotification();
-        
-        return redirect()->route('verification.notice')->with('status', 'Registration successful! Please verify your email address and wait for admin approval to access all features.');
+        try {
+            // Send email verification notification using Laravel's built-in system
+            $user->sendEmailVerificationNotification();
+            
+            return redirect()->route('verification.notice')->with('status', 'Registration successful! Please verify your email address and wait for admin approval to access all features.');
+        } catch (\Exception $e) {
+            // If email sending fails, still allow registration but log the error
+            \Log::error('Email verification failed to send: ' . $e->getMessage());
+            
+            return redirect()->route('verification.notice')->with('status', 'Registration successful! However, there was an issue sending the verification email. Please contact support or try logging in to resend the verification email.');
+        }
     }
 
 }
