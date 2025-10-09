@@ -1,0 +1,5 @@
+[33mf1bb7bc[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Fixing verification
+[33m4b19966[m feat: implement Laravel built-in email verification and fix forgot password
+[33m192c445[m Updating OAuth
+[33mccb64fb[m Fixing signing in with google in the OAuth 2.0 Client Configuration
+[33m8f9e5dc[m Removing the register with google and fixing signing in with google
