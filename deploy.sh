@@ -1,40 +1,50 @@
 #!/bin/bash
 
-# Wait for database to be ready
-echo "Waiting for database to be ready..."
-sleep 10
+# SkillsXchange Deployment Script
+# Run this script on your production server
 
-# Build assets for production
-echo "Building assets..."
-npm install
+echo "🚀 Starting SkillsXchange Deployment..."
+
+# Check if we're in the right directory
+if [ ! -f "artisan" ]; then
+    echo "❌ Error: Please run this script from the Laravel project root directory"
+    exit 1
+fi
+
+# Install/Update Composer dependencies
+echo "📦 Installing Composer dependencies..."
+composer install --optimize-autoloader --no-dev --no-interaction
+
+# Install/Update NPM dependencies and build assets
+echo "🎨 Building frontend assets..."
+npm install --production
 npm run build
 
-# Clear ALL caches first to ensure fresh configuration
-echo "Clearing all caches..."
-php artisan config:clear --no-interaction
-php artisan route:clear --no-interaction
-php artisan view:clear --no-interaction
-php artisan cache:clear --no-interaction
-php artisan optimize:clear --no-interaction
+# Generate application key if not exists
+if [ -z "$APP_KEY" ]; then
+    echo "🔑 Generating application key..."
+    php artisan key:generate --force
+fi
 
-# Test database connection with fresh configuration
-echo "Testing database connection..."
-php artisan tinker --execute="try { DB::connection()->getPdo(); echo 'Database connected successfully'; } catch(Exception \$e) { echo 'Database connection failed: ' . \$e->getMessage(); exit(1); }"
-
-# Run migrations
-echo "Running migrations..."
-php artisan migrate --force --no-interaction
-
-# Run seeders
-echo "Running seeders..."
-php artisan db:seed --force --no-interaction
+# Run database migrations
+echo "🗄️ Running database migrations..."
+php artisan migrate --force
 
 # Cache configuration for production
-echo "Caching configuration for production..."
-php artisan config:cache --no-interaction
-php artisan route:cache --no-interaction
-php artisan view:cache --no-interaction
+echo "⚡ Optimizing for production..."
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 
-# Start the server
-echo "Starting PHP server..."
-php -S 0.0.0.0:$PORT -t public
+# Clear application cache
+php artisan cache:clear
+
+# Set proper permissions
+echo "🔐 Setting file permissions..."
+chmod -R 755 storage bootstrap/cache
+chmod -R 644 storage/logs/*.log 2>/dev/null || true
+
+echo "✅ Deployment completed successfully!"
+echo "🌐 Your application should now be accessible at your domain"
+echo "📧 Email system configured with Gmail SMTP"
+echo "🔒 Firebase/Google authentication removed"
