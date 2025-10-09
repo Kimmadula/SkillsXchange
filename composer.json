@@ -12,6 +12,7 @@
         "laravel/sanctum": "^3.0",
         "laravel/socialite": "^5.23",
         "laravel/tinker": "^2.7",
+        "mailgun/mailgun-php": "^4.3",
         "pusher/pusher-php-server": "^7.2"
     },
     "require-dev": {
@@ -62,7 +63,8 @@
         "preferred-install": "dist",
         "sort-packages": true,
         "allow-plugins": {
-            "pestphp/pest-plugin": true
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
         }
     },
     "minimum-stability": "stable",

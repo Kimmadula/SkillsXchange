@@ -26,16 +26,32 @@ DB_DATABASE=your_production_database
 DB_USERNAME=your_production_username
 DB_PASSWORD=your_production_password
 
-# Mail Configuration (Gmail SMTP)
-# NOTE: Emails are sent TO user addresses, FROM this Gmail account
-MAIL_MAILER=smtp
-MAIL_HOST=smtp.gmail.com
-MAIL_PORT=587
-MAIL_USERNAME=asdtumakay@gmail.com          # Gmail account for sending emails
-MAIL_PASSWORD=stpxhddxjztrcwdt              # Gmail app password
+# Mail Configuration - Mailgun HTTP API (Recommended for Cloud Platforms)
+# NOTE: Emails are sent TO user addresses, FROM configured address
+# This configuration works with Render, Heroku, and other cloud platforms
+MAIL_MAILER=mailgun
+MAIL_HOST=api.mailgun.net
+MAIL_PORT=443
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
 MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS=asdtumakay@gmail.com      # FROM address (appears as sender)
 MAIL_FROM_NAME="SkillsXchange"              # FROM name (appears as sender)
+
+# Mailgun Configuration - REQUIRED FOR EMAIL DELIVERY
+# Get these from your Mailgun dashboard: https://app.mailgun.com/
+MAILGUN_DOMAIN=your-mailgun-domain.mailgun.org
+MAILGUN_SECRET=your-mailgun-secret-key
+MAILGUN_ENDPOINT=api.mailgun.net
+
+# Alternative: Gmail SMTP (if Mailgun not available)
+# WARNING: May not work on cloud platforms due to SMTP port blocking
+# MAIL_MAILER=smtp
+# MAIL_HOST=smtp.gmail.com
+# MAIL_PORT=587
+# MAIL_USERNAME=asdtumakay@gmail.com
+# MAIL_PASSWORD=stpxhddxjztrcwdt
+# MAIL_ENCRYPTION=tls
 
 # Cache (Recommended: Redis for production)
 CACHE_DRIVER=redis
