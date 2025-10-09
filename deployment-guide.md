@@ -26,15 +26,16 @@ DB_DATABASE=your_production_database
 DB_USERNAME=your_production_username
 DB_PASSWORD=your_production_password
 
-# Mail Configuration
+# Mail Configuration (Gmail SMTP)
+# NOTE: Emails are sent TO user addresses, FROM this Gmail account
 MAIL_MAILER=smtp
 MAIL_HOST=smtp.gmail.com
 MAIL_PORT=587
-MAIL_USERNAME=asdtumakay@gmail.com
-MAIL_PASSWORD=stpxhddxjztrcwdt
+MAIL_USERNAME=asdtumakay@gmail.com          # Gmail account for sending emails
+MAIL_PASSWORD=stpxhddxjztrcwdt              # Gmail app password
 MAIL_ENCRYPTION=tls
-MAIL_FROM_ADDRESS=asdtumakay@gmail.com
-MAIL_FROM_NAME="SkillsXchange"
+MAIL_FROM_ADDRESS=asdtumakay@gmail.com      # FROM address (appears as sender)
+MAIL_FROM_NAME="SkillsXchange"              # FROM name (appears as sender)
 
 # Cache (Recommended: Redis for production)
 CACHE_DRIVER=redis
