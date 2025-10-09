@@ -160,6 +160,14 @@
             </div>
             <input type="hidden" name="selected_skills" id="selected_skills" value="">
             <x-input-error :messages="$errors->get('selected_skills')" class="mt-2" />
+            
+            <!-- Helpful message about skills -->
+            <div class="skills-help-message">
+                <i class="fas fa-info-circle me-2"></i>
+                <span class="text-sm text-gray-600">
+                    You can add more skills to your profile after registration. Contact an admin to add additional skills or modify your skill set.
+                </span>
+            </div>
         </div>
 
         <!-- Skills data for JavaScript -->
@@ -201,6 +209,27 @@
         .skills-container label.checked {
             background-color: #e3f2fd;
             border-color: #2196f3;
+        }
+        
+        .skills-help-message {
+            margin-top: 12px;
+            padding: 12px 16px;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        
+        .skills-help-message i {
+            color: #3b82f6;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+        
+        .skills-help-message span {
+            line-height: 1.5;
         }
         </style>
 
@@ -477,7 +506,7 @@
                 } else if (fieldName === 'bdate' && value) {
                     const birthDate = new Date(value);
                     const today = new Date();
-                    const age = today.getFullYear() - birthDate.getFullYear();
+                    let age = today.getFullYear() - birthDate.getFullYear();
                     const monthDiff = today.getMonth() - birthDate.getMonth();
                     
                     // Check if birthday hasn't occurred this year

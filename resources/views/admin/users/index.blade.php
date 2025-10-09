@@ -1,3 +1,7 @@
+@php
+use Illuminate\Support\Facades\Storage;
+@endphp
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
@@ -301,16 +305,21 @@
                                         </span>
                                     </td>
                                     <td>
-                                        @if($user->photo && file_exists(storage_path('app/public/' . $user->photo)))
-                                        <img src="{{ asset('storage/' . $user->photo) }}" alt="User Photo"
-                                            class="user-photo"
-                                            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                        <div class="user-avatar-fallback" style="display: none;">{{
-                                            substr($user->firstname, 0, 1) }}{{ substr($user->lastname, 0, 1) }}</div>
-                                        @else
-                                        <div class="user-avatar-fallback">{{ substr($user->firstname, 0, 1) }}{{
-                                            substr($user->lastname, 0, 1) }}</div>
-                                        @endif
+                                        <div class="user-photo-container">
+                                            @if($user->photo && Storage::disk('public')->exists($user->photo))
+                                                <img src="{{ Storage::disk('public')->url($user->photo) }}" 
+                                                     alt="User Photo" 
+                                                     class="user-photo"
+                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                                <div class="user-avatar-fallback" style="display: none;">
+                                                    {{ substr($user->firstname, 0, 1) }}{{ substr($user->lastname, 0, 1) }}
+                                                </div>
+                                            @else
+                                                <div class="user-avatar-fallback">
+                                                    {{ substr($user->firstname, 0, 1) }}{{ substr($user->lastname, 0, 1) }}
+                                                </div>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td>
                                         <div class="action-buttons">
@@ -508,28 +517,48 @@
             text-transform: lowercase;
         }
 
+        .user-photo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         .user-photo {
-            width: 40px;
-            height: 40px;
-            border-radius: 6px;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
             object-fit: cover;
-            border: 1px solid #e5e7eb;
+            border: 2px solid #e5e7eb;
             display: block;
             background: #f3f4f6;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .user-photo:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
         }
 
         .user-avatar-fallback {
-            width: 40px;
-            height: 40px;
-            border-radius: 6px;
-            background: #e5e7eb;
-            color: #6b7280;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 600;
-            font-size: 14px;
-            border: 1px solid #d1d5db;
+            font-size: 16px;
+            border: 2px solid #e5e7eb;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+        }
+
+        .user-avatar-fallback:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
         }
 
         .no-photo {

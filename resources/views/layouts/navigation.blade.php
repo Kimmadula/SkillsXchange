@@ -92,10 +92,15 @@
                     <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button"
                         data-bs-toggle="dropdown">
                         <div class="me-2">
-                            <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center"
-                                style="width: 32px; height: 32px;">
-                                <i class="fas fa-user text-white"></i>
-                            </div>
+                            @if(Auth::user()->photo && file_exists(storage_path('app/public/' . Auth::user()->photo)))
+                                <img src="{{ asset('storage/' . Auth::user()->photo) }}" alt="Profile Photo" 
+                                     class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
+                            @else
+                                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center"
+                                    style="width: 32px; height: 32px;">
+                                    <i class="fas fa-user text-white"></i>
+                                </div>
+                            @endif
                         </div>
                         <div class="d-none d-lg-block">
                             <div class="fw-semibold">{{ Auth::user()->firstname }} {{ Auth::user()->lastname }}</div>

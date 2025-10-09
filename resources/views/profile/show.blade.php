@@ -15,7 +15,20 @@
                 <div class="profile-header-card">
                     <div class="row align-items-center">
                         <div class="col-md-9">
-                            <h1 class="h2 fw-bold text-gradient mb-2">{{ $user->name }}</h1>
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="profile-picture-container me-3">
+                                    @if($user->photo && file_exists(storage_path('app/public/' . $user->photo)))
+                                        <img src="{{ asset('storage/' . $user->photo) }}" alt="Profile Photo" class="profile-picture">
+                                    @else
+                                        <div class="profile-picture-placeholder">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                    @endif
+                                </div>
+                                <div>
+                                    <h1 class="h2 fw-bold text-gradient mb-0">{{ $user->name }}</h1>
+                                </div>
+                            </div>
                             <p class="text-muted mb-3">{{ $user->email }}</p>
                             <div class="profile-badges">
                                 <span class="badge bg-primary me-2">{{ ucfirst($user->role) }}</span>
@@ -160,6 +173,45 @@
     box-shadow: 0 10px 30px rgba(0,0,0,0.1);
 }
 
+.profile-picture-container {
+    flex-shrink: 0;
+}
+
+.profile-picture {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.profile-picture:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.profile-picture-placeholder {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.profile-picture-placeholder:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
 
 .profile-badges .badge {
     font-size: 0.875rem;
@@ -232,6 +284,27 @@
 @media (max-width: 768px) {
     .profile-header-card {
         padding: 1.5rem;
+    }
+    
+    .profile-picture {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .profile-picture-placeholder {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+    
+    .d-flex.align-items-center.mb-2 {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .profile-picture-container {
+        margin-bottom: 1rem;
+        margin-right: 0 !important;
     }
 }
 </style>
