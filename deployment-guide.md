@@ -26,25 +26,28 @@ DB_DATABASE=your_production_database
 DB_USERNAME=your_production_username
 DB_PASSWORD=your_production_password
 
-# Mail Configuration - Mailgun HTTP API (Recommended for Cloud Platforms)
+# Mail Configuration - SendPulse SMTP (FREE - 12,000 emails/month)
 # NOTE: Emails are sent TO user addresses, FROM configured address
 # This configuration works with Render, Heroku, and other cloud platforms
-MAIL_MAILER=mailgun
-MAIL_HOST=api.mailgun.net
-MAIL_PORT=443
-MAIL_USERNAME=null
-MAIL_PASSWORD=null
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.sendpulse.com
+MAIL_PORT=587
+MAIL_USERNAME=your-sendpulse-email@sendpulse.com
+MAIL_PASSWORD=your-sendpulse-password
 MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS=asdtumakay@gmail.com      # FROM address (appears as sender)
 MAIL_FROM_NAME="SkillsXchange"              # FROM name (appears as sender)
 
-# Mailgun Configuration - REQUIRED FOR EMAIL DELIVERY
-# Get these from your Mailgun dashboard: https://app.mailgun.com/
-MAILGUN_DOMAIN=your-mailgun-domain.mailgun.org
-MAILGUN_SECRET=your-mailgun-secret-key
-MAILGUN_ENDPOINT=api.mailgun.net
+# SendPulse Configuration - FREE EMAIL SERVICE
+# Sign up at: https://sendpulse.com/
+# Get credentials from: Settings → SMTP & API
+# FREE PLAN: 12,000 emails/month, 1,500 subscribers
 
-# Alternative: Gmail SMTP (if Mailgun not available)
+# Alternative Ports (if 587 doesn't work):
+# MAIL_PORT=465
+# MAIL_ENCRYPTION=ssl
+
+# Alternative: Gmail SMTP (if SendPulse not available)
 # WARNING: May not work on cloud platforms due to SMTP port blocking
 # MAIL_MAILER=smtp
 # MAIL_HOST=smtp.gmail.com
