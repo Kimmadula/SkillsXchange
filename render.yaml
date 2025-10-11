@@ -54,8 +54,23 @@ services:
         value: "120"
       - key: QUEUE_CONNECTION
         value: sync
+      # ✅ Brevo Email Configuration
       - key: MAIL_MAILER
-        value: log
+        value: smtp
+      - key: MAIL_HOST
+        value: smtp-relay.brevo.com
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USERNAME
+        value: "98f98d001@smtp-brevo.com"
+      - key: MAIL_PASSWORD
+        value: "J9VE1v50n72BTSm6"
+      - key: MAIL_ENCRYPTION
+        value: tls
+      - key: MAIL_FROM_ADDRESS
+        value: "johnninonavares7@gmail.com"
+      - key: MAIL_FROM_NAME
+        value: "SkillsXchange"
       - key: FILESYSTEM_DISK
         value: public
 
@@ -74,6 +89,22 @@ services:
         value: "5c02e54d01ca577ae77e"
       - key: VITE_PUSHER_APP_CLUSTER
         value: "ap1"
+      - key: PUSHER_HOST
+        value: ""
+      - key: PUSHER_PORT
+        value: "443"
+      - key: PUSHER_SCHEME
+        value: "https"
+      - key: PUSHER_USE_TLS
+        value: "true"
+      - key: PUSHER_ENCRYPTED
+        value: "true"
+      - key: VITE_PUSHER_HOST
+        value: ""
+      - key: VITE_PUSHER_PORT
+        value: "443"
+      - key: VITE_PUSHER_SCHEME
+        value: "https"
 
       # ✅ Firebase Authentication Configuration
       - key: FIREBASE_PROJECT_ID
