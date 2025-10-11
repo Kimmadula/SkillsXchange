@@ -418,9 +418,17 @@
             // Preload some suggestions initially
             fetchSuggestions('');
 
-            // Simple form validation
+            // Enhanced form validation with proper duplicate submission prevention
             const form = document.getElementById('registerForm');
+            let isSubmitting = false;
+            
             form.addEventListener('submit', function(e) {
+                // Prevent multiple submissions
+                if (isSubmitting) {
+                    e.preventDefault();
+                    return false;
+                }
+                
                 // Validate skills selection
                 if (selectedSkills.length === 0) {
                     e.preventDefault();
@@ -428,17 +436,24 @@
                     return false;
                 }
                 
+                // Set submitting state
+                isSubmitting = true;
+                
                 // Show loading state
                 const submitBtn = form.querySelector('button[type="submit"]');
                 const originalText = submitBtn.textContent;
                 submitBtn.textContent = 'Registering...';
                 submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.6';
+                submitBtn.style.cursor = 'not-allowed';
                 
-                // Re-enable button after a short delay (in case of validation errors)
-                setTimeout(() => {
-                    submitBtn.textContent = originalText;
-                    submitBtn.disabled = false;
-                }, 2000);
+                // Add a visual indicator
+                const loadingSpinner = document.createElement('span');
+                loadingSpinner.innerHTML = ' <i class="fas fa-spinner fa-spin"></i>';
+                submitBtn.appendChild(loadingSpinner);
+                
+                // Don't re-enable the button - let the page redirect handle it
+                // This prevents duplicate submissions completely
             });
 
             // Real-time validation

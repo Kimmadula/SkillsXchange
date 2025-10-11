@@ -33,6 +33,25 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        // Check for duplicate submission using a simple token mechanism
+        $submissionKey = 'registration_' . $request->ip() . '_' . $request->username . '_' . $request->email;
+        
+        if (\Cache::has($submissionKey)) {
+            \Log::warning('Duplicate registration attempt detected', [
+                'ip' => $request->ip(),
+                'username' => $request->username,
+                'email' => $request->email,
+                'user_agent' => $request->userAgent()
+            ]);
+            
+            return redirect()->back()
+                ->withErrors(['error' => 'Registration is already in progress. Please wait a moment and try again.'])
+                ->withInput();
+        }
+        
+        // Set a temporary lock for 30 seconds to prevent duplicate submissions
+        \Cache::put($submissionKey, true, 30);
+        
         $request->validate([
             'firstname' => ['required', 'string', 'max:50'],
             'middlename' => ['nullable', 'string', 'max:50'],
@@ -113,14 +132,36 @@ class RegisteredUserController extends Controller
         
         try {
             // Send email verification notification using Laravel's built-in system
+            \Log::info('Attempting to send email verification', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'mail_config' => [
+                    'driver' => config('mail.default'),
+                    'host' => config('mail.mailers.smtp.host'),
+                    'port' => config('mail.mailers.smtp.port'),
+                    'username' => config('mail.mailers.smtp.username'),
+                    'from_address' => config('mail.from.address'),
+                ]
+            ]);
+            
             $user->sendEmailVerificationNotification();
             
-            return redirect()->route('verification.notice')->with('status', 'Registration successful! Please verify your email address and wait for admin approval to access all features.');
+            \Log::info('Email verification sent successfully', [
+                'user_id' => $user->id,
+                'email' => $user->email
+            ]);
+            
+            return redirect()->route('verification.notice')->with('status', 'Registration successful! Please check your email and click the verification link to complete your registration. You will also need admin approval to access all features.');
         } catch (\Exception $e) {
             // If email sending fails, still allow registration but log the error
-            \Log::error('Email verification failed to send: ' . $e->getMessage());
+            \Log::error('Email verification failed to send: ' . $e->getMessage(), [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             
-            return redirect()->route('verification.notice')->with('status', 'Registration successful! However, there was an issue sending the verification email. Please contact support or try logging in to resend the verification email.');
+            return redirect()->route('verification.notice')->with('status', 'Registration successful! However, there was an issue sending the verification email. Please try logging in to resend the verification email, or contact support if the problem persists.');
         }
     }
 
