@@ -134,14 +134,15 @@ class RegisteredUserController extends Controller
             // Send email verification notification using Laravel's built-in system
             \Log::info('Attempting to send email verification', [
                 'user_id' => $user->id,
-                'email' => $user->email,
+                'user_email' => $user->email,
+                'user_name' => $user->firstname . ' ' . $user->lastname,
                 'mail_config' => [
                     'driver' => config('mail.default'),
-                    'host' => config('mail.mailers.smtp.host'),
-                    'port' => config('mail.mailers.smtp.port'),
-                    'username' => config('mail.mailers.smtp.username'),
                     'from_address' => config('mail.from.address'),
-                ]
+                    'from_name' => config('mail.from.name'),
+                ],
+                'email_destination' => 'TO: ' . $user->email . ' (user email address)',
+                'email_sender' => 'FROM: ' . config('mail.from.address') . ' (system sender)'
             ]);
             
             $user->sendEmailVerificationNotification();
@@ -151,7 +152,7 @@ class RegisteredUserController extends Controller
                 'email' => $user->email
             ]);
             
-            return redirect()->route('verification.notice')->with('status', 'Registration successful! Please check your email and click the verification link to complete your registration. You will also need admin approval to access all features.');
+            return redirect()->route('verification.notice')->with('status', 'Registration successful! Please check your email at ' . $user->email . ' and click the verification link to complete your registration. You will also need admin approval to access all features.');
         } catch (\Exception $e) {
             // If email sending fails, still allow registration but log the error
             \Log::error('Email verification failed to send: ' . $e->getMessage(), [
