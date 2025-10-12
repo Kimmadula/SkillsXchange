@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Config;
 // Set up Laravel configuration
 Config::set('mail.default', 'resend');
 Config::set('mail.mailers.resend.transport', 'resend');
-Config::set('mail.from.address', env('MAIL_FROM_ADDRESS', 'johnninonavares7@gmail.com'));
+Config::set('mail.from.address', env('MAIL_FROM_ADDRESS', 'asdtumakay@gmail.com'));
 Config::set('mail.from.name', env('MAIL_FROM_NAME', 'SkillsXchange'));
 Config::set('services.resend.key', env('RESEND_KEY'));
 
@@ -44,12 +44,12 @@ if (!env('RESEND_KEY') || env('RESEND_KEY') === 'your_resend_api_key_here') {
 echo "📧 Sending Test Email via Resend...\n";
 try {
     Mail::raw('This is a test email from SkillsXchange to verify Resend API configuration.', function ($message) {
-        $message->to('johnninonavares7@gmail.com')
+        $message->to('asdtumakay@gmail.com')
                 ->subject('SkillsXchange Resend Test - ' . date('Y-m-d H:i:s'));
     });
     
     echo "✅ Test email sent successfully via Resend!\n";
-    echo "Check your inbox at johnninonavares7@gmail.com\n\n";
+    echo "Check your inbox at asdtumakay@gmail.com\n\n";
     
 } catch (Exception $e) {
     echo "❌ Test email failed: " . $e->getMessage() . "\n";
@@ -69,7 +69,7 @@ echo "🔐 Testing Email Verification Notification...\n";
 try {
     // This would normally be called by Laravel's verification system
     echo "✅ Email verification notification would be sent via Resend\n";
-    echo "Recipient: johnninonavares7@gmail.com\n";
+    echo "Recipient: asdtumakay@gmail.com\n";
     
 } catch (Exception $e) {
     echo "❌ Email verification test failed: " . $e->getMessage() . "\n";

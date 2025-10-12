@@ -58,11 +58,11 @@ services:
       - key: MAIL_MAILER
         value: resend
       - key: MAIL_FROM_ADDRESS
-        value: "johnninonavares7@gmail.com"
+        value: "asdtumakay@gmail.com"
       - key: MAIL_FROM_NAME
         value: "SkillsXchange"
       - key: RESEND_KEY
-        value: "your_resend_api_key_here"
+        value: "re_KZXcNx4W_7fdSyXJjjHYkokLUsN5czjWt"
       - key: FILESYSTEM_DISK
         value: public
 
