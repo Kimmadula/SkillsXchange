@@ -61,7 +61,7 @@ services:
         value: "asdtumakay@gmail.com"
       - key: MAIL_FROM_NAME
         value: "SkillsXchange"
-      - key: RESEND_KEY
+      - key: RESEND_API_KEY
         value: "re_KZXcNx4W_7fdSyXJjjHYkokLUsN5czjWt"
       - key: FILESYSTEM_DISK
         value: public
