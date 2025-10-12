@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use Exception;
+use Illuminate\Support\Facades\Log;
 use Resend\Contracts\Client;
 use Symfony\Component\Mailer\Envelope;
 use Symfony\Component\Mailer\SentMessage;
@@ -15,6 +16,9 @@ class ResendTransportFactory extends AbstractTransport
 {
     /**
      * Create a new Resend transport instance.
+     * 
+     * @param Client $resend The Resend client instance
+     * @param array $config Configuration array
      */
     public function __construct(
         protected Client $resend,
@@ -63,7 +67,7 @@ class ResendTransportFactory extends AbstractTransport
             $fromString = $fromName ? "{$fromName} <{$fromAddress}>" : $fromAddress;
 
             // Debug: Log the configuration before sending
-            \Log::info('Resend email configuration', [
+            Log::info('Resend email configuration', [
                 'from_address' => $fromAddress,
                 'from_name' => $fromName,
                 'from_string' => $fromString,
@@ -72,7 +76,9 @@ class ResendTransportFactory extends AbstractTransport
                 'config' => $this->config
             ]);
 
-            $result = $this->resend->emails->send([
+            /** @var \Resend\Service\Email $emails */
+            $emails = $this->resend->emails;
+            $result = $emails->send([
                 'bcc' => $this->stringifyAddresses($email->getBcc()),
                 'cc' => $this->stringifyAddresses($email->getCc()),
                 'from' => $fromString,
@@ -85,7 +91,7 @@ class ResendTransportFactory extends AbstractTransport
                 'attachments' => $attachments,
             ]);
         } catch (Exception $exception) {
-            \Log::error('Resend email sending failed', [
+            Log::error('Resend email sending failed', [
                 'error' => $exception->getMessage(),
                 'from_address' => config('mail.from.address'),
                 'from_name' => config('mail.from.name'),
@@ -130,7 +136,7 @@ class ResendTransportFactory extends AbstractTransport
             }
             
             // Fallback for unexpected types
-            \Log::warning('Unexpected address type in stringifyAddresses', [
+            Log::warning('Unexpected address type in stringifyAddresses', [
                 'type' => gettype($address),
                 'value' => $address
             ]);
