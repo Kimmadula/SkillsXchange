@@ -19,7 +19,7 @@ services:
       - key: APP_DEBUG
         value: false
       - key: APP_URL
-        value: https://skillsxchange-crus.onrender.com
+        value: https://skillsxchange.site
       - key: LOG_CHANNEL
         value: stderr
 
@@ -58,7 +58,7 @@ services:
       - key: MAIL_MAILER
         value: resend
       - key: MAIL_FROM_ADDRESS
-        value: "onboarding@resend.dev"
+        value: "noreply@skillsxchange.site"
       - key: MAIL_FROM_NAME
         value: "SkillsXchange"
       - key: RESEND_API_KEY
