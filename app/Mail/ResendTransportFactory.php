@@ -76,7 +76,8 @@ class ResendTransportFactory extends AbstractTransport
                 'config' => $this->config
             ]);
 
-            /** @var \Resend\Service\Email $emails */
+            // Get the emails service from the Resend client (uses magic method __get)
+            /** @phpstan-ignore-next-line */
             $emails = $this->resend->emails;
             
             $emailData = [
@@ -114,9 +115,9 @@ class ResendTransportFactory extends AbstractTransport
                     'suggestion' => 'Domain verification issue - check Resend dashboard'
                 ]);
                 
-                // Try to send with a fallback approach
+                // Try to send with a fallback approach using raw HTTP
                 try {
-                    // Use a simpler approach without the problematic SDK method
+                    // Use a simpler approach with direct HTTP request
                     $simpleEmailData = [
                         'from' => $fromString,
                         'to' => $this->stringifyAddresses($this->getRecipients($email, $envelope)),
@@ -125,16 +126,34 @@ class ResendTransportFactory extends AbstractTransport
                         'text' => $email->getTextBody(),
                     ];
                     
-                    Log::info('Attempting fallback email send', $simpleEmailData);
+                    Log::info('Attempting fallback email send with direct HTTP', $simpleEmailData);
                     
-                    // Use direct API call instead of SDK
-                    $response = $this->resend->request('POST', '/emails', $simpleEmailData);
+                    // Use direct HTTP request to Resend API
+                    $apiKey = config('resend.api_key');
+                    $ch = curl_init();
+                    curl_setopt($ch, CURLOPT_URL, 'https://api.resend.com/emails');
+                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($ch, CURLOPT_POST, true);
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($simpleEmailData));
+                    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                        'Authorization: Bearer ' . $apiKey,
+                        'Content-Type: application/json'
+                    ]);
                     
-                    if (isset($response['id'])) {
-                        Log::info('Fallback email send successful', ['id' => $response['id']]);
-                        $result = (object) $response;
+                    $response = curl_exec($ch);
+                    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    curl_close($ch);
+                    
+                    if ($httpCode === 200) {
+                        $responseData = json_decode($response, true);
+                        if (isset($responseData['id'])) {
+                            Log::info('Fallback email send successful', ['id' => $responseData['id']]);
+                            $result = (object) $responseData;
+                        } else {
+                            throw new Exception('Fallback email send failed: ' . $response);
+                        }
                     } else {
-                        throw new Exception('Fallback email send failed: ' . json_encode($response));
+                        throw new Exception('Fallback email send failed with HTTP ' . $httpCode . ': ' . $response);
                     }
                 } catch (Exception $fallbackException) {
                     Log::error('Fallback email send also failed', [
