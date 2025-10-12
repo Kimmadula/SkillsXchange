@@ -62,8 +62,8 @@ class ResendTransportFactory extends AbstractTransport
 
         try {
             // Prepare the from address as string format (Resend API expects string)
-            $fromAddress = config('mail.from.address');
-            $fromName = config('mail.from.name');
+            $fromAddress = config('mail.from.address', 'noreply@skillsxchange.site');
+            $fromName = config('mail.from.name', 'SkillsXchange');
             $fromString = $fromName ? "{$fromName} <{$fromAddress}>" : $fromAddress;
 
             // Debug: Log the configuration before sending
@@ -109,15 +109,45 @@ class ResendTransportFactory extends AbstractTransport
             if (strpos($exception->getMessage(), "Undefined array key 'name'") !== false) {
                 Log::warning('Resend API returned error without name key - this might be a domain verification issue', [
                     'error' => $exception->getMessage(),
-                    'suggestion' => 'Consider verifying your domain or using a different email service'
+                    'from_address' => $fromAddress,
+                    'from_name' => $fromName,
+                    'suggestion' => 'Domain verification issue - check Resend dashboard'
                 ]);
                 
-                // For now, we'll throw a more user-friendly error
-                throw new Exception(
-                    'Email sending failed: Domain verification required. Please contact support.',
-                    0,
-                    $exception
-                );
+                // Try to send with a fallback approach
+                try {
+                    // Use a simpler approach without the problematic SDK method
+                    $simpleEmailData = [
+                        'from' => $fromString,
+                        'to' => $this->stringifyAddresses($this->getRecipients($email, $envelope)),
+                        'subject' => $email->getSubject(),
+                        'html' => $email->getHtmlBody(),
+                        'text' => $email->getTextBody(),
+                    ];
+                    
+                    Log::info('Attempting fallback email send', $simpleEmailData);
+                    
+                    // Use direct API call instead of SDK
+                    $response = $this->resend->request('POST', '/emails', $simpleEmailData);
+                    
+                    if (isset($response['id'])) {
+                        Log::info('Fallback email send successful', ['id' => $response['id']]);
+                        $result = (object) $response;
+                    } else {
+                        throw new Exception('Fallback email send failed: ' . json_encode($response));
+                    }
+                } catch (Exception $fallbackException) {
+                    Log::error('Fallback email send also failed', [
+                        'fallback_error' => $fallbackException->getMessage(),
+                        'original_error' => $exception->getMessage()
+                    ]);
+                    
+                    throw new Exception(
+                        'Email sending failed: Please try again later or contact support.',
+                        0,
+                        $fallbackException
+                    );
+                }
             }
             
             throw new Exception(
