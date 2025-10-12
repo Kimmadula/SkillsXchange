@@ -57,10 +57,25 @@ class ResendTransportFactory extends AbstractTransport
         }
 
         try {
+            // Debug: Log the configuration before sending
+            \Log::info('Resend email configuration', [
+                'from' => $envelope->getSender()->toString(),
+                'to' => $this->stringifyAddresses($this->getRecipients($email, $envelope)),
+                'subject' => $email->getSubject(),
+                'config' => $this->config
+            ]);
+
+            // Safely prepare the from address
+            $fromAddress = $envelope->getSender()->toString();
+            if (empty($fromAddress)) {
+                // Fallback to config if envelope sender is empty
+                $fromAddress = ($this->config['from']['name'] ?? '') . ' <' . ($this->config['from']['address'] ?? 'onboarding@resend.dev') . '>';
+            }
+
             $result = $this->resend->emails->send([
                 'bcc' => $this->stringifyAddresses($email->getBcc()),
                 'cc' => $this->stringifyAddresses($email->getCc()),
-                'from' => $envelope->getSender()->toString(),
+                'from' => $fromAddress,
                 'headers' => $headers,
                 'html' => $email->getHtmlBody(),
                 'reply_to' => $this->stringifyAddresses($email->getReplyTo()),
@@ -70,6 +85,11 @@ class ResendTransportFactory extends AbstractTransport
                 'attachments' => $attachments,
             ]);
         } catch (Exception $exception) {
+            \Log::error('Resend email sending failed', [
+                'error' => $exception->getMessage(),
+                'from' => $envelope->getSender()->toString(),
+                'config' => $this->config
+            ]);
             throw new Exception(
                 $exception->getMessage(),
                 is_int($exception->getCode()) ? $exception->getCode() : 0,
@@ -97,8 +117,24 @@ class ResendTransportFactory extends AbstractTransport
      */
     protected function stringifyAddresses(array $addresses): array
     {
-        return array_map(function (Address $address) {
-            return $address->toString();
+        return array_map(function ($address) {
+            // Handle both Address objects and strings
+            if ($address instanceof Address) {
+                return $address->toString();
+            }
+            
+            // If it's already a string, return as is
+            if (is_string($address)) {
+                return $address;
+            }
+            
+            // Fallback for unexpected types
+            \Log::warning('Unexpected address type in stringifyAddresses', [
+                'type' => gettype($address),
+                'value' => $address
+            ]);
+            
+            return (string) $address;
         }, $addresses);
     }
 
