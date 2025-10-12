@@ -78,7 +78,8 @@ class ResendTransportFactory extends AbstractTransport
 
             /** @var \Resend\Service\Email $emails */
             $emails = $this->resend->emails;
-            $result = $emails->send([
+            
+            $emailData = [
                 'bcc' => $this->stringifyAddresses($email->getBcc()),
                 'cc' => $this->stringifyAddresses($email->getCc()),
                 'from' => $fromString,
@@ -89,7 +90,13 @@ class ResendTransportFactory extends AbstractTransport
                 'text' => $email->getTextBody(),
                 'to' => $this->stringifyAddresses($this->getRecipients($email, $envelope)),
                 'attachments' => $attachments,
-            ]);
+            ];
+            
+            Log::info('Resend email data being sent', $emailData);
+            
+            $result = $emails->send($emailData);
+            
+            Log::info('Resend API response', ['result' => $result]);
         } catch (Exception $exception) {
             Log::error('Resend email sending failed', [
                 'error' => $exception->getMessage(),
@@ -97,6 +104,22 @@ class ResendTransportFactory extends AbstractTransport
                 'from_name' => config('mail.from.name'),
                 'config' => $this->config
             ]);
+            
+            // Check if this is the "Undefined array key 'name'" error
+            if (strpos($exception->getMessage(), "Undefined array key 'name'") !== false) {
+                Log::warning('Resend API returned error without name key - this might be a domain verification issue', [
+                    'error' => $exception->getMessage(),
+                    'suggestion' => 'Consider verifying your domain or using a different email service'
+                ]);
+                
+                // For now, we'll throw a more user-friendly error
+                throw new Exception(
+                    'Email sending failed: Domain verification required. Please contact support.',
+                    0,
+                    $exception
+                );
+            }
+            
             throw new Exception(
                 $exception->getMessage(),
                 is_int($exception->getCode()) ? $exception->getCode() : 0,
