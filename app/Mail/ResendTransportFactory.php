@@ -77,7 +77,8 @@ class ResendTransportFactory extends AbstractTransport
             ]);
 
             // Get the emails service from the Resend client (uses magic method __get)
-            /** @phpstan-ignore-next-line */
+            /** @var \Resend\Service\Email $emails */
+            // @phpstan-ignore-next-line Undefined property: Client::$emails
             $emails = $this->resend->emails;
             
             $emailData = [
