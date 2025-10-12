@@ -22,7 +22,7 @@ Config::set('mail.default', 'resend');
 Config::set('mail.mailers.resend.transport', 'resend');
 Config::set('mail.from.address', env('MAIL_FROM_ADDRESS', 'asdtumakay@gmail.com'));
 Config::set('mail.from.name', env('MAIL_FROM_NAME', 'SkillsXchange'));
-Config::set('services.resend.key', env('RESEND_KEY'));
+Config::set('services.resend.key', env('RESEND_API_KEY'));
 
 echo "🧪 Testing User Email Verification\n";
 echo "=================================\n\n";

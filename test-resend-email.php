@@ -20,7 +20,7 @@ Config::set('mail.default', 'resend');
 Config::set('mail.mailers.resend.transport', 'resend');
 Config::set('mail.from.address', env('MAIL_FROM_ADDRESS', 'asdtumakay@gmail.com'));
 Config::set('mail.from.name', env('MAIL_FROM_NAME', 'SkillsXchange'));
-Config::set('services.resend.key', env('RESEND_KEY'));
+Config::set('services.resend.key', env('RESEND_API_KEY'));
 
 echo "🧪 Testing SkillsXchange Resend Email Configuration\n";
 echo "==================================================\n\n";
@@ -30,11 +30,11 @@ echo "📋 Email Configuration:\n";
 echo "MAIL_MAILER: " . Config::get('mail.default') . "\n";
 echo "MAIL_FROM_ADDRESS: " . Config::get('mail.from.address') . "\n";
 echo "MAIL_FROM_NAME: " . Config::get('mail.from.name') . "\n";
-echo "RESEND_KEY: " . (env('RESEND_KEY') ? '***SET***' : 'NOT SET') . "\n\n";
+echo "RESEND_API_KEY: " . (env('RESEND_API_KEY') ? '***SET***' : 'NOT SET') . "\n\n";
 
 // Check if Resend key is set
-if (!env('RESEND_KEY') || env('RESEND_KEY') === 'your_resend_api_key_here') {
-    echo "❌ RESEND_KEY is not set or is using placeholder value\n";
+if (!env('RESEND_API_KEY') || env('RESEND_API_KEY') === 'your_resend_api_key_here') {
+    echo "❌ RESEND_API_KEY is not set or is using placeholder value\n";
     echo "Please update your .env file with the actual Resend API key\n";
     echo "Get your API key from: https://resend.com/api-keys\n\n";
     exit(1);
@@ -57,7 +57,7 @@ try {
     
     // Check common issues
     if (strpos($e->getMessage(), 'API key') !== false) {
-        echo "💡 Tip: Check if your RESEND_KEY is correct\n";
+        echo "💡 Tip: Check if your RESEND_API_KEY is correct\n";
     }
     if (strpos($e->getMessage(), 'domain') !== false) {
         echo "💡 Tip: You may need to verify your domain in Resend\n";
