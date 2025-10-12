@@ -57,25 +57,25 @@ class ResendTransportFactory extends AbstractTransport
         }
 
         try {
+            // Prepare the from address as string format (Resend API expects string)
+            $fromAddress = config('mail.from.address');
+            $fromName = config('mail.from.name');
+            $fromString = $fromName ? "{$fromName} <{$fromAddress}>" : $fromAddress;
+
             // Debug: Log the configuration before sending
             \Log::info('Resend email configuration', [
-                'from' => $envelope->getSender()->toString(),
+                'from_address' => $fromAddress,
+                'from_name' => $fromName,
+                'from_string' => $fromString,
                 'to' => $this->stringifyAddresses($this->getRecipients($email, $envelope)),
                 'subject' => $email->getSubject(),
                 'config' => $this->config
             ]);
 
-            // Safely prepare the from address
-            $fromAddress = $envelope->getSender()->toString();
-            if (empty($fromAddress)) {
-                // Fallback to config if envelope sender is empty
-                $fromAddress = ($this->config['from']['name'] ?? '') . ' <' . ($this->config['from']['address'] ?? 'onboarding@resend.dev') . '>';
-            }
-
             $result = $this->resend->emails->send([
                 'bcc' => $this->stringifyAddresses($email->getBcc()),
                 'cc' => $this->stringifyAddresses($email->getCc()),
-                'from' => $fromAddress,
+                'from' => $fromString,
                 'headers' => $headers,
                 'html' => $email->getHtmlBody(),
                 'reply_to' => $this->stringifyAddresses($email->getReplyTo()),
@@ -87,7 +87,8 @@ class ResendTransportFactory extends AbstractTransport
         } catch (Exception $exception) {
             \Log::error('Resend email sending failed', [
                 'error' => $exception->getMessage(),
-                'from' => $envelope->getSender()->toString(),
+                'from_address' => config('mail.from.address'),
+                'from_name' => config('mail.from.name'),
                 'config' => $this->config
             ]);
             throw new Exception(
