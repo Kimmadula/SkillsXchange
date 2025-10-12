@@ -10,7 +10,10 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
@@ -36,8 +39,8 @@ class RegisteredUserController extends Controller
         // Check for duplicate submission using a simple token mechanism
         $submissionKey = 'registration_' . $request->ip() . '_' . $request->username . '_' . $request->email;
         
-        if (\Cache::has($submissionKey)) {
-            \Log::warning('Duplicate registration attempt detected', [
+        if (Cache::has($submissionKey)) {
+            Log::warning('Duplicate registration attempt detected', [
                 'ip' => $request->ip(),
                 'username' => $request->username,
                 'email' => $request->email,
@@ -50,7 +53,7 @@ class RegisteredUserController extends Controller
         }
         
         // Set a temporary lock for 30 seconds to prevent duplicate submissions
-        \Cache::put($submissionKey, true, 30);
+        Cache::put($submissionKey, true, 30);
         
         $request->validate([
             'firstname' => ['required', 'string', 'max:50'],
@@ -92,7 +95,7 @@ class RegisteredUserController extends Controller
 
         // Use database transaction to ensure data integrity
         try {
-            \DB::beginTransaction();
+            DB::beginTransaction();
             
             $user = User::create([
                 'firstname' => $request->firstname,
@@ -116,10 +119,10 @@ class RegisteredUserController extends Controller
             // Attach all selected skills to the user
             $user->skills()->attach($skillIds);
             
-            \DB::commit();
+            DB::commit();
         } catch (\Exception $e) {
-            \DB::rollback();
-            \Log::error('User registration failed: ' . $e->getMessage());
+            DB::rollback();
+            Log::error('User registration failed: ' . $e->getMessage());
             
             return redirect()->back()
                 ->withErrors(['error' => 'Registration failed. Please try again.'])
@@ -132,7 +135,7 @@ class RegisteredUserController extends Controller
         
         try {
             // Send email verification notification using Laravel's built-in system
-            \Log::info('Attempting to send email verification', [
+            Log::info('Attempting to send email verification', [
                 'user_id' => $user->id,
                 'user_email' => $user->email,
                 'user_name' => $user->firstname . ' ' . $user->lastname,
@@ -147,7 +150,7 @@ class RegisteredUserController extends Controller
             
             $user->sendEmailVerificationNotification();
             
-            \Log::info('Email verification sent successfully', [
+            Log::info('Email verification sent successfully', [
                 'user_id' => $user->id,
                 'email' => $user->email
             ]);
@@ -155,7 +158,7 @@ class RegisteredUserController extends Controller
             return redirect()->route('verification.notice')->with('status', 'Registration successful! Please check your email at ' . $user->email . ' and click the verification link to complete your registration. You will also need admin approval to access all features.');
         } catch (\Exception $e) {
             // If email sending fails, still allow registration but log the error
-            \Log::error('Email verification failed to send: ' . $e->getMessage(), [
+            Log::error('Email verification failed to send: ' . $e->getMessage(), [
                 'user_id' => $user->id,
                 'email' => $user->email,
                 'error' => $e->getMessage(),
