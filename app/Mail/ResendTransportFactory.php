@@ -78,7 +78,7 @@ class ResendTransportFactory extends AbstractTransport
 
             // Get the emails service from the Resend client (uses magic method __get)
             /** @var \Resend\Service\Email $emails */
-            // @phpstan-ignore-next-line Undefined property: Client::$emails
+            // @phpstan-ignore-next-line
             $emails = $this->resend->emails;
             
             $emailData = [
@@ -96,9 +96,33 @@ class ResendTransportFactory extends AbstractTransport
             
             Log::info('Resend email data being sent', $emailData);
             
-            $result = $emails->send($emailData);
-            
-            Log::info('Resend API response', ['result' => $result]);
+            try {
+                $result = $emails->send($emailData);
+                Log::info('Resend API response', ['result' => $result]);
+            } catch (Exception $apiException) {
+                Log::error('Resend API call failed', [
+                    'error' => $apiException->getMessage(),
+                    'email_data' => $emailData
+                ]);
+                
+                // Check if this is the "Undefined array key 'name'" error
+                if (strpos($apiException->getMessage(), "Undefined array key 'name'") !== false) {
+                    Log::warning('Resend API returned error without name key - this might be a domain verification issue', [
+                        'error' => $apiException->getMessage(),
+                        'from_address' => $fromAddress,
+                        'from_name' => $fromName,
+                        'suggestion' => 'Domain verification issue - check Resend dashboard'
+                    ]);
+                    
+                    throw new Exception(
+                        'Email sending failed: Domain verification required. Please contact support.',
+                        0,
+                        $apiException
+                    );
+                }
+                
+                throw $apiException;
+            }
         } catch (Exception $exception) {
             Log::error('Resend email sending failed', [
                 'error' => $exception->getMessage(),
@@ -116,58 +140,12 @@ class ResendTransportFactory extends AbstractTransport
                     'suggestion' => 'Domain verification issue - check Resend dashboard'
                 ]);
                 
-                // Try to send with a fallback approach using raw HTTP
-                try {
-                    // Use a simpler approach with direct HTTP request
-                    $simpleEmailData = [
-                        'from' => $fromString,
-                        'to' => $this->stringifyAddresses($this->getRecipients($email, $envelope)),
-                        'subject' => $email->getSubject(),
-                        'html' => $email->getHtmlBody(),
-                        'text' => $email->getTextBody(),
-                    ];
-                    
-                    Log::info('Attempting fallback email send with direct HTTP', $simpleEmailData);
-                    
-                    // Use direct HTTP request to Resend API
-                    $apiKey = config('resend.api_key');
-                    $ch = curl_init();
-                    curl_setopt($ch, CURLOPT_URL, 'https://api.resend.com/emails');
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                    curl_setopt($ch, CURLOPT_POST, true);
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($simpleEmailData));
-                    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                        'Authorization: Bearer ' . $apiKey,
-                        'Content-Type: application/json'
-                    ]);
-                    
-                    $response = curl_exec($ch);
-                    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                    curl_close($ch);
-                    
-                    if ($httpCode === 200) {
-                        $responseData = json_decode($response, true);
-                        if (isset($responseData['id'])) {
-                            Log::info('Fallback email send successful', ['id' => $responseData['id']]);
-                            $result = (object) $responseData;
-                        } else {
-                            throw new Exception('Fallback email send failed: ' . $response);
-                        }
-                    } else {
-                        throw new Exception('Fallback email send failed with HTTP ' . $httpCode . ': ' . $response);
-                    }
-                } catch (Exception $fallbackException) {
-                    Log::error('Fallback email send also failed', [
-                        'fallback_error' => $fallbackException->getMessage(),
-                        'original_error' => $exception->getMessage()
-                    ]);
-                    
-                    throw new Exception(
-                        'Email sending failed: Please try again later or contact support.',
-                        0,
-                        $fallbackException
-                    );
-                }
+                // This is likely a domain verification issue
+                throw new Exception(
+                    'Email sending failed: Domain verification required. Please contact support.',
+                    0,
+                    $exception
+                );
             }
             
             throw new Exception(
