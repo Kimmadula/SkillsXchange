@@ -54,23 +54,15 @@ services:
         value: "120"
       - key: QUEUE_CONNECTION
         value: sync
-      # ✅ Brevo Email Configuration
+      # ✅ Resend Email Configuration (HTTP API - Cloud Platform Compatible)
       - key: MAIL_MAILER
-        value: smtp
-      - key: MAIL_HOST
-        value: smtp-relay.brevo.com
-      - key: MAIL_PORT
-        value: "587"
-      - key: MAIL_USERNAME
-        value: "98f98d001@smtp-brevo.com"
-      - key: MAIL_PASSWORD
-        value: "J9VE1v50n72BTSm6"
-      - key: MAIL_ENCRYPTION
-        value: tls
+        value: resend
       - key: MAIL_FROM_ADDRESS
         value: "johnninonavares7@gmail.com"
       - key: MAIL_FROM_NAME
         value: "SkillsXchange"
+      - key: RESEND_KEY
+        value: "your_resend_api_key_here"
       - key: FILESYSTEM_DISK
         value: public
 
