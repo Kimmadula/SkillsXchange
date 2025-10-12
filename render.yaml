@@ -58,7 +58,7 @@ services:
       - key: MAIL_MAILER
         value: resend
       - key: MAIL_FROM_ADDRESS
-        value: "asdtumakay@gmail.com"
+        value: "noreply@resend.dev"
       - key: MAIL_FROM_NAME
         value: "SkillsXchange"
       - key: RESEND_API_KEY
