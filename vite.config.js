@@ -43,5 +43,5 @@ export default defineConfig({
         },
         https: true,
     },
-    base: process.env.NODE_ENV === 'production' ? 'https://skillsxchangee.onrender.com/' : '/',
+    base: process.env.NODE_ENV === 'production' ? 'https://skillsxchange.site/' : '/',
 });
