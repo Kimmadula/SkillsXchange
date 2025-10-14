@@ -18,7 +18,7 @@ function initializeFirebase() {
     console.log('🔍 Firebase object available:', typeof firebase !== 'undefined');
     console.log('🔍 Firebase methods:', typeof firebase !== 'undefined' ? Object.keys(firebase) : 'N/A');
 
-    if (typeof firebase !== 'undefined') {
+    if (typeof firebase !== 'undefined' && firebase.initializeApp) {
         try {
             console.log('🔍 Attempting to initialize Firebase app...');
             
@@ -94,15 +94,26 @@ function initializeFirebase() {
     }
 }
 
-// Initialize Firebase immediately
-initializeFirebase();
+// Wait for Firebase SDK to be fully loaded
+function waitForFirebase() {
+    if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+        console.log('✅ Firebase SDK loaded, initializing...');
+        initializeFirebase();
+    } else {
+        console.log('⏳ Waiting for Firebase SDK to load...');
+        setTimeout(waitForFirebase, 100);
+    }
+}
+
+// Start waiting for Firebase
+waitForFirebase();
 
 // Also initialize when DOM is ready (fallback)
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🔍 DOM loaded, checking Firebase initialization...');
     if (!window.firebaseDatabase) {
         console.log('🔄 Firebase database not available, retrying initialization...');
-        initializeFirebase();
+        setTimeout(initializeFirebase, 500);
     }
 });
 
