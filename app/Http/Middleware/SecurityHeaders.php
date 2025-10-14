@@ -61,12 +61,14 @@ class SecurityHeaders
                "https://www.googletagmanager.com " .
                "https://www.gstatic.com/firebasejs/ " .
                "https://www.gstatic.com/firebasejs/9.23.0/ " .
-               "https://www.gstatic.com/firebasejs/12.3.0/; " .
+               "https://www.gstatic.com/firebasejs/12.3.0/ " .
+               "https://skillsxchange-crus.onrender.com; " .
                "style-src 'self' 'unsafe-inline' " .
                "https://cdnjs.cloudflare.com " .
                "https://cdn.jsdelivr.net " .
                "https://fonts.bunny.net " .
-               "https://fonts.googleapis.com; " .
+               "https://fonts.googleapis.com " .
+               "https://skillsxchange-crus.onrender.com; " .
                "img-src 'self' data: https: blob:; " .
                "font-src 'self' " .
                "https://cdnjs.cloudflare.com " .
