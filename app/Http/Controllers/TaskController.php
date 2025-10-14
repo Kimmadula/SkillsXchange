@@ -434,8 +434,24 @@ class TaskController extends Controller
     {
         $user = Auth::user();
         
+        // Debug logging
+        \Log::info('Task submission request', [
+            'user_id' => $user ? $user->id : 'not authenticated',
+            'task_id' => $task->id,
+            'is_ajax' => $request->ajax(),
+            'wants_json' => $request->wantsJson(),
+            'headers' => $request->headers->all(),
+            'method' => $request->method()
+        ]);
+        
         // Check if user is assigned to this task
         if ($task->assigned_to !== $user->id) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'You can only submit tasks assigned to you.'
+                ], 403);
+            }
             return redirect()->back()->with('error', 'You can only submit tasks assigned to you.');
         }
 

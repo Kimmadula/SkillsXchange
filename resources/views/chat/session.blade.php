@@ -957,6 +957,34 @@
                                         return true;
                                     }
                                     
+                                    // If not available, wait a bit and retry
+                                    console.log('🔄 Firebase database not available, waiting and retrying...');
+                                    setTimeout(() => {
+                                        if (window.firebaseDatabase) {
+                                            this.database = window.firebaseDatabase;
+                                            console.log('✅ Firebase database initialized from global reference (retry)');
+                                        } else {
+                                            console.log('🔄 Still not available, trying direct initialization...');
+                                            this.initFirebaseDirect();
+                                        }
+                                    }, 1000);
+                                    
+                                    return false;
+                                    
+                                } catch (error) {
+                                    console.error('❌ Error initializing Firebase:', error);
+                                    console.error('❌ Error details:', {
+                                        name: error.name,
+                                        message: error.message,
+                                        code: error.code,
+                                        stack: error.stack
+                                    });
+                                    return false;
+                                }
+                            }
+                            
+                            initFirebaseDirect() {
+                                try {
                                     // Fallback: Wait for Firebase to be fully loaded
                                     if (typeof firebase === 'undefined') {
                                         console.error('❌ Firebase SDK not loaded');
@@ -982,13 +1010,7 @@
                                     return true;
                                     
                                 } catch (error) {
-                                    console.error('❌ Error initializing Firebase:', error);
-                                    console.error('❌ Error details:', {
-                                        name: error.name,
-                                        message: error.message,
-                                        code: error.code,
-                                        stack: error.stack
-                                    });
+                                    console.error('❌ Error initializing Firebase directly:', error);
                                     return false;
                                 }
                             }
@@ -3875,8 +3897,25 @@ function showTaskSubmissionModal(taskId) {
             },
             body: formData
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            console.log('Content-Type:', response.headers.get('content-type'));
+            
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // If not JSON, get text to see what we're getting
+                return response.text().then(text => {
+                    console.error('Expected JSON but got:', text);
+                    throw new Error('Server returned HTML instead of JSON. Status: ' + response.status);
+                });
+            }
+        })
         .then(data => {
+            console.log('Response data:', data);
             if (data.success) {
                 hideTaskSubmissionModal();
                 showSuccess('Work submitted successfully!');

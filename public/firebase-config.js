@@ -12,72 +12,99 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-console.log('🔍 Current domain:', window.location.hostname);
-console.log('🔍 Current origin:', window.location.origin);
-console.log('🔍 Firebase object available:', typeof firebase !== 'undefined');
-console.log('🔍 Firebase methods:', typeof firebase !== 'undefined' ? Object.keys(firebase) : 'N/A');
+function initializeFirebase() {
+    console.log('🔍 Current domain:', window.location.hostname);
+    console.log('🔍 Current origin:', window.location.origin);
+    console.log('🔍 Firebase object available:', typeof firebase !== 'undefined');
+    console.log('🔍 Firebase methods:', typeof firebase !== 'undefined' ? Object.keys(firebase) : 'N/A');
 
-if (typeof firebase !== 'undefined') {
-    try {
-        console.log('🔍 Attempting to initialize Firebase app...');
-        firebase.initializeApp(firebaseConfig);
-        console.log('✅ Firebase app initialized');
-        
-        console.log('🔍 Attempting to initialize Firebase Auth...');
-        window.firebaseAuth = firebase.auth();
-        console.log('✅ Firebase Auth initialized');
-        
-        console.log('🔍 Attempting to initialize Firebase Database...');
-        window.firebaseDatabase = firebase.database();
-        console.log('✅ Firebase Database initialized');
-        
-        console.log('✅ Firebase v9 (compat) initialized successfully');
-        console.log('🔍 Firebase config:', firebaseConfig);
-        
-        // Test Firebase Auth availability
-        if (window.firebaseAuth) {
-            console.log('✅ Firebase Auth is available');
-        } else {
-            console.error('❌ Firebase Auth is not available');
-        }
-        
-        // Test Firebase Database availability
-        if (window.firebaseDatabase) {
-            console.log('✅ Firebase Database is available');
+    if (typeof firebase !== 'undefined') {
+        try {
+            console.log('🔍 Attempting to initialize Firebase app...');
             
-            // Test database connection
-            console.log('🔍 Testing database connection...');
-            const testRef = window.firebaseDatabase.ref('.info/connected');
-            testRef.on('value', (snapshot) => {
-                if (snapshot.val() === true) {
-                    console.log('✅ Firebase database connection verified');
+            // Check if Firebase app is already initialized
+            let app;
+            try {
+                app = firebase.app();
+                console.log('✅ Firebase app already initialized');
+            } catch (error) {
+                if (error.code === 'app/no-app') {
+                    console.log('🔍 No Firebase app found, initializing...');
+                    app = firebase.initializeApp(firebaseConfig);
+                    console.log('✅ Firebase app initialized');
                 } else {
-                    console.warn('⚠️ Firebase database connection not established');
+                    throw error;
                 }
-                testRef.off(); // Remove listener after test
+            }
+            
+            console.log('🔍 Attempting to initialize Firebase Auth...');
+            window.firebaseAuth = firebase.auth();
+            console.log('✅ Firebase Auth initialized');
+            
+            console.log('🔍 Attempting to initialize Firebase Database...');
+            window.firebaseDatabase = firebase.database();
+            console.log('✅ Firebase Database initialized');
+            
+            console.log('✅ Firebase v9 (compat) initialized successfully');
+            console.log('🔍 Firebase config:', firebaseConfig);
+            
+            // Test Firebase Auth availability
+            if (window.firebaseAuth) {
+                console.log('✅ Firebase Auth is available');
+            } else {
+                console.error('❌ Firebase Auth is not available');
+            }
+            
+            // Test Firebase Database availability
+            if (window.firebaseDatabase) {
+                console.log('✅ Firebase Database is available');
+                
+                // Test database connection
+                console.log('🔍 Testing database connection...');
+                const testRef = window.firebaseDatabase.ref('.info/connected');
+                testRef.on('value', (snapshot) => {
+                    if (snapshot.val() === true) {
+                        console.log('✅ Firebase database connection verified');
+                    } else {
+                        console.warn('⚠️ Firebase database connection not established');
+                    }
+                    testRef.off(); // Remove listener after test
+                });
+            } else {
+                console.error('❌ Firebase Database is not available');
+            }
+        } catch (error) {
+            console.error('❌ Firebase initialization error:', error);
+            console.error('❌ Error details:', {
+                name: error.name,
+                message: error.message,
+                code: error.code,
+                stack: error.stack
             });
-        } else {
-            console.error('❌ Firebase Database is not available');
         }
-    } catch (error) {
-        console.error('❌ Firebase initialization error:', error);
-        console.error('❌ Error details:', {
-            name: error.name,
-            message: error.message,
-            code: error.code,
-            stack: error.stack
-        });
+    } else {
+        console.error('❌ Firebase SDK not loaded');
+        console.log('🔍 Available scripts:', Array.from(document.scripts).map(s => s.src));
+        console.log('🔍 Script loading status:', Array.from(document.scripts).map(s => ({
+            src: s.src,
+            loaded: s.readyState,
+            onload: s.onload,
+            onerror: s.onerror
+        })));
     }
-} else {
-    console.error('❌ Firebase SDK not loaded');
-    console.log('🔍 Available scripts:', Array.from(document.scripts).map(s => s.src));
-    console.log('🔍 Script loading status:', Array.from(document.scripts).map(s => ({
-        src: s.src,
-        loaded: s.readyState,
-        onload: s.onload,
-        onerror: s.onerror
-    })));
 }
+
+// Initialize Firebase immediately
+initializeFirebase();
+
+// Also initialize when DOM is ready (fallback)
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔍 DOM loaded, checking Firebase initialization...');
+    if (!window.firebaseDatabase) {
+        console.log('🔄 Firebase database not available, retrying initialization...');
+        initializeFirebase();
+    }
+});
 
 // Initialize authentication when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
