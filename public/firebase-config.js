@@ -19,9 +19,18 @@ console.log('🔍 Firebase methods:', typeof firebase !== 'undefined' ? Object.k
 
 if (typeof firebase !== 'undefined') {
     try {
+        console.log('🔍 Attempting to initialize Firebase app...');
         firebase.initializeApp(firebaseConfig);
+        console.log('✅ Firebase app initialized');
+        
+        console.log('🔍 Attempting to initialize Firebase Auth...');
         window.firebaseAuth = firebase.auth();
+        console.log('✅ Firebase Auth initialized');
+        
+        console.log('🔍 Attempting to initialize Firebase Database...');
         window.firebaseDatabase = firebase.database();
+        console.log('✅ Firebase Database initialized');
+        
         console.log('✅ Firebase v9 (compat) initialized successfully');
         console.log('🔍 Firebase config:', firebaseConfig);
         
@@ -35,6 +44,18 @@ if (typeof firebase !== 'undefined') {
         // Test Firebase Database availability
         if (window.firebaseDatabase) {
             console.log('✅ Firebase Database is available');
+            
+            // Test database connection
+            console.log('🔍 Testing database connection...');
+            const testRef = window.firebaseDatabase.ref('.info/connected');
+            testRef.on('value', (snapshot) => {
+                if (snapshot.val() === true) {
+                    console.log('✅ Firebase database connection verified');
+                } else {
+                    console.warn('⚠️ Firebase database connection not established');
+                }
+                testRef.off(); // Remove listener after test
+            });
         } else {
             console.error('❌ Firebase Database is not available');
         }
@@ -50,6 +71,12 @@ if (typeof firebase !== 'undefined') {
 } else {
     console.error('❌ Firebase SDK not loaded');
     console.log('🔍 Available scripts:', Array.from(document.scripts).map(s => s.src));
+    console.log('🔍 Script loading status:', Array.from(document.scripts).map(s => ({
+        src: s.src,
+        loaded: s.readyState,
+        onload: s.onload,
+        onerror: s.onerror
+    })));
 }
 
 // Initialize authentication when DOM is loaded
