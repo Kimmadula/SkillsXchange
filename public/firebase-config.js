@@ -12,6 +12,11 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
+console.log('🔍 Current domain:', window.location.hostname);
+console.log('🔍 Current origin:', window.location.origin);
+console.log('🔍 Firebase object available:', typeof firebase !== 'undefined');
+console.log('🔍 Firebase methods:', typeof firebase !== 'undefined' ? Object.keys(firebase) : 'N/A');
+
 if (typeof firebase !== 'undefined') {
     try {
         firebase.initializeApp(firebaseConfig);
@@ -35,9 +40,16 @@ if (typeof firebase !== 'undefined') {
         }
     } catch (error) {
         console.error('❌ Firebase initialization error:', error);
+        console.error('❌ Error details:', {
+            name: error.name,
+            message: error.message,
+            code: error.code,
+            stack: error.stack
+        });
     }
 } else {
     console.error('❌ Firebase SDK not loaded');
+    console.log('🔍 Available scripts:', Array.from(document.scripts).map(s => s.src));
 }
 
 // Initialize authentication when DOM is loaded

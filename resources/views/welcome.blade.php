@@ -121,7 +121,6 @@
     <div class="container">
       <a class="navbar-brand fw-bold text-primary fs-5" href="/">
         <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="me-2" style="width: 100px; height: 100px;">
-        SkillsXchange
       </a>
 
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
