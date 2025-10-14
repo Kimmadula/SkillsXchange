@@ -3,7 +3,6 @@
         <!-- Logo -->
         <a class="navbar-brand fw-bold text-primary d-flex align-items-center" href="{{ route('dashboard') }}">
             <x-application-logo class="me-2" />
-            <span class="d-none d-sm-inline">SkillsXchange</span>
         </a>
 
         <!-- Mobile Toggle -->
