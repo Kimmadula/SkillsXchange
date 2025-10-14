@@ -16,6 +16,7 @@ if (typeof firebase !== 'undefined') {
     try {
         firebase.initializeApp(firebaseConfig);
         window.firebaseAuth = firebase.auth();
+        window.firebaseDatabase = firebase.database();
         console.log('✅ Firebase v9 (compat) initialized successfully');
         console.log('🔍 Firebase config:', firebaseConfig);
         
@@ -24,6 +25,13 @@ if (typeof firebase !== 'undefined') {
             console.log('✅ Firebase Auth is available');
         } else {
             console.error('❌ Firebase Auth is not available');
+        }
+        
+        // Test Firebase Database availability
+        if (window.firebaseDatabase) {
+            console.log('✅ Firebase Database is available');
+        } else {
+            console.error('❌ Firebase Database is not available');
         }
     } catch (error) {
         console.error('❌ Firebase initialization error:', error);
