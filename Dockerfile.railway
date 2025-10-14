@@ -3,8 +3,8 @@ FROM php:8.2-cli
 # Copy dockerignore for Railway
 COPY .dockerignore.railway .dockerignore
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install system dependencies with optimizations
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     libpng-dev \
@@ -13,7 +13,9 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     nodejs \
-    npm
+    npm \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath
@@ -44,14 +46,10 @@ RUN echo "APP_NAME=SkillsXchange\nAPP_ENV=production\nAPP_KEY=\nAPP_DEBUG=false\
 # Install dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Install npm dependencies (for potential asset building)
-RUN npm install
-
-# Create a minimal build directory to avoid Vite errors
-RUN mkdir -p public/build
-
-# Try to build assets, but don't fail if it doesn't work
-RUN npm run build 2>/dev/null || echo "Asset build failed, using fallback CSS"
+# Copy and use optimized build script
+COPY build-railway.sh ./
+RUN chmod +x build-railway.sh
+RUN ./build-railway.sh
 
 # Ensure Firebase files are accessible
 RUN chmod 644 public/firebase-config.js public/firebase-video-integration.js public/firebase-video-call.js
