@@ -112,7 +112,7 @@ APP_NAME=SkillsXchange
 APP_ENV=production
 APP_KEY=[auto-generated]
 APP_DEBUG=false
-APP_URL=https://skillsxchange-crus.onrender.com
+APP_URL=https://skillsxchange.site
 
 # Database Configuration
 DB_CONNECTION=mysql

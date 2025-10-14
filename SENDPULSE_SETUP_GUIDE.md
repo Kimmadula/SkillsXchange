@@ -42,7 +42,7 @@
 ### **Step 4: Configure Your Domain (Optional but Recommended)**
 
 1. **Go to**: Settings → Domains
-2. **Add your domain**: `skillsxchange-crus.onrender.com`
+2. **Add your domain**: `skillsxchange.site`
 3. **Follow DNS setup instructions** (optional for testing)
 
 ---

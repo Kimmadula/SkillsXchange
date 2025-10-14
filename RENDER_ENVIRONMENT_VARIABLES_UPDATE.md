@@ -30,7 +30,7 @@ RESEND_API_KEY=re_KZXcNx4W_7fdSyXJjjHYkokLUsN5czjWt
 APP_NAME=SkillsXchange
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://skillsxchange-crus.onrender.com
+APP_URL=https://skillsxchange.site
 
 # Database Configuration
 DB_CONNECTION=mysql
@@ -79,7 +79,7 @@ After updating environment variables, you can clear the cache:
 
 ### ✅ **Step 4: Test**
 
-1. **Go to your app:** https://skillsxchange-crus.onrender.com
+1. **Go to your app:** https://skillsxchange.site
 2. **Try registering a new user**
 3. **Check if email verification works**
 4. **Monitor logs for any errors**

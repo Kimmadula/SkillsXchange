@@ -88,7 +88,7 @@ TTL: Auto
 3. **Wait for deployment**
 
 ### **Test Email Functionality:**
-1. **Go to your app:** https://skillsxchange-crus.onrender.com
+1. **Go to your app:** https://skillsxchange.site
 2. **Try registering a new user**
 3. **Check if verification email is sent**
 4. **Verify the email comes from:** `noreply@skillsxchange.com`
