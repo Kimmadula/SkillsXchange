@@ -946,7 +946,18 @@
                             
                             initFirebase() {
                                 try {
-                                    // Wait for Firebase to be fully loaded
+                                    console.log('🔍 Initializing Firebase for WebRTC signaling...');
+                                    console.log('🔍 window.firebaseDatabase available:', !!window.firebaseDatabase);
+                                    console.log('🔍 firebase object available:', typeof firebase !== 'undefined');
+                                    
+                                    // First try to use the global Firebase database from firebase-config.js
+                                    if (window.firebaseDatabase) {
+                                        this.database = window.firebaseDatabase;
+                                        console.log('✅ Firebase database initialized from global reference (v9 compat)');
+                                        return true;
+                                    }
+                                    
+                                    // Fallback: Wait for Firebase to be fully loaded
                                     if (typeof firebase === 'undefined') {
                                         console.error('❌ Firebase SDK not loaded');
                                         return false;
@@ -972,6 +983,12 @@
                                     
                                 } catch (error) {
                                     console.error('❌ Error initializing Firebase:', error);
+                                    console.error('❌ Error details:', {
+                                        name: error.name,
+                                        message: error.message,
+                                        code: error.code,
+                                        stack: error.stack
+                                    });
                                     return false;
                                 }
                             }
