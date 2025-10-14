@@ -1,7 +1,7 @@
 services:
   # Main Laravel Application
   - type: web
-    name: skillsxchangee-main
+    name: skillsxchange-crus
     env: php
     plan: free
     buildCommand: chmod +x build-render.sh && ./build-render.sh
@@ -20,6 +20,8 @@ services:
         value: false
       - key: APP_URL
         value: https://skillsxchange.site
+      - key: ASSET_URL
+        value: https://skillsxchange-crus.onrender.com
       - key: LOG_CHANNEL
         value: stderr
 
