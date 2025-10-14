@@ -40,7 +40,7 @@
 ### **Domain Setup:**
 1. **Go to Domains:** https://resend.com/domains
 2. **Click "Add Domain"**
-3. **Enter domain:** `skillsxchange-crus.onrender.com`
+3. **Enter domain:** `skillsxchange.site`
 4. **Follow DNS setup instructions**
 5. **Verify domain** (or use default for testing)
 

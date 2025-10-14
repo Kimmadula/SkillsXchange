@@ -187,10 +187,28 @@
 
     // Initialize Firebase video call listeners when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
-        // Wait a bit for Firebase to load
-        setTimeout(() => {
-            initializeVideoCallListeners();
-        }, 1000);
+        // Wait for Firebase to be fully loaded
+        const waitForFirebase = () => {
+            if (typeof firebase !== 'undefined' && firebase.app) {
+                try {
+                    firebase.app(); // Check if Firebase is initialized
+                    initializeVideoCallListeners();
+                } catch (error) {
+                    if (error.code === 'app/no-app') {
+                        console.log('⏳ Waiting for Firebase to initialize...');
+                        setTimeout(waitForFirebase, 100);
+                    } else {
+                        console.error('❌ Firebase initialization error:', error);
+                        initializeVideoCallListeners(); // Fallback to HTTP polling
+                    }
+                }
+            } else {
+                console.log('⏳ Waiting for Firebase SDK to load...');
+                setTimeout(waitForFirebase, 100);
+            }
+        };
+        
+        waitForFirebase();
     });
 </script>
 <style>
@@ -920,24 +938,41 @@
                                 this.iceCandidateBuffer = [];
                                 this.remoteDescriptionSet = false;
                                 
-                                this.initFirebase();
+                                // Initialize Firebase after a short delay to ensure it's loaded
+                                setTimeout(() => {
+                                    this.initFirebase();
+                                }, 100);
                             }
                             
                             initFirebase() {
                                 try {
-                                    // Check for Firebase v9 compat first
-                                    if (window.firebaseDatabase) {
-                                        this.database = window.firebaseDatabase;
-                                        console.log('✅ Firebase database initialized from global reference (v9 compat)');
-                                    } else if (typeof firebase !== 'undefined' && firebase.database) {
-                                        this.database = firebase.database();
-                                        console.log('✅ Firebase database initialized for WebRTC signaling (v9 compat)');
-                                    } else {
-                                        console.error('❌ Firebase not available for WebRTC signaling');
-                                        console.log('🔍 Available globals:', Object.keys(window).filter(key => key.includes('firebase')));
+                                    // Wait for Firebase to be fully loaded
+                                    if (typeof firebase === 'undefined') {
+                                        console.error('❌ Firebase SDK not loaded');
+                                        return false;
                                     }
+                                    
+                                    // Check if Firebase app is initialized
+                                    let app;
+                                    try {
+                                        app = firebase.app();
+                                        console.log('✅ Using existing Firebase app');
+                                    } catch (error) {
+                                        if (error.code === 'app/no-app') {
+                                            console.error('❌ Firebase app not initialized. Please ensure firebase-config.js is loaded first.');
+                                            return false;
+                                        }
+                                        throw error;
+                                    }
+                                    
+                                    // Get database reference
+                                    this.database = firebase.database();
+                                    console.log('✅ Firebase database initialized for WebRTC signaling');
+                                    return true;
+                                    
                                 } catch (error) {
                                     console.error('❌ Error initializing Firebase:', error);
+                                    return false;
                                 }
                             }
                             
@@ -2699,7 +2734,16 @@ function startVideoCallPolling() {
     
     videoCallPollingInterval = setInterval(async () => {
         try {
-            const response = await fetch(`/chat/{{ $trade->id }}/video-call/poll?since=${lastPollTime}`);
+            const response = await fetch(`/chat/{{ $trade->id }}/video-call/messages?since=${lastPollTime}`);
+            
+            // Check if response is HTML (error page) instead of JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('❌ Received non-JSON response:', contentType);
+                console.error('Response text:', await response.text());
+                return;
+            }
+            
             const data = await response.json();
             
             if (data.success && data.messages && data.messages.length > 0) {
@@ -2725,6 +2769,10 @@ function startVideoCallPolling() {
             }
         } catch (error) {
             console.error('❌ Error polling for video call messages:', error);
+            // If it's a JSON parsing error, it might be an HTML error page
+            if (error.message.includes('Unexpected token') && error.message.includes('<!DOCTYPE')) {
+                console.error('❌ Received HTML error page instead of JSON. Check if the route exists.');
+            }
         }
     }, 5000); // Poll every 5 seconds
     

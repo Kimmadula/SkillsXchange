@@ -58,7 +58,10 @@ class SecurityHeaders
                "https://*.firebasedatabase.app " .
                "https://*.googleapis.com " .
                "https://unpkg.com " .
-               "https://www.googletagmanager.com; " .
+               "https://www.googletagmanager.com " .
+               "https://www.gstatic.com/firebasejs/ " .
+               "https://www.gstatic.com/firebasejs/9.23.0/ " .
+               "https://www.gstatic.com/firebasejs/12.3.0/; " .
                "style-src 'self' 'unsafe-inline' " .
                "https://cdnjs.cloudflare.com " .
                "https://cdn.jsdelivr.net " .

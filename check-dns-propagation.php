@@ -47,7 +47,7 @@ echo "✅ Maximum (24-48 hours): All DNS servers worldwide\n\n";
 echo "🎯 WHAT TO LOOK FOR:\n";
 echo "===================\n";
 echo "✅ skillsxchange.site → 216.24.57.1\n";
-echo "✅ www.skillsxchange.site → skillsxchange-crus.onrender.com\n";
+echo "✅ www.skillsxchange.site → skillsxchange.site\n";
 echo "✅ Both domains load your SkillsXchange app\n";
 echo "✅ Render shows green checkmarks\n\n";
 
