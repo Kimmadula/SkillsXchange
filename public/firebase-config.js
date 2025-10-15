@@ -23,6 +23,14 @@ window.firebaseDatabase = null;
 // Initialize Firebase (Database only)
 function initializeFirebase() {
     try {
+        // Skip Firebase on login pages
+        if (window.location.pathname.includes('/login') || 
+            window.location.pathname.includes('/register') ||
+            window.location.pathname.includes('/password/reset')) {
+            console.log('Skipping Firebase on login page');
+            return;
+        }
+        
         console.log('🔍 Initializing Firebase (Database only)...');
         
         // Initialize Firebase app
