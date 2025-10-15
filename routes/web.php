@@ -411,16 +411,17 @@ Route::middleware('auth')->group(function () {
         Route::delete('/tasks/{task}', [\App\Http\Controllers\TaskController::class, 'destroy'])->name('tasks.destroy');
         Route::patch('/tasks/{task}/toggle', [\App\Http\Controllers\TaskController::class, 'toggle'])->name('tasks.toggle');
         
-        // Enhanced task management routes
-        Route::post('/tasks/{task}/start', [\App\Http\Controllers\TaskController::class, 'startTask'])->name('tasks.start');
-        Route::post('/tasks/{task}/submit', [\App\Http\Controllers\TaskController::class, 'submitTask'])->name('tasks.submit');
-        Route::get('/tasks/{task}/evaluate', [\App\Http\Controllers\TaskController::class, 'showEvaluationForm'])->name('tasks.evaluate');
-        Route::post('/tasks/{task}/evaluation', [\App\Http\Controllers\TaskController::class, 'storeEvaluation'])->name('tasks.store-evaluation');
-        Route::get('/tasks/{task}/progress', [\App\Http\Controllers\TaskController::class, 'getTaskProgress'])->name('tasks.progress');
-        Route::get('/tasks/{task}/submission-details', [\App\Http\Controllers\TaskController::class, 'getSubmissionDetails'])->name('tasks.submission-details');
         
 // Task submission file downloads
 Route::get('/submissions/{submission}/files/{fileIndex}', [\App\Http\Controllers\TaskController::class, 'downloadSubmissionFile'])->name('submissions.download');
+
+// Task submission routes (accessible to all authenticated users)
+Route::post('/tasks/{task}/start', [\App\Http\Controllers\TaskController::class, 'startTask'])->name('tasks.start');
+Route::post('/tasks/{task}/submit', [\App\Http\Controllers\TaskController::class, 'submitTask'])->name('tasks.submit');
+Route::get('/tasks/{task}/evaluate', [\App\Http\Controllers\TaskController::class, 'showEvaluationForm'])->name('tasks.evaluate');
+Route::post('/tasks/{task}/evaluation', [\App\Http\Controllers\TaskController::class, 'storeEvaluation'])->name('tasks.store-evaluation');
+Route::get('/tasks/{task}/progress', [\App\Http\Controllers\TaskController::class, 'getTaskProgress'])->name('tasks.progress');
+Route::get('/tasks/{task}/submission-details', [\App\Http\Controllers\TaskController::class, 'getSubmissionDetails'])->name('tasks.submission-details');
 
 // Skill Management Routes
 Route::resource('skills', \App\Http\Controllers\SkillController::class);
