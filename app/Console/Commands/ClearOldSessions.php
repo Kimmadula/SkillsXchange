@@ -14,7 +14,7 @@ class ClearOldSessions extends Command
      *
      * @var string
      */
-    protected $signature = 'session:clear-old {--force : Force clear without confirmation}';
+    protected $signature = 'session:clear-old {--force : Force clear without confirmation} {--domain-migration : Clear sessions for domain migration}';
 
     /**
      * The console command description.
@@ -35,7 +35,11 @@ class ClearOldSessions extends Command
             }
         }
 
-        $this->info('Clearing old sessions from domain migration...');
+        if ($this->option('domain-migration')) {
+            $this->info('Clearing sessions for domain migration...');
+        } else {
+            $this->info('Clearing old sessions from domain migration...');
+        }
 
         try {
             // Clear session files
@@ -46,6 +50,11 @@ class ClearOldSessions extends Command
             
             // Clear old cookies (if possible)
             $this->clearOldCookies();
+            
+            // Additional domain migration steps
+            if ($this->option('domain-migration')) {
+                $this->clearDomainMigrationData();
+            }
             
             $this->info('✅ Old sessions cleared successfully!');
             $this->info('Users will need to log in again on the new domain.');
@@ -93,5 +102,18 @@ class ClearOldSessions extends Command
     {
         $this->info('Note: Old cookies will be cleared when users visit the new domain');
         $this->info('The HandleDomainChange middleware will handle this automatically');
+    }
+    
+    /**
+     * Clear domain migration specific data
+     */
+    private function clearDomainMigrationData()
+    {
+        // Clear any domain-specific cache
+        Cache::forget('domain_migration_completed');
+        Cache::forget('old_domain_sessions');
+        
+        // Clear any old domain references
+        $this->info('Cleared domain migration cache');
     }
 }
