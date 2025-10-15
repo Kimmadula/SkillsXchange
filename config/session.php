@@ -155,7 +155,7 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN', '.skillsxchange.site'),
+    'domain' => env('SESSION_DOMAIN', 'skillsxchange.site'),
 
     /*
     |--------------------------------------------------------------------------
