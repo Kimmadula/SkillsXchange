@@ -27,6 +27,26 @@ Route::get('/test', function () {
     return 'Test route working!';
 });
 
+// Domain migration route - helps users transition from old domain
+Route::get('/domain-migration', function (Request $request) {
+    // Clear any old session data
+    session()->flush();
+    
+    // Regenerate session
+    session()->regenerate();
+    
+    // Add migration flag
+    session()->put('domain_migrated', true);
+    session()->put('migration_time', time());
+    
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Domain migration completed. Please try logging in again.',
+        'new_domain' => 'skillsxchange.site',
+        'old_domain' => 'skillsxchange-crus.onrender.com'
+    ]);
+});
+
 Route::get('/firebase-debug', function () {
     return response()->file(public_path('firebase-debug.html'));
 });
