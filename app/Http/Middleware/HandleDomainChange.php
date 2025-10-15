@@ -18,6 +18,11 @@ class HandleDomainChange
      */
     public function handle(Request $request, Closure $next)
     {
+        // Skip middleware if disabled via environment variable
+        if (env('DISABLE_DOMAIN_CHANGE_MIDDLEWARE', false)) {
+            return $next($request);
+        }
+        
         // Check if this is a domain change scenario
         $currentDomain = $request->getHost();
         $oldDomain = 'skillsxchange-crus.onrender.com';
