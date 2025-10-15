@@ -23,6 +23,19 @@ class HandleDomainChange
         $oldDomain = 'skillsxchange-crus.onrender.com';
         $newDomain = 'skillsxchange.site';
         
+        // Always check for domain migration on login attempts
+        if ($request->is('login') || $request->is('*/login')) {
+            Log::info('Login attempt detected', [
+                'domain' => $currentDomain,
+                'user_agent' => $request->userAgent(),
+                'ip' => $request->ip(),
+                'referer' => $request->header('referer')
+            ]);
+            
+            // Clear any old session data for domain migration
+            $this->clearOldSessionData($request);
+        }
+        
         // If user is coming from old domain or has old session data
         if ($this->hasOldDomainSession($request)) {
             Log::info('Domain change detected', [
@@ -34,9 +47,6 @@ class HandleDomainChange
             
             // Clear old session data
             $this->clearOldSessionData($request);
-            
-            // Regenerate session for new domain
-            Session::regenerate();
             
             // Add a flag to indicate domain change
             Session::put('domain_migrated', true);
