@@ -273,6 +273,10 @@ Route::get('/debug-users', function () {
 });
 
 Route::get('/', function () {
+    // If user is authenticated, redirect to dashboard
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
     return view('welcome');
 });
 
