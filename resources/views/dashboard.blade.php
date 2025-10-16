@@ -260,12 +260,10 @@
                                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                     Active
                                 </span>
-                                @if(auth()->user()->role !== 'admin')
                                 <a href="{{ route('chat.session', $session->id) }}"
                                     class="text-blue-600 hover:text-blue-800 text-sm">
                                     View Chat
                                 </a>
-                                @endif
                             </div>
                         </div>
                     </div>
