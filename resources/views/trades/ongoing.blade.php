@@ -53,12 +53,14 @@
                         @endif
                         
                         <!-- Chat Button -->
+                        @if(auth()->user()->role !== 'admin')
                         <a href="{{ route('chat.show', $t->id) }}" 
                            style="background:#8b5cf6; color:#fff; padding:6px 12px; border:none; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px; transition:background 0.2s; text-decoration:none;" 
                            onmouseover="this.style.background='#7c3aed'" 
                            onmouseout="this.style.background='#8b5cf6'">
                             💬 Chat
                         </a>
+                        @endif
                     </div>
                 </div>
                 
