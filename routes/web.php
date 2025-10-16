@@ -60,6 +60,54 @@ Route::get('/test-auth', function () {
     ]);
 });
 
+// Direct test of chat controller logic
+Route::get('/test-chat/{tradeId}', function ($tradeId) {
+    $user = Auth::user();
+    $trade = \App\Models\Trade::find($tradeId);
+    
+    $result = [
+        'step' => 'initial',
+        'user_authenticated' => Auth::check(),
+        'user_id' => $user->id ?? null,
+        'user_role' => $user->role ?? null,
+        'trade_exists' => $trade ? true : false,
+        'trade_id' => $trade->id ?? null,
+        'trade_user_id' => $trade->user_id ?? null,
+        'trade_status' => $trade->status ?? null,
+    ];
+    
+    // Check if user is authenticated
+    if (!$user || !Auth::check()) {
+        $result['step'] = 'auth_failed';
+        $result['redirect_reason'] = 'User not authenticated';
+        return response()->json($result);
+    }
+    
+    // Check if user is admin
+    if ($user->role === 'admin') {
+        $result['step'] = 'admin_blocked';
+        $result['redirect_reason'] = 'Admin users cannot access chat';
+        return response()->json($result);
+    }
+    
+    // Check authorization
+    $isTradeOwner = $trade->user_id === $user->id;
+    $hasAcceptedRequest = $trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists();
+    
+    $result['is_trade_owner'] = $isTradeOwner;
+    $result['has_accepted_request'] = $hasAcceptedRequest;
+    
+    if (!$isTradeOwner && !$hasAcceptedRequest) {
+        $result['step'] = 'unauthorized';
+        $result['redirect_reason'] = 'User not authorized for this trade';
+        return response()->json($result);
+    }
+    
+    $result['step'] = 'success';
+    $result['redirect_reason'] = 'Should work - no redirect expected';
+    return response()->json($result);
+})->middleware('auth');
+
 // Domain migration route - helps users transition from old domain
 Route::get('/domain-migration', function (Request $request) {
     // Clear any old session data

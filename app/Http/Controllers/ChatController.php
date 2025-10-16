@@ -37,13 +37,28 @@ class ChatController extends Controller
                 'auth_check' => Auth::check(),
                 'session_id' => session()->getId()
             ]);
-            return redirect()->route('login')->with('error', 'Please log in to access the chat.');
+            
+            // Return JSON for debugging instead of redirect
+            return response()->json([
+                'error' => 'Not authenticated',
+                'user_exists' => $user ? 'yes' : 'no',
+                'auth_check' => Auth::check(),
+                'session_id' => session()->getId(),
+                'redirect_to' => 'login'
+            ], 401);
         }
         
         // Prevent admin users from accessing chat functionality
         if ($user->role === 'admin') {
             Log::info('Admin user blocked from chat access', ['user_id' => $user->id]);
-            return redirect()->route('admin.dashboard')->with('error', 'Admin users cannot access user chat functionality.');
+            
+            // Return JSON for debugging instead of redirect
+            return response()->json([
+                'error' => 'Admin users cannot access chat',
+                'user_id' => $user->id,
+                'user_role' => $user->role,
+                'redirect_to' => 'admin.dashboard'
+            ], 403);
         }
         
         // Check if user is part of this trade
@@ -63,7 +78,17 @@ class ChatController extends Controller
                 'trade_id' => $trade->id,
                 'trade_owner' => $trade->user_id
             ]);
-            return redirect()->back()->with('error', 'You are not authorized to view this trade chat.');
+            
+            // Return JSON for debugging instead of redirect
+            return response()->json([
+                'error' => 'Not authorized for this trade',
+                'user_id' => $user->id,
+                'trade_id' => $trade->id,
+                'trade_owner' => $trade->user_id,
+                'is_trade_owner' => $isTradeOwner,
+                'has_accepted_request' => $hasAcceptedRequest,
+                'redirect_to' => 'back'
+            ], 403);
         }
 
         // Get the other user (trade partner)
@@ -82,7 +107,22 @@ class ChatController extends Controller
         $myProgress = $myTasks->count() > 0 ? ($myTasks->where('completed', true)->count() / $myTasks->count()) * 100 : 0;
         $partnerProgress = $partnerTasks->count() > 0 ? ($partnerTasks->where('completed', true)->count() / $partnerTasks->count()) * 100 : 0;
 
-        return view('chat.session', compact('trade', 'partner', 'messages', 'myTasks', 'partnerTasks', 'myProgress', 'partnerProgress'));
+        // Return JSON for debugging instead of view
+        return response()->json([
+            'success' => true,
+            'message' => 'Chat controller reached successfully',
+            'trade_id' => $trade->id,
+            'user_id' => $user->id,
+            'partner_id' => $partner->id,
+            'messages_count' => $messages->count(),
+            'my_tasks_count' => $myTasks->count(),
+            'partner_tasks_count' => $partnerTasks->count(),
+            'my_progress' => $myProgress,
+            'partner_progress' => $partnerProgress
+        ]);
+        
+        // Original view return (commented out for debugging)
+        // return view('chat.session', compact('trade', 'partner', 'messages', 'myTasks', 'partnerTasks', 'myProgress', 'partnerProgress'));
     }
 
     public function sendMessage(Request $request, Trade $trade)
