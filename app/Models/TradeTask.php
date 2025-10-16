@@ -237,6 +237,42 @@ class TradeTask extends Model
         return in_array($fileType, $this->allowed_file_types);
     }
 
+    public function getFileTypeValidationRules()
+    {
+        if (!$this->hasAllowedFileTypes()) {
+            return 'file|max:50000|mimes:jpg,jpeg,png,gif,pdf,doc,docx,mp4,mov,avi,xls,xlsx';
+        }
+
+        $rules = ['file|max:50000'];
+        $mimes = [];
+
+        foreach ($this->allowed_file_types as $type) {
+            switch ($type) {
+                case 'image':
+                    $mimes = array_merge($mimes, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+                    break;
+                case 'video':
+                    $mimes = array_merge($mimes, ['mp4', 'mov', 'avi', 'wmv']);
+                    break;
+                case 'pdf':
+                    $mimes[] = 'pdf';
+                    break;
+                case 'word':
+                    $mimes = array_merge($mimes, ['doc', 'docx']);
+                    break;
+                case 'excel':
+                    $mimes = array_merge($mimes, ['xls', 'xlsx']);
+                    break;
+            }
+        }
+
+        if (!empty($mimes)) {
+            $rules[] = 'mimes:' . implode(',', array_unique($mimes));
+        }
+
+        return implode('|', $rules);
+    }
+
     public function validateFileType($mimeType, $extension = null)
     {
         if (!$this->hasAllowedFileTypes()) {

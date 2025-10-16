@@ -19,7 +19,8 @@ class TaskController extends Controller
     protected $taskSkillService;
 
     public function __construct(TaskSkillService $taskSkillService)
-    {
+    {   
+        $this->middleware('auth');
         $this->taskSkillService = $taskSkillService;
     }
 
