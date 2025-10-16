@@ -3891,16 +3891,20 @@ function showTaskSubmissionModal(taskId) {
         fetch(`/tasks/${taskId}/submit`, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
             },
-            body: formData
+        body: formData, 
+        credentials: 'same-origin'
         })
         .then(response => {
-            console.log('Response status:', response.status);
-            console.log('Response headers:', response.headers);
-            console.log('Content-Type:', response.headers.get('content-type'));
+            // Check for redirect (session expired)
+            if (response.redirected || response.status === 302 || response.status === 401) {
+                alert('Your session has expired. Please refresh the page and log in again.');
+                window.location.reload();
+            return;
+            }
             
             // Check if response is JSON
             const contentType = response.headers.get('content-type');
@@ -3909,13 +3913,14 @@ function showTaskSubmissionModal(taskId) {
             } else {
                 // If not JSON, get text to see what we're getting
                 return response.text().then(text => {
-                    console.error('Expected JSON but got:', text);
-                    throw new Error('Server returned HTML instead of JSON. Status: ' + response.status);
+                    console.error('Expected JSON but got:', text.substring(0, 500));
+                    throw new Error('Session expired or authentication failed');
                 });
             }
         })
         .then(data => {
-            console.log('Response data:', data);
+            if (!data) return; // Handle redirect case
+
             if (data.success) {
                 hideTaskSubmissionModal();
                 showSuccess('Work submitted successfully!');
@@ -3927,7 +3932,12 @@ function showTaskSubmissionModal(taskId) {
         })
         .catch(error => {
             console.error('Error:', error);
-            showError('Failed to submit work. Please try again.');
+            if (error.message && error.message.includes('Session expired')) {
+                alert('Your session has expired. Please refresh the page.');
+                window.location.reload();
+            } else {
+                showError('Failed to submit work. Please try again.');
+            }
         });
     });
 }

@@ -32,17 +32,20 @@
                             <p class="text-muted mb-3">{{ $user->email }}</p>
                             <div class="profile-badges">
                                 <span class="badge bg-primary me-2">{{ ucfirst($user->role) }}</span>
-                                @if($user->google_verified)
+
+                                @if($user->email_verified_at)
                                     <span class="badge bg-success me-2">
-                                        <i class="fab fa-google me-1"></i>Email Verified
+                                        <i class="fas fa-check-circle me-1"></i>Email Verified
                                     </span>
                                 @else
                                     <span class="badge bg-warning me-2">
                                         <i class="fas fa-envelope me-1"></i>Email Not Verified
                                     </span>
                                 @endif
+
                                 <span class="badge bg-info">{{ ucfirst($user->plan) }} Plan</span>
                             </div>
+
                         </div>
                         <div class="col-md-3 text-center text-md-end">
                             <a href="{{ route('profile.edit') }}" class="btn btn-primary">
@@ -285,23 +288,23 @@
     .profile-header-card {
         padding: 1.5rem;
     }
-    
+
     .profile-picture {
         width: 60px;
         height: 60px;
     }
-    
+
     .profile-picture-placeholder {
         width: 60px;
         height: 60px;
         font-size: 1.5rem;
     }
-    
+
     .d-flex.align-items-center.mb-2 {
         flex-direction: column;
         text-align: center;
     }
-    
+
     .profile-picture-container {
         margin-bottom: 1rem;
         margin-right: 0 !important;
