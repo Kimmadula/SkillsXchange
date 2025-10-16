@@ -55,6 +55,15 @@ class SessionExpirationMiddleware
                 'trace' => $e->getTraceAsString()
             ]);
             
+            // For chat routes, don't force logout - just log the error and continue
+            if (str_contains($request->path(), 'chat')) {
+                Log::warning('Session error on chat route - continuing without logout', [
+                    'url' => $request->url(),
+                    'error' => $e->getMessage()
+                ]);
+                return $next($request);
+            }
+            
             // If there's an error in session handling, force logout for security
             Auth::logout();
             Session::flush();

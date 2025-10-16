@@ -18,14 +18,51 @@ class ChatController extends Controller
     {
         $user = Auth::user();
         
+        // Add debugging information
+        Log::info('Chat access attempt', [
+            'user_id' => $user->id ?? 'not_authenticated',
+            'user_role' => $user->role ?? 'not_authenticated',
+            'trade_id' => $trade->id ?? 'not_found',
+            'trade_user_id' => $trade->user_id ?? 'not_found',
+            'trade_status' => $trade->status ?? 'not_found',
+            'auth_check' => Auth::check(),
+            'session_id' => session()->getId(),
+            'url' => request()->url()
+        ]);
+        
+        // Check if user is authenticated
+        if (!$user || !Auth::check()) {
+            Log::warning('Unauthenticated user trying to access chat', [
+                'user_exists' => $user ? 'yes' : 'no',
+                'auth_check' => Auth::check(),
+                'session_id' => session()->getId()
+            ]);
+            return redirect()->route('login')->with('error', 'Please log in to access the chat.');
+        }
+        
         // Prevent admin users from accessing chat functionality
         if ($user->role === 'admin') {
+            Log::info('Admin user blocked from chat access', ['user_id' => $user->id]);
             return redirect()->route('admin.dashboard')->with('error', 'Admin users cannot access user chat functionality.');
         }
         
         // Check if user is part of this trade
-        if ($trade->user_id !== $user->id && 
-            !$trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists()) {
+        $isTradeOwner = $trade->user_id === $user->id;
+        $hasAcceptedRequest = $trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists();
+        
+        Log::info('Trade authorization check', [
+            'is_trade_owner' => $isTradeOwner,
+            'has_accepted_request' => $hasAcceptedRequest,
+            'user_id' => $user->id,
+            'trade_id' => $trade->id
+        ]);
+        
+        if (!$isTradeOwner && !$hasAcceptedRequest) {
+            Log::warning('Unauthorized chat access attempt', [
+                'user_id' => $user->id,
+                'trade_id' => $trade->id,
+                'trade_owner' => $trade->user_id
+            ]);
             return redirect()->back()->with('error', 'You are not authorized to view this trade chat.');
         }
 
