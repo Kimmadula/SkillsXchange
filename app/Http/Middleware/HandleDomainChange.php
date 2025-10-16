@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class HandleDomainChange
 {
@@ -20,6 +21,11 @@ class HandleDomainChange
     {
         // Skip middleware if disabled via environment variable
         if (env('DISABLE_DOMAIN_CHANGE_MIDDLEWARE', false)) {
+            return $next($request);
+        }
+        
+        // Skip middleware for chat routes to prevent session clearing
+        if ($request->is('chat*')) {
             return $next($request);
         }
         
@@ -50,8 +56,16 @@ class HandleDomainChange
                 'ip' => $request->ip()
             ]);
             
-            // Clear old session data
-            $this->clearOldSessionData($request);
+            // Only clear session data if user is not authenticated or on login page
+            if (!auth()->check() || $request->is('login*')) {
+                // Clear old session data
+                $this->clearOldSessionData($request);
+            } else {
+                Log::info('Skipping session clear for authenticated user', [
+                    'user_id' => auth()->id(),
+                    'url' => $request->url()
+                ]);
+            }
             
             // Add a flag to indicate domain change
             Session::put('domain_migrated', true);
