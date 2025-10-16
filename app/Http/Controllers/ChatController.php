@@ -108,6 +108,7 @@ class ChatController extends Controller
         $partnerProgress = $partnerTasks->count() > 0 ? ($partnerTasks->where('completed', true)->count() / $partnerTasks->count()) * 100 : 0;
 
         // Return JSON for debugging instead of view
+        /*
         return response()->json([
             'success' => true,
             'message' => 'Chat controller reached successfully',
@@ -120,7 +121,11 @@ class ChatController extends Controller
             'my_progress' => $myProgress,
             'partner_progress' => $partnerProgress
         ]);
-        
+        */
+
+        // Return the actual chat session view
+        return view('chat.session', compact('trade', 'partner', 'messages', 'myTasks', 'partnerTasks', 'myProgress', 'partnerProgress'));
+
         // Original view return (commented out for debugging)
         // return view('chat.session', compact('trade', 'partner', 'messages', 'myTasks', 'partnerTasks', 'myProgress', 'partnerProgress'));
     }
