@@ -27,6 +27,39 @@ Route::get('/test', function () {
     return 'Test route working!';
 });
 
+// Debug route for chat issues
+Route::get('/debug-chat/{tradeId}', function ($tradeId) {
+    $user = Auth::user();
+    $trade = \App\Models\Trade::find($tradeId);
+    
+    return response()->json([
+        'user_authenticated' => Auth::check(),
+        'user_id' => $user->id ?? null,
+        'user_role' => $user->role ?? null,
+        'trade_exists' => $trade ? true : false,
+        'trade_id' => $trade->id ?? null,
+        'trade_user_id' => $trade->user_id ?? null,
+        'trade_status' => $trade->status ?? null,
+        'is_trade_owner' => $trade && $user ? $trade->user_id === $user->id : false,
+        'has_accepted_request' => $trade && $user ? $trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists() : false,
+        'session_id' => session()->getId(),
+        'session_data' => session()->all(),
+        'url' => request()->url(),
+        'redirect_url' => route('chat.show', $tradeId)
+    ]);
+})->middleware('auth');
+
+// Simple test route to check authentication
+Route::get('/test-auth', function () {
+    return response()->json([
+        'authenticated' => Auth::check(),
+        'user_id' => Auth::id(),
+        'user' => Auth::user(),
+        'session_id' => session()->getId(),
+        'session_data' => session()->all()
+    ]);
+});
+
 // Domain migration route - helps users transition from old domain
 Route::get('/domain-migration', function (Request $request) {
     // Clear any old session data
