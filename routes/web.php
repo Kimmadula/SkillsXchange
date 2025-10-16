@@ -391,15 +391,6 @@ Route::middleware('auth')->group(function () {
         // Notification actions
         Route::post('/notifications/{id}/mark-read', [\App\Http\Controllers\TradeController::class, 'markNotificationAsRead'])->name('trades.mark-read');
         
-        // Chat routes
-        Route::get('/chat/{trade}', [\App\Http\Controllers\ChatController::class, 'show'])->name('chat.show');
-        Route::get('/chat/{trade}/messages', [\App\Http\Controllers\ChatController::class, 'getMessages'])->name('chat.messages');
-        Route::post('/chat/{trade}/message', [\App\Http\Controllers\ChatController::class, 'sendMessage'])->name('chat.send-message');
-        Route::post('/chat/{trade}/task', [\App\Http\Controllers\ChatController::class, 'createTask'])->name('chat.create-task')->middleware('throttle:10,1');
-        Route::patch('/chat/task/{task}/toggle', [\App\Http\Controllers\ChatController::class, 'toggleTask'])->name('chat.toggle-task');
-        Route::patch('/chat/task/{task}/verify', [\App\Http\Controllers\ChatController::class, 'verifyTask'])->name('chat.verify-task');
-        Route::post('/chat/{trade}/complete-session', [\App\Http\Controllers\ChatController::class, 'completeSession'])->name('chat.complete-session');
-        Route::get('/chat/{trade}/skill-learning-status', [\App\Http\Controllers\ChatController::class, 'getSkillLearningStatus'])->name('chat.skill-learning-status');
         
         // Task management routes
         Route::get('/tasks', [\App\Http\Controllers\TaskController::class, 'index'])->name('tasks.index');
@@ -479,6 +470,16 @@ Route::get('/api/skills/analytics', [\App\Http\Controllers\SkillHistoryControlle
         Route::post('/chat/{trade}/video-call/end', [\App\Http\Controllers\VideoCallController::class, 'endCall'])->name('video-call.end');
         Route::get('/chat/{trade}/video-call/messages', [\App\Http\Controllers\VideoCallController::class, 'pollMessages'])->name('video-call.messages');
     });
+    
+    // Chat routes (accessible to all authenticated users, but blocked for admins in controller)
+    Route::get('/chat/{trade}', [\App\Http\Controllers\ChatController::class, 'show'])->name('chat.show');
+    Route::get('/chat/{trade}/messages', [\App\Http\Controllers\ChatController::class, 'getMessages'])->name('chat.messages');
+    Route::post('/chat/{trade}/message', [\App\Http\Controllers\ChatController::class, 'sendMessage'])->name('chat.send-message');
+    Route::post('/chat/{trade}/task', [\App\Http\Controllers\ChatController::class, 'createTask'])->name('chat.create-task')->middleware('throttle:10,1');
+    Route::patch('/chat/task/{task}/toggle', [\App\Http\Controllers\ChatController::class, 'toggleTask'])->name('chat.toggle-task');
+    Route::patch('/chat/task/{task}/verify', [\App\Http\Controllers\ChatController::class, 'verifyTask'])->name('chat.verify-task');
+    Route::post('/chat/{trade}/complete-session', [\App\Http\Controllers\ChatController::class, 'completeSession'])->name('chat.complete-session');
+    Route::get('/chat/{trade}/skill-learning-status', [\App\Http\Controllers\ChatController::class, 'getSkillLearningStatus'])->name('chat.skill-learning-status');
     
     // Admin functionality (moved from /admin to main dashboard) - Restricted to admin users only
     Route::middleware('admin')->group(function () {
