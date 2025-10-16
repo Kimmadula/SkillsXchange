@@ -18,10 +18,10 @@ class ChatController extends Controller
     {
         $user = Auth::user();
         
-        // Allow admin users to access chat for monitoring purposes
-        // if ($user->role === 'admin') {
-        //     return redirect()->route('admin.dashboard')->with('error', 'Admin users cannot access user chat functionality.');
-        // }
+        // Prevent admin users from accessing chat functionality
+        if ($user->role === 'admin') {
+            return redirect()->route('admin.dashboard')->with('error', 'Admin users cannot access user chat functionality.');
+        }
         
         // Check if user is part of this trade
         if ($trade->user_id !== $user->id && 
