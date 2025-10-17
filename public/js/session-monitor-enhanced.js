@@ -36,6 +36,12 @@
     function init() {
         console.log('Enhanced Session Monitor initialized');
         
+        // Skip session monitoring for chat routes
+        if (window.location.pathname.includes('/chat/')) {
+            console.log('Skipping session monitoring for chat route');
+            return;
+        }
+        
         // Set up event listeners
         setupEventListeners();
         

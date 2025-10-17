@@ -3549,10 +3549,8 @@ document.getElementById('edit-task-form').addEventListener('submit', function(e)
         }
         
         if (response.status === 302) {
-            console.log('Redirect detected, checking location header');
-            const location = response.headers.get('Location');
-            console.log('Redirect location:', location);
-            showError('Session expired. Please refresh the page and try again.');
+            console.log('Redirect detected, but staying on chat page');
+            showError('Authentication issue. Please try again or refresh the page.');
             return;
         }
         
@@ -3899,11 +3897,11 @@ function showTaskSubmissionModal(taskId) {
         credentials: 'same-origin'
         })
         .then(response => {
-            // Check for redirect (session expired)
+            // Check for redirect (session expired) - but don't redirect for chat
             if (response.redirected || response.status === 302 || response.status === 401) {
-                alert('Your session has expired. Please refresh the page and log in again.');
-                window.location.reload();
-            return;
+                console.log('Authentication issue detected, but staying on chat page');
+                showError('Authentication issue. Please try again or refresh the page.');
+                return;
             }
             
             // Check if response is JSON
@@ -3933,8 +3931,7 @@ function showTaskSubmissionModal(taskId) {
         .catch(error => {
             console.error('Error:', error);
             if (error.message && error.message.includes('Session expired')) {
-                alert('Your session has expired. Please refresh the page.');
-                window.location.reload();
+                showError('Authentication issue. Please try again or refresh the page.');
             } else {
                 showError('Failed to submit work. Please try again.');
             }
