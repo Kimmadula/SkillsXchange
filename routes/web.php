@@ -419,6 +419,21 @@ Route::get('/test-trade/{trade}', function (\App\Models\Trade $trade) {
     return view('trades.test', compact('trade', 'user'));
 });
 
+// Test route to debug chat redirect issue
+Route::get('/test-chat-debug/{trade}', function (\App\Models\Trade $trade) {
+    $user = auth()->user();
+    return response()->json([
+        'success' => true,
+        'message' => 'Chat debug route reached successfully',
+        'trade_id' => $trade->id,
+        'trade_owner' => $trade->user_id,
+        'user_id' => $user->id,
+        'user_authenticated' => auth()->check(),
+        'is_trade_owner' => $trade->user_id === $user->id,
+        'has_accepted_request' => $trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists()
+    ]);
+})->middleware('auth');
+
 // Session management routes
 Route::middleware('auth')->group(function () {
     // Session management endpoints
