@@ -38,27 +38,16 @@ class ChatController extends Controller
                 'session_id' => session()->getId()
             ]);
             
-            // Return JSON for debugging instead of redirect
-            return response()->json([
-                'error' => 'Not authenticated',
-                'user_exists' => $user ? 'yes' : 'no',
-                'auth_check' => Auth::check(),
-                'session_id' => session()->getId(),
-                'redirect_to' => 'login'
-            ], 401);
+            // Redirect to login
+            return redirect()->route('login')->with('error', 'Please log in to access chat.');
         }
         
         // Prevent admin users from accessing chat functionality
         if ($user->role === 'admin') {
             Log::info('Admin user blocked from chat access', ['user_id' => $user->id]);
             
-            // Return JSON for debugging instead of redirect
-            return response()->json([
-                'error' => 'Admin users cannot access chat',
-                'user_id' => $user->id,
-                'user_role' => $user->role,
-                'redirect_to' => 'admin.dashboard'
-            ], 403);
+            // Redirect to admin dashboard
+            return redirect()->route('admin.dashboard')->with('error', 'Admin users cannot access chat.');
         }
         
         // Check if user is part of this trade
@@ -79,22 +68,24 @@ class ChatController extends Controller
                 'trade_owner' => $trade->user_id
             ]);
             
-            // Return JSON for debugging instead of redirect
-            return response()->json([
-                'error' => 'Not authorized for this trade',
-                'user_id' => $user->id,
-                'trade_id' => $trade->id,
-                'trade_owner' => $trade->user_id,
-                'is_trade_owner' => $isTradeOwner,
-                'has_accepted_request' => $hasAcceptedRequest,
-                'redirect_to' => 'back'
-            ], 403);
+            // Redirect back with error message
+            return redirect()->route('trades.ongoing')->with('error', 'You are not authorized to access this chat.');
         }
 
         // Get the other user (trade partner)
-        $partner = $trade->user_id === $user->id 
-            ? $trade->requests()->where('status', 'accepted')->first()->requester
-            : $trade->user;
+        if ($trade->user_id === $user->id) {
+            $acceptedRequest = $trade->requests()->where('status', 'accepted')->first();
+            if (!$acceptedRequest) {
+                Log::warning('No accepted request found for trade', [
+                    'trade_id' => $trade->id,
+                    'user_id' => $user->id
+                ]);
+                return redirect()->route('trades.ongoing')->with('error', 'No accepted request found for this trade.');
+            }
+            $partner = $acceptedRequest->requester;
+        } else {
+            $partner = $trade->user;
+        }
 
         // Get messages
         $messages = $trade->messages()->with('sender')->orderBy('created_at', 'asc')->get();
