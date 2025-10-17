@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Http\Request;
 
+use Illuminate\Support\Facades\Auth; //Added for authentication
+
 // Include health check routes
 require_once __DIR__ . '/health.php';
 
@@ -553,14 +555,16 @@ Route::get('/api/skills/analytics', [\App\Http\Controllers\SkillHistoryControlle
     });
     
     // Chat routes (accessible to all authenticated users, but blocked for admins in controller)
-    Route::get('/chat/{trade}', [\App\Http\Controllers\ChatController::class, 'show'])->name('chat.show');
-    Route::get('/chat/{trade}/messages', [\App\Http\Controllers\ChatController::class, 'getMessages'])->name('chat.messages');
-    Route::post('/chat/{trade}/message', [\App\Http\Controllers\ChatController::class, 'sendMessage'])->name('chat.send-message');
-    Route::post('/chat/{trade}/task', [\App\Http\Controllers\ChatController::class, 'createTask'])->name('chat.create-task')->middleware('throttle:10,1');
-    Route::patch('/chat/task/{task}/toggle', [\App\Http\Controllers\ChatController::class, 'toggleTask'])->name('chat.toggle-task');
-    Route::patch('/chat/task/{task}/verify', [\App\Http\Controllers\ChatController::class, 'verifyTask'])->name('chat.verify-task');
-    Route::post('/chat/{trade}/complete-session', [\App\Http\Controllers\ChatController::class, 'completeSession'])->name('chat.complete-session');
-    Route::get('/chat/{trade}/skill-learning-status', [\App\Http\Controllers\ChatController::class, 'getSkillLearningStatus'])->name('chat.skill-learning-status');
+    Route::middleware('auth')->group(function () {
+        Route::get('/chat/{trade}', [\App\Http\Controllers\ChatController::class, 'show'])->name('chat.show');
+        Route::get('/chat/{trade}/messages', [\App\Http\Controllers\ChatController::class, 'getMessages'])->name('chat.messages');
+        Route::post('/chat/{trade}/message', [\App\Http\Controllers\ChatController::class, 'sendMessage'])->name('chat.send-message');
+        Route::post('/chat/{trade}/task', [\App\Http\Controllers\ChatController::class, 'createTask'])->name('chat.create-task')->middleware('throttle:10,1');
+        Route::patch('/chat/task/{task}/toggle', [\App\Http\Controllers\ChatController::class, 'toggleTask'])->name('chat.toggle-task');
+        Route::patch('/chat/task/{task}/verify', [\App\Http\Controllers\ChatController::class, 'verifyTask'])->name('chat.verify-task');
+        Route::post('/chat/{trade}/complete-session', [\App\Http\Controllers\ChatController::class, 'completeSession'])->name('chat.complete-session');
+        Route::get('/chat/{trade}/skill-learning-status', [\App\Http\Controllers\ChatController::class, 'getSkillLearningStatus'])->name('chat.skill-learning-status');
+    });
     
     // Admin functionality (moved from /admin to main dashboard) - Restricted to admin users only
     Route::middleware('admin')->group(function () {
