@@ -235,11 +235,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Validate file type selection
     const fileTypeCheckboxes = document.querySelectorAll('input[name="allowed_file_types[]"]');
+    const submitButton = document.querySelector('button[type="submit"]');
     
     function validateFileTypes() {
         if (requiresSubmissionCheckbox.checked) {
             const checkedTypes = Array.from(fileTypeCheckboxes).some(cb => cb.checked);
             if (!checkedTypes) {
+                // Show warning if no file types selected but submission is required
                 fileTypeCheckboxes.forEach(cb => {
                     cb.closest('.form-check').classList.add('text-warning');
                 });
