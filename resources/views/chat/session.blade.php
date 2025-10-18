@@ -1680,6 +1680,66 @@
                                 }
                             };
                             
+                            // Make startVideoCallFull globally accessible (simplified version)
+                            window.startVideoCallFull = async function() {
+                                console.log('🚀 Starting video call with Firebase (simplified version)...');
+                                
+                                try {
+                                    // Check if Firebase video call is available
+                                    if (!firebaseVideoCall) {
+                                        console.error('❌ Firebase video call not initialized');
+                                        alert('Video call service not available. Please refresh the page.');
+                                        return;
+                                    }
+                                    
+                                    // Get partner ID (simplified version)
+                                    const tradeOwnerId = {{ $trade->user_id }};
+                                    const currentUserId = {{ auth()->id() }};
+                                    const partnerId = currentUserId === tradeOwnerId ? 
+                                        '{{ $trade->requester_id }}' : 
+                                        '{{ $trade->user_id }}';
+                                    
+                                    if (!partnerId) {
+                                        alert('No partner found for this trade.');
+                                        return;
+                                    }
+                                    
+                                    // Update UI to show calling state
+                                    const statusElement = document.getElementById('video-status');
+                                    if (statusElement) {
+                                        statusElement.textContent = 'Initializing...';
+                                    }
+                                    
+                                    // Start the call using Firebase
+                                    const success = await firebaseVideoCall.startCall(partnerId);
+                                    
+                                    if (success) {
+                                        // Setup local video display
+                                        const localVideo = document.getElementById('local-video');
+                                        if (localVideo && firebaseVideoCall.localStream) {
+                                            localVideo.srcObject = firebaseVideoCall.localStream;
+                                            localVideo.style.display = 'block';
+                                        }
+                                        
+                                        // Update status
+                                        if (statusElement) {
+                                            statusElement.textContent = 'Call in progress...';
+                                        }
+                                        
+                                        console.log('✅ Video call initiated successfully with Firebase');
+                                    } else {
+                                        throw new Error('Failed to start video call with Firebase');
+                                    }
+                                    
+                                } catch (error) {
+                                    console.error('❌ Error starting video call:', error);
+                                    alert('Failed to start video call: ' + error.message);
+                                    if (typeof window.endVideoCall === 'function') {
+                                        window.endVideoCall();
+                                    }
+                                }
+                            };
+                            
                             // Make endVideoCall globally accessible (basic version for immediate use)
                             window.endVideoCall = function() {
                                 console.log('🛑 Ending video call...');
@@ -2445,65 +2505,7 @@ if (window.Echo) {
 
     // Video chat functions are now defined earlier in DOMContentLoaded event
     
-    // Make startVideoCallFull globally accessible (full version)
-    window.startVideoCallFull = async function() {
-        console.log('🚀 Starting video call with Firebase (full version)...');
-        
-        try {
-            // Get partner ID
-            const partnerId = getPartnerId();
-            if (!partnerId) {
-                alert('No partner found for this trade.');
-                return;
-            }
-            
-            // Check if Firebase video call is available
-            if (!firebaseVideoCall) {
-                console.error('❌ Firebase video call not initialized');
-                alert('Video call service not available. Please refresh the page.');
-                return;
-            }
-            
-            // Update UI to show calling state
-            updateCallStatus('Initializing...');
-            updateCallTimer('00:00');
-            
-            // Start the call using Firebase
-            const success = await firebaseVideoCall.startCall(partnerId);
-            
-            if (success) {
-                // Setup local video display
-                const localVideo = document.getElementById('local-video');
-                if (localVideo && firebaseVideoCall.localStream) {
-                    localVideo.srcObject = firebaseVideoCall.localStream;
-                    localVideo.style.display = 'block';
-                }
-                
-                videoCallState.isActive = true;
-                videoCallState.isInitiator = true;
-                videoCallState.partnerId = partnerId;
-                videoCallState.callId = firebaseVideoCall.callId;
-                
-                startCallTimer();
-                
-                // Set a timeout to show "waiting" status
-                setTimeout(() => {
-                    if (videoCallState.isActive && !videoCallState.isConnected) {
-                        updateCallStatus('Waiting for answer...');
-                    }
-                }, 5000);
-                
-                console.log('✅ Video call initiated successfully with Firebase');
-            } else {
-                throw new Error('Failed to start video call with Firebase');
-            }
-            
-        } catch (error) {
-            console.error('❌ Error starting video call:', error);
-            alert('Failed to start video call: ' + error.message);
-            endVideoCall();
-        }
-    }
+    // startVideoCallFull is now defined earlier in DOMContentLoaded event
     
     // Peer connection creation is now handled by Firebase integration
     
