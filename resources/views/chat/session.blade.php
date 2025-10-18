@@ -120,7 +120,7 @@
                 window.Echo.channel('trade-{{ $trade->id }}')
                     .listen('user-joined', function(data) {
                         console.log('User joined:', data);
-                        handleUserJoined(data);
+                            handleUserJoined(data);
                     });
 
                 window.Echo.channel('trade-{{ $trade->id }}')
@@ -4592,7 +4592,7 @@ let pendingOffer = null; // Store the offer data for notification handling
 
 function resetVideoChat() {
     // Reset UI
-    document.getElementById('video-status').textContent = 'Initializing video chat...';
+        document.getElementById('video-status').textContent = 'Initializing video chat...';
     document.getElementById('call-timer').style.display = 'none';
     document.getElementById('start-call-btn').style.display = 'flex';
     document.getElementById('end-call-btn').style.display = 'none';
