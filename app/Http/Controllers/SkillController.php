@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Skill;
 use App\Models\SkillAcquisitionHistory;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -85,7 +86,9 @@ class SkillController extends Controller
         // Check if current user has this skill
         $userHasSkill = false;
         if (Auth::check()) {
-            $userHasSkill = Auth::user()->skills()->where('skill_id', $skill->skill_id)->exists();
+            /** @var User $user */
+            $user = Auth::user();
+            $userHasSkill = $user->skills()->where('skill_id', $skill->skill_id)->exists();
         }
 
         return view('skills.show', compact('skill', 'relatedSkills', 'userHasSkill'));
@@ -126,6 +129,7 @@ class SkillController extends Controller
      */
     public function addToProfile(Request $request, Skill $skill)
     {
+        /** @var User $user */
         $user = Auth::user();
         
         // Check if user already has this skill
@@ -162,6 +166,7 @@ class SkillController extends Controller
      */
     public function removeFromProfile(Request $request, Skill $skill)
     {
+        /** @var User $user */
         $user = Auth::user();
         
         // Check if user has this skill
