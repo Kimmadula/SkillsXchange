@@ -298,6 +298,14 @@
         if (modal) {
             modal.style.display = 'flex';
             
+            // Check if we're on HTTPS
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                console.error('❌ HTTPS required for camera access');
+                alert('Camera access requires HTTPS. Please use https://skillsxchange.site instead of http://');
+                modal.style.display = 'none';
+                return;
+            }
+            
             // Initialize camera first and wait for it to complete
             try {
                 console.log('📹 Initializing camera...');
@@ -309,14 +317,18 @@
                     return;
                 }
                 
-                // Request camera access
+                // Request camera access with better error handling
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { 
                         width: { ideal: 1280 },
                         height: { ideal: 720 },
                         facingMode: 'user'
                     },
-                    audio: true 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
                 });
                 
                 console.log('✅ Camera access granted');
@@ -326,6 +338,9 @@
                 if (localVideo) {
                     localVideo.srcObject = stream;
                     localVideo.style.display = 'block';
+                    localVideo.muted = true; // Mute local video to prevent echo
+                    localVideo.autoplay = true;
+                    localVideo.playsInline = true;
                     localVideo.play();
                 }
                 
@@ -336,7 +351,22 @@
                 
             } catch (error) {
                 console.error('❌ Error accessing camera:', error);
-                alert('Failed to access camera: ' + error.message);
+                
+                let errorMessage = 'Camera access is required for video calls. ';
+                
+                if (error.name === 'NotAllowedError') {
+                    errorMessage += 'Please allow camera and microphone access in your browser settings and try again.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage += 'No camera found. Please connect a camera and try again.';
+                } else if (error.name === 'NotSupportedError') {
+                    errorMessage += 'Camera not supported. Please use a modern browser.';
+                } else if (error.name === 'SecurityError') {
+                    errorMessage += 'Camera access blocked due to security restrictions. Please use HTTPS.';
+                } else {
+                    errorMessage += 'Please check your camera settings and try again.';
+                }
+                
+                alert(errorMessage);
                 modal.style.display = 'none';
             }
         } else {
@@ -1062,48 +1092,7 @@
 
                     <!-- Ensure openVideoChat is defined immediately -->
                     <script>
-                        // Initialize camera function (legacy version)
-                        function initializeCameraLegacy() {
-                            console.log('📹 Initializing camera...');
-                            
-                            // Check if getUserMedia is supported
-                            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                                console.error('❌ Camera not supported');
-                                alert('Camera is not supported in this browser. Please use a modern browser.');
-                                return;
-                            }
-                            
-                            // Request camera access
-                            navigator.mediaDevices.getUserMedia({ 
-                                video: { 
-                                    width: { ideal: 1280 },
-                                    height: { ideal: 720 },
-                                    facingMode: 'user'
-                                }, 
-                                audio: true 
-                            })
-                            .then(function(stream) {
-                                console.log('✅ Camera access granted');
-                                
-                                // Find local video element
-                                const localVideo = document.getElementById('local-video');
-                                if (localVideo) {
-                                    localVideo.srcObject = stream;
-                                    localVideo.style.display = 'block';
-                                    localVideo.play();
-                                    console.log('✅ Local video stream started');
-                                } else {
-                                    console.error('❌ Local video element not found');
-                                }
-                                
-                                // Store stream globally for later use
-                                window.localStream = stream;
-                            })
-                            .catch(function(error) {
-                                console.error('❌ Camera access denied:', error);
-                                alert('Camera access is required for video calls. Please allow camera access and try again.');
-                            });
-                        }
+                        // Legacy camera function removed - using consolidated openVideoChat function
                         
                         // startVideoCall will be defined later in the main script
                         

@@ -22,6 +22,7 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
         \App\Http\Middleware\DDoSProtectionMiddleware::class,
+        \App\Http\Middleware\ForceHttps::class,
         \App\Http\Middleware\SecurityHeaders::class,
     ];
 
@@ -73,6 +74,5 @@ class Kernel extends HttpKernel
         'user.only' => \App\Http\Middleware\UserOnlyMiddleware::class,
         'rate.limit' => \App\Http\Middleware\RateLimitMiddleware::class,
         'ddos.protection' => \App\Http\Middleware\DDoSProtectionMiddleware::class,
-        'firebase.email.verified' => \App\Http\Middleware\FirebaseEmailVerified::class,
     ];
 }
