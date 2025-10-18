@@ -2377,7 +2377,7 @@ if (window.Echo) {
                 console.error('Video chat modal not found');
                 alert('Video chat is not available. Please refresh the page.');
             }
-    };
+        };
         console.log('✅ openVideoChat function defined:', typeof window.openVideoChat);
     } catch (error) {
         console.error('❌ Error defining openVideoChat:', error);
@@ -2386,11 +2386,11 @@ if (window.Echo) {
     // Make closeVideoChat globally accessible
     try {
         window.closeVideoChat = function() {
-        console.log('🛑 Closing video chat...');
-        const modal = document.getElementById('video-chat-modal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
+            console.log('🛑 Closing video chat...');
+            const modal = document.getElementById('video-chat-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
             if (typeof window.endVideoCall === 'function') {
                 window.endVideoCall();
             }
