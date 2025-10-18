@@ -10,6 +10,54 @@
     window.partnerName = '{{ addslashes(($partner->firstname ?? "Unknown") . " " . ($partner->lastname ?? "User")) }}';
     window.initialMessageCount = parseInt('{{ $messages->count() }}');
     
+    // Session validation function
+    window.validateSession = function() {
+        if (!window.currentUserId || window.currentUserId === 0) {
+            showError('Your session has expired. Please refresh the page and log in again.');
+            return false;
+        }
+        return true;
+    };
+
+    // Emoji picker functions
+    window.toggleEmojiPicker = function() {
+        const picker = document.getElementById('emoji-picker');
+        if (picker.style.display === 'none' || picker.style.display === '') {
+            picker.style.display = 'block';
+        } else {
+            picker.style.display = 'none';
+        }
+    };
+
+    window.insertEmoji = function(emoji) {
+        const input = document.getElementById('message-input');
+        const currentValue = input.value;
+        const cursorPosition = input.selectionStart;
+        
+        // Insert emoji at cursor position
+        const newValue = currentValue.slice(0, cursorPosition) + emoji + currentValue.slice(cursorPosition);
+        input.value = newValue;
+        
+        // Set cursor position after the emoji
+        input.setSelectionRange(cursorPosition + emoji.length, cursorPosition + emoji.length);
+        
+        // Focus back to input
+        input.focus();
+        
+        // Hide emoji picker
+        document.getElementById('emoji-picker').style.display = 'none';
+    };
+
+    // Close emoji picker when clicking outside
+    document.addEventListener('click', function(event) {
+        const picker = document.getElementById('emoji-picker');
+        const button = document.getElementById('emoji-button');
+        
+        if (picker && !picker.contains(event.target) && !button.contains(event.target)) {
+            picker.style.display = 'none';
+        }
+    });
+    
     // Pusher Configuration
     window.PUSHER_APP_KEY = '{{ env('PUSHER_APP_KEY', '5c02e54d01ca577ae77e') }}';
     window.PUSHER_APP_CLUSTER = '{{ env('PUSHER_APP_CLUSTER', 'ap1') }}';
@@ -867,6 +915,15 @@
     }
 
     #emoji-button:active {
+        background-color: #e5e7eb !important;
+    }
+
+    /* Emoji picker styles */
+    .emoji-btn:hover {
+        background-color: #f3f4f6 !important;
+    }
+
+    .emoji-btn:active {
         background-color: #e5e7eb !important;
     }
 
@@ -1996,9 +2053,41 @@
                     <div style="flex: 1; position: relative;">
                         <input type="text" id="message-input" placeholder="Type your message here..." aria-label="Type your message"
                             style="width: 100%; padding: 12px 40px 12px 12px; border: 1px solid #d1d5db; border-radius: 6px; outline: none;">
-                        <button type="button" id="emoji-button"
+                        <button type="button" id="emoji-button" onclick="toggleEmojiPicker()"
                             style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;"
                             title="Add emoji">😊</button>
+                        
+                        <!-- Emoji Picker -->
+                        <div id="emoji-picker" style="display: none; position: absolute; bottom: 100%; right: 0; background: white; border: 1px solid #d1d5db; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); padding: 12px; width: 300px; max-height: 200px; overflow-y: auto; z-index: 1000;">
+                            <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;">
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('😀')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">😀</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('😊')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">😊</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('😍')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">😍</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🤔')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🤔</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('😮')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">😮</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('😢')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">😢</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('😡')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">😡</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('😂')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">😂</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('👍')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">👍</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('👎')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">👎</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('❤️')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">❤️</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🎉')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🎉</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🔥')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🔥</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('💯')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">💯</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('✨')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">✨</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🚀')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🚀</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🎯')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🎯</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('💪')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">💪</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('👏')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">👏</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🙌')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🙌</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🤝')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🤝</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('💡')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">💡</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('⭐')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">⭐</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🎊')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🎊</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🎈')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🎈</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🎁')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🎁</button>
+                            </div>
+                        </div>
                     </div>
                     <div style="display: flex; gap: 4px; align-items: center;">
                         <input type="file" id="image-upload" accept="image/*" style="display: none;" aria-label="Upload image"
@@ -3934,6 +4023,11 @@ function startTask(taskId) {
 }
 
 function submitTaskWork(taskId) {
+    // Check if user is still authenticated before showing modal
+    if (!window.validateSession()) {
+        return;
+    }
+    
     // Create and show file submission modal
     showTaskSubmissionModal(taskId);
 }
@@ -3989,21 +4083,51 @@ function showTaskSubmissionModal(taskId) {
         }
         formData.append('submission_notes', notes);
         
+        // Get fresh CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+        console.log('Using CSRF token:', csrfToken);
+        
         fetch(`/tasks/${taskId}/submit`, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}',
+                'X-CSRF-TOKEN': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
             },
-        body: formData, 
-        credentials: 'same-origin'
+            body: formData, 
+            credentials: 'same-origin'
         })
         .then(response => {
+            console.log('Submit response status:', response.status);
+            console.log('Submit response URL:', response.url);
+            
+            // Check for authentication issues first
+            if (response.status === 401) {
+                console.log('401 Unauthorized - session expired');
+                showError('Your session has expired. Please refresh the page and log in again.');
+                setTimeout(() => {
+                    if (confirm('Your session has expired. Would you like to refresh the page?')) {
+                        location.reload();
+                    }
+                }, 2000);
+                return;
+            }
+            
+            if (response.status === 419) {
+                console.log('419 CSRF token mismatch');
+                showError('Security token expired. Please refresh the page and try again.');
+                setTimeout(() => {
+                    if (confirm('Security token expired. Would you like to refresh the page?')) {
+                        location.reload();
+                    }
+                }, 2000);
+                return;
+            }
+            
             // Check for redirect (session expired) - but don't redirect for chat
-            if (response.redirected || response.status === 302 || response.status === 401) {
-                console.log('Authentication issue detected, but staying on chat page');
-                showError('Authentication issue. Please try again or refresh the page.');
+            if (response.redirected || response.status === 302) {
+                console.log('302 Redirect detected - likely session expired');
+                showError('Your session has expired. Please refresh the page and try again.');
                 return;
             }
             
@@ -4015,7 +4139,10 @@ function showTaskSubmissionModal(taskId) {
                 // If not JSON, get text to see what we're getting
                 return response.text().then(text => {
                     console.error('Expected JSON but got:', text.substring(0, 500));
-                    throw new Error('Session expired or authentication failed');
+                    if (text.includes('login') || text.includes('Login') || text.includes('authentication')) {
+                        throw new Error('Session expired - please refresh the page');
+                    }
+                    throw new Error('Unexpected response format');
                 });
             }
         })
@@ -4032,11 +4159,16 @@ function showTaskSubmissionModal(taskId) {
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            if (error.message && error.message.includes('Session expired')) {
-                showError('Authentication issue. Please try again or refresh the page.');
+            console.error('Submit error:', error);
+            if (error.message && (error.message.includes('Session expired') || error.message.includes('authentication'))) {
+                showError('Your session has expired. Please refresh the page and try again.');
+                setTimeout(() => {
+                    if (confirm('Your session has expired. Would you like to refresh the page?')) {
+                        location.reload();
+                    }
+                }, 2000);
             } else {
-                showError('Failed to submit work. Please try again.');
+                showError('Failed to submit work: ' + error.message);
             }
         });
     });
