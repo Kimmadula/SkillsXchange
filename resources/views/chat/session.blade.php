@@ -834,97 +834,11 @@
                             });
                         }
                         
-                        // Define a basic startVideoCall function immediately
-                        window.startVideoCall = async function() {
-                            console.log('🚀 Starting video call (immediate version)...');
-                            
-                            // Check if we have a local stream
-                            if (window.localStream) {
-                                console.log('✅ Local stream available, proceeding with call');
-                                
-                                // Update UI to show calling state
-                                const modal = document.getElementById('video-chat-modal');
-                                if (modal) {
-                                    const statusElement = document.getElementById('video-status');
-                                    if (statusElement) {
-                                        statusElement.textContent = 'Starting call...';
-                                    }
-                                    
-                                    // Show call controls
-                                    const startBtn = document.getElementById('start-call-btn');
-                                    const endBtn = document.getElementById('end-call-btn');
-                                    if (startBtn) startBtn.style.display = 'none';
-                                    if (endBtn) endBtn.style.display = 'inline-block';
-                                }
-                                
-                                // Start WebRTC call using Firebase signaling
-                                if (window.webrtcSignaling) {
-                                    // For now, use a dummy partner ID - you'll need to get the actual partner ID
-                                    const partnerId = window.partnerId || 'partner_' + Math.random().toString(36).substr(2, 9);
-                                    const success = await window.webrtcSignaling.startCall(partnerId);
-                                    
-                                    if (success) {
-                                        console.log('✅ WebRTC call started successfully');
-                                        
-                                        // Listen for answer
-                                        window.webrtcSignaling.listenForAnswer();
-                                        
-                                        // Update status
-                                        const statusElement = document.getElementById('video-status');
-                                        if (statusElement) {
-                                            statusElement.textContent = 'Call in progress...';
-                                        }
-                                    } else {
-                                        console.error('❌ Failed to start WebRTC call');
-                                        alert('Failed to start video call. Please try again.');
-                                    }
-                                } else {
-                                    console.error('❌ WebRTC signaling not available');
-                                    alert('Video call service not available. Please refresh the page.');
-                                }
-                            } else {
-                                console.error('❌ No local stream available');
-                                alert('Please allow camera access first.');
-                            }
-                        };
+                        // startVideoCall will be defined later in the main script
                         
                         // closeVideoChat will be defined later in the main script
                         
-                        // Define endVideoCall function immediately
-                        window.endVideoCall = function() {
-                            console.log('🛑 Ending video call...');
-                            
-                            // End WebRTC call
-                            if (window.webrtcSignaling) {
-                                window.webrtcSignaling.endCall();
-                            }
-                            
-                            // Stop local stream
-                            if (window.localStream) {
-                                window.localStream.getTracks().forEach(track => track.stop());
-                                window.localStream = null;
-                            }
-                            
-                            // Clear remote video
-                            const remoteVideo = document.getElementById('remote-video');
-                            if (remoteVideo) {
-                                remoteVideo.srcObject = null;
-                                remoteVideo.style.display = 'none';
-                            }
-                            
-                            // Reset UI
-                            const startBtn = document.getElementById('start-call-btn');
-                            const endBtn = document.getElementById('end-call-btn');
-                            if (startBtn) startBtn.style.display = 'inline-block';
-                            if (endBtn) endBtn.style.display = 'none';
-                            
-                            const statusElement = document.getElementById('video-status');
-                            if (statusElement) {
-                                statusElement.textContent = 'Call ended';
-                            }
-                            
-                            console.log('✅ Video call ended');
-                        };
+                        // endVideoCall will be defined later in the main script
                         
                         // Firebase WebRTC Signaling Class
                         class FirebaseWebRTCSignaling {
@@ -2401,7 +2315,7 @@ if (window.Echo) {
     }
     
     // Make startVideoCall globally accessible (full version)
-    window.startVideoCallFull = async function() {
+    window.startVideoCall = async function() {
         console.log('🚀 Starting video call with Firebase (full version)...');
         
         try {
