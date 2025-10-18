@@ -791,8 +791,8 @@
 
                     <!-- Ensure openVideoChat is defined immediately -->
                     <script>
-                        // Initialize camera function
-                        function initializeCamera() {
+                        // Initialize camera function (legacy version)
+                        function initializeCameraLegacy() {
                             console.log('📹 Initializing camera...');
                             
                             // Check if getUserMedia is supported
@@ -1529,38 +1529,57 @@
                             
                             // Make openVideoChat globally accessible
                             try {
-                                window.openVideoChat = function() {
+                                window.openVideoChat = async function() {
                                     console.log('🎥 Opening video chat...');
                                     const modal = document.getElementById('video-chat-modal');
                                     if (modal) {
                                         modal.style.display = 'flex';
                                         
-                                        // Initialize camera immediately
-                                        if (typeof initializeCamera === 'function') {
-                                            initializeCamera();
-                                        } else {
-                                            console.log('initializeCamera not available, using fallback');
-                                            // Fallback camera initialization
-                                            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                                                navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-                                                    .then(stream => {
-                                                        const localVideo = document.getElementById('local-video');
-                                                        if (localVideo) {
-                                                            localVideo.srcObject = stream;
-                                                            localVideo.style.display = 'block';
-                                                            localVideo.play();
-                                                        }
-                                                        window.localStream = stream;
-                                                    })
-                                                    .catch(error => console.error('Camera error:', error));
+                                        // Initialize camera first and wait for it to complete
+                                        try {
+                                            console.log('📹 Initializing camera...');
+                                            
+                                            // Check if getUserMedia is supported
+                                            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                                                console.error('❌ Camera not supported');
+                                                alert('Camera is not supported in this browser. Please use a modern browser.');
+                                                return;
                                             }
-                                        }
-                                        
-                                        // Automatically start the call like Messenger
-                                        if (typeof window.startVideoCall === 'function') {
-                                            window.startVideoCall();
-                                        } else {
-                                            console.log('startVideoCall not available yet');
+                                            
+                                            // Request camera access
+                                            const stream = await navigator.mediaDevices.getUserMedia({ 
+                                                video: { 
+                                                    width: { ideal: 1280 },
+                                                    height: { ideal: 720 },
+                                                    facingMode: 'user'
+                                                },
+                                                audio: true
+                                            });
+                                            
+                                            console.log('✅ Camera access granted');
+                                            
+                                            // Store stream globally
+                                            window.localStream = stream;
+                                            
+                                            // Display local video
+                                            const localVideo = document.getElementById('local-video');
+                                            if (localVideo) {
+                                                localVideo.srcObject = stream;
+                                                localVideo.style.display = 'block';
+                                                localVideo.play();
+                                                console.log('✅ Local video displayed');
+                                            }
+                                            
+                                            // Now start the call
+                                            if (typeof window.startVideoCall === 'function') {
+                                                window.startVideoCall();
+                                            } else {
+                                                console.log('startVideoCall not available yet');
+                                            }
+                                            
+                                        } catch (error) {
+                                            console.error('❌ Camera access denied:', error);
+                                            alert('Camera access is required for video calls. Please allow camera access and try again.');
                                         }
                                     } else {
                                         console.error('Video chat modal not found');
@@ -1594,39 +1613,70 @@
                                 console.log('🚀 Starting video call...');
                                 
                                 // Check if we have a local stream
-                                if (window.localStream) {
-                                    console.log('✅ Local stream available, proceeding with call');
+                                if (!window.localStream) {
+                                    console.log('⚠️ No local stream available, trying to initialize camera...');
                                     
-                                    // Update UI to show calling state
-                                    const modal = document.getElementById('video-chat-modal');
-                                    if (modal) {
-                                        const statusElement = document.getElementById('video-status');
-                                        if (statusElement) {
-                                            statusElement.textContent = 'Starting call...';
-                                        }
-                                        
-                                        // Show call controls
-                                        const startBtn = document.getElementById('start-call-btn');
-                                        const endBtn = document.getElementById('end-call-btn');
-                                        if (startBtn) startBtn.style.display = 'none';
-                                        if (endBtn) endBtn.style.display = 'inline-block';
-                                    }
-                                    
-                                    // Try to start the actual call with Firebase
-                                    if (typeof window.startVideoCallFull === 'function') {
-                                        window.startVideoCallFull();
-                                    } else {
-                                        console.log('startVideoCallFull not available yet, will retry...');
-                                        // Retry after a short delay
-                                        setTimeout(() => {
-                                            if (typeof window.startVideoCallFull === 'function') {
-                                                window.startVideoCallFull();
+                                    try {
+                                        // Try to initialize camera if not available
+                                        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                                            const stream = await navigator.mediaDevices.getUserMedia({ 
+                                                video: { 
+                                                    width: { ideal: 1280 },
+                                                    height: { ideal: 720 },
+                                                    facingMode: 'user'
+                                                },
+                                                audio: true
+                                            });
+                                            
+                                            window.localStream = stream;
+                                            
+                                            // Display local video
+                                            const localVideo = document.getElementById('local-video');
+                                            if (localVideo) {
+                                                localVideo.srcObject = stream;
+                                                localVideo.style.display = 'block';
+                                                localVideo.play();
                                             }
-                                        }, 1000);
+                                            
+                                            console.log('✅ Camera initialized successfully');
+                                        } else {
+                                            throw new Error('Camera not supported');
+                                        }
+                                    } catch (error) {
+                                        console.error('❌ Failed to initialize camera:', error);
+                                        alert('Camera access is required for video calls. Please allow camera access and try again.');
+                                        return;
                                     }
+                                }
+                                
+                                console.log('✅ Local stream available, proceeding with call');
+                                
+                                // Update UI to show calling state
+                                const modal = document.getElementById('video-chat-modal');
+                                if (modal) {
+                                    const statusElement = document.getElementById('video-status');
+                                    if (statusElement) {
+                                        statusElement.textContent = 'Starting call...';
+                                    }
+                                    
+                                    // Show call controls
+                                    const startBtn = document.getElementById('start-call-btn');
+                                    const endBtn = document.getElementById('end-call-btn');
+                                    if (startBtn) startBtn.style.display = 'none';
+                                    if (endBtn) endBtn.style.display = 'inline-block';
+                                }
+                                
+                                // Try to start the actual call with Firebase
+                                if (typeof window.startVideoCallFull === 'function') {
+                                    window.startVideoCallFull();
                                 } else {
-                                    console.error('❌ No local stream available');
-                                    alert('Please allow camera access first.');
+                                    console.log('startVideoCallFull not available yet, will retry...');
+                                    // Retry after a short delay
+                                    setTimeout(() => {
+                                        if (typeof window.startVideoCallFull === 'function') {
+                                            window.startVideoCallFull();
+                                        }
+                                    }, 1000);
                                 }
                             };
                             
