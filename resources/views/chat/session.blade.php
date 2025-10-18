@@ -132,15 +132,15 @@
                             );
                         }
                         
-                        await handleVideoCallOffer(call);
+                        await window.handleVideoCallOffer(call);
                     },
                     onCallAnswered: (remoteStream) => {
                         console.log('📞 Call answered via Firebase');
-                        handleVideoCallAnswer({ answer: null, remoteStream: remoteStream });
+                        window.handleVideoCallAnswer({ answer: null, remoteStream: remoteStream });
                     },
                     onCallEnded: () => {
                         console.log('📞 Call ended via Firebase');
-                        handleVideoCallEnd({});
+                        window.handleVideoCallEnd({});
                     },
                     onConnectionStateChange: (state) => {
                         console.log('📞 Connection state changed:', state);
@@ -1696,10 +1696,11 @@
                                     const tradeOwnerId = {{ $trade->user_id }};
                                     const currentUserId = {{ auth()->id() }};
                                     const partnerId = currentUserId === tradeOwnerId ? 
-                                        '{{ $trade->requester_id }}' : 
-                                        '{{ $trade->user_id }}';
+                                        {{ $trade->requester_id }} : 
+                                        {{ $trade->user_id }};
                                     
-                                    if (!partnerId) {
+                                    if (!partnerId || partnerId === null || partnerId === undefined) {
+                                        console.error('❌ Partner ID not found:', { tradeOwnerId, currentUserId, requesterId: {{ $trade->requester_id }}, userId: {{ $trade->user_id }} });
                                         alert('No partner found for this trade.');
                                         return;
                                     }
@@ -1743,6 +1744,11 @@
                             // Make endVideoCall globally accessible (basic version for immediate use)
                             window.endVideoCall = function() {
                                 console.log('🛑 Ending video call...');
+                                
+                                // End Firebase video call
+                                if (window.firebaseVideoCall) {
+                                    window.firebaseVideoCall.endCall();
+                                }
                                 
                                 // End WebRTC call
                                 if (window.webrtcSignaling) {
@@ -2681,6 +2687,11 @@ if (window.Echo) {
         endVideoCall();
     }
     
+    // Make video call functions globally available
+    window.handleVideoCallEnd = handleVideoCallEnd;
+    window.handleVideoCallOffer = handleVideoCallOffer;
+    window.handleVideoCallAnswer = handleVideoCallAnswer;
+    
     // Test function to verify event listening (can be called from browser console)
     window.testVideoCallEvents = function() {
         console.log('🧪 Testing video call event listening...');
@@ -3220,12 +3231,7 @@ function updateMessageInChat(tempId, messageData) {
     }
 }
 
-function removeMessageFromChat(tempId) {
-    const messageDiv = document.querySelector(`[data-temp-id="${tempId}"]`);
-    if (messageDiv) {
-        messageDiv.remove();
-    }
-}
+// Duplicate removeMessageFromChat function removed - using the one defined earlier
 
 // Task handling
 function toggleTask(taskId) {
@@ -3929,37 +3935,7 @@ function hideTaskSubmissionModal() {
     }
 }
 
-function showSuccess(message) {
-    // Create and show success toast
-    const toast = document.createElement('div');
-    toast.style.cssText = `
-        position: fixed; top: 20px; right: 20px; z-index: 9999;
-        background: #10b981; color: white; padding: 12px 20px;
-        border-radius: 6px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    `;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.remove();
-    }, 3000);
-}
-
-function showError(message) {
-    // Create and show error toast
-    const toast = document.createElement('div');
-    toast.style.cssText = `
-        position: fixed; top: 20px; right: 20px; z-index: 9999;
-        background: #ef4444; color: white; padding: 12px 20px;
-        border-radius: 6px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    `;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.remove();
-    }, 5000);
-}
+// Duplicate showSuccess and showError functions removed - using the ones defined earlier
 
 // Submission evaluation form handler
 document.getElementById('submission-evaluation-form').addEventListener('submit', function(e) {
@@ -4832,52 +4808,7 @@ const METERED_API_KEY = '511852cda421697270ed9af8b089038b39a7';
 const METERED_API_URL = 'https://skillsxchange.metered.live/api/v1/turn/credentials';
 
 // Fetch TURN server credentials from Metered API
-async function fetchTurnCredentials() {
-    try {
-        console.log('🔄 Fetching TURN server credentials...');
-        const response = await fetch(`${METERED_API_URL}?apiKey=${METERED_API_KEY}`);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const iceServers = await response.json();
-        console.log('✅ TURN credentials fetched successfully:', iceServers);
-        return iceServers;
-    } catch (error) {
-        console.error('❌ Error fetching TURN credentials:', error);
-        
-        // Fallback to basic STUN servers with Metered TURN servers
-        return [
-            // Google STUN servers (fallback)
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            // Metered STUN server
-            { urls: 'stun:stun.relay.metered.ca:80' },
-            // Metered TURN servers with credentials
-            {
-                urls: 'turn:asia.relay.metered.ca:80',
-                username: '0582eeabe15281e17e922394',
-                credential: 'g7fjNoaIyTpLnkaf'
-            },
-            {
-                urls: 'turn:asia.relay.metered.ca:80?transport=tcp',
-                username: '0582eeabe15281e17e922394',
-                credential: 'g7fjNoaIyTpLnkaf'
-            },
-            {
-                urls: 'turn:asia.relay.metered.ca:443',
-                username: '0582eeabe15281e17e922394',
-                credential: 'g7fjNoaIyTpLnkaf'
-            },
-            {
-                urls: 'turns:asia.relay.metered.ca:443?transport=tcp',
-                username: '0582eeabe15281e17e922394',
-                credential: 'g7fjNoaIyTpLnkaf'
-            }
-        ];
-    }
-}
+// Duplicate fetchTurnCredentials function removed - using the one defined earlier
 
 async function initializePeerConnection() {
     // Fetch fresh TURN server credentials
