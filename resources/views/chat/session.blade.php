@@ -12,7 +12,7 @@
     
     // Session validation function
     window.validateSession = function() {
-        if (!window.currentUserId || window.currentUserId === 0) {
+        if (!window.authUserId || window.authUserId === 0) {
             showError('Your session has expired. Please refresh the page and log in again.');
             return false;
         }
@@ -124,7 +124,7 @@
                 // Send presence event to the trade channel
                 window.Echo.channel('trade-{{ $trade->id }}')
                     .whisper('presence', {
-                        user_id: window.currentUserId,
+                        user_id: window.authUserId,
                         user_name: '{{ Auth::user()->firstname }} {{ Auth::user()->lastname }}',
                         action: action, // 'joined' or 'left'
                         timestamp: Date.now()
@@ -1390,7 +1390,7 @@
                                         type: 'offer',
                                         sdp: offer.sdp,
                                         timestamp: Date.now(),
-                                        from: window.currentUserId || 'unknown'
+                                        from: window.authUserId || 'unknown'
                                     });
                                     
                                     console.log('✅ Offer sent to Firebase');
@@ -1413,7 +1413,7 @@
                                         type: 'answer',
                                         sdp: answer.sdp,
                                         timestamp: Date.now(),
-                                        from: window.currentUserId || 'unknown'
+                                        from: window.authUserId || 'unknown'
                                     });
                                     
                                     console.log('✅ Answer sent to Firebase');
@@ -1437,7 +1437,7 @@
                                         sdpMLineIndex: candidate.sdpMLineIndex,
                                         sdpMid: candidate.sdpMid,
                                         timestamp: Date.now(),
-                                        from: window.currentUserId || 'unknown'
+                                        from: window.authUserId || 'unknown'
                                     });
                                     
                                     console.log('✅ ICE candidate sent to Firebase');
@@ -1495,7 +1495,7 @@
                                 
                                 this.database.ref(`calls/${this.callId}/answer`).on('value', async (snapshot) => {
                                     const answerData = snapshot.val();
-                                    if (answerData && answerData.sdp && answerData.from !== window.currentUserId) {
+                                    if (answerData && answerData.sdp && answerData.from !== window.authUserId) {
                                         console.log('📥 Received answer from Firebase from user:', answerData.from);
                                         
                                         // Only process if we're the initiator and haven't set remote description yet
@@ -1519,7 +1519,7 @@
                                         } else if (this.remoteDescriptionSet) {
                                             console.log('📞 Ignoring answer - remote description already set');
                                         }
-                                    } else if (answerData && answerData.from === window.currentUserId) {
+                                    } else if (answerData && answerData.from === window.authUserId) {
                                         console.log('📞 Ignoring own answer');
                                     }
                                 });
@@ -1535,7 +1535,7 @@
                                 
                                 this.database.ref(`calls/${this.callId}/candidates`).on('child_added', async (snapshot) => {
                                     const candidateData = snapshot.val();
-                                    if (candidateData && candidateData.candidate && candidateData.from !== window.currentUserId) {
+                                    if (candidateData && candidateData.candidate && candidateData.from !== window.authUserId) {
                                         console.log('🧊 Received ICE candidate from Firebase from user:', candidateData.from);
                                         
                                         // Check if remote description is set
@@ -1552,7 +1552,7 @@
                                             this.iceCandidateBuffer.push(candidateData);
                                             console.log(`🔄 ICE candidate buffered (${this.iceCandidateBuffer.length} total buffered)`);
                                         }
-                                    } else if (candidateData && candidateData.from === window.currentUserId) {
+                                    } else if (candidateData && candidateData.from === window.authUserId) {
                                         console.log('🧊 Ignoring own ICE candidate');
                                     }
                                 });
@@ -1613,7 +1613,7 @@
                                 const callData = snapshot.val();
                                 
                                 // Check if this call has an offer but no answer yet AND it's not from us
-                                if (callData.offer && !callData.answer && callData.offer.from !== window.currentUserId) {
+                                if (callData.offer && !callData.answer && callData.offer.from !== window.authUserId) {
                                     console.log('📞 Incoming call detected from user:', callData.offer.from, 'callId:', callId);
                                     
                                     // Enhanced call state management
@@ -1652,7 +1652,7 @@
                                         console.error('❌ Error answering call:', error);
                                         videoCallState.isProcessingCall = false;
                                     });
-                                } else if (callData.offer && callData.offer.from === window.currentUserId) {
+                                } else if (callData.offer && callData.offer.from === window.authUserId) {
                                     console.log('📞 Ignoring own call offer:', callId);
                                 }
                             });
