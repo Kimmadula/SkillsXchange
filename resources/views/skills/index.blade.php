@@ -13,9 +13,6 @@
                 <a href="{{ route('skills.history') }}" class="btn btn-outline-primary">
                     <i class="fas fa-history me-2"></i>My History
                 </a>
-                <a href="{{ route('skills.create') }}" class="btn btn-primary">
-                    <i class="fas fa-plus me-2"></i>Add New Skill
-                </a>
             </div>
         </div>
 
@@ -84,9 +81,6 @@
                                     <li><a class="dropdown-item" href="{{ route('skills.show', $skill->skill_id) }}">
                                         <i class="fas fa-eye me-2"></i>View Details
                                     </a></li>
-                                    <li><a class="dropdown-item" href="{{ route('skills.edit', $skill->skill_id) }}">
-                                        <i class="fas fa-edit me-2"></i>Edit
-                                    </a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     @auth
                                         @if(Auth::user()->skills()->where('skill_id', $skill->skill_id)->exists())
@@ -110,17 +104,6 @@
                                         </li>
                                         @endif
                                     @endauth
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <form action="{{ route('skills.destroy', $skill->skill_id) }}" method="POST" 
-                                              onsubmit="return confirm('Are you sure you want to delete this skill?')" class="d-inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="dropdown-item text-danger">
-                                                <i class="fas fa-trash me-2"></i>Delete
-                                            </button>
-                                        </form>
-                                    </li>
                                 </ul>
                             </div>
                         </div>
