@@ -42,13 +42,8 @@ class ChatController extends Controller
             return redirect()->route('login')->with('error', 'Please log in to access chat.');
         }
         
-        // Prevent admin users from accessing chat functionality
-        if ($user->role === 'admin') {
-            Log::info('Admin user blocked from chat access', ['user_id' => $user->id]);
-            
-            // Redirect to admin dashboard
-            return redirect()->route('admin.dashboard')->with('error', 'Admin users cannot access chat.');
-        }
+        // Allow admin users to access chat functionality for support and monitoring
+        // Removed admin restriction to enable chat access for all user roles
         
         // Check if user is part of this trade
         $isTradeOwner = $trade->user_id === $user->id;

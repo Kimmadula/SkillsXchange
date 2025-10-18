@@ -50,45 +50,23 @@ class SkillController extends Controller
     }
 
     /**
-     * Show the form for creating a new skill
+     * Show the form for creating a new skill - DISABLED
      */
     public function create()
     {
-        $categories = Skill::select('category')->distinct()->pluck('category');
-        return view('skills.create', compact('categories'));
+        // Skills are now static - no creation allowed
+        return redirect()->route('skills.index')
+            ->with('error', 'Skill creation is no longer available. Skills are now static.');
     }
 
     /**
-     * Store a newly created skill
+     * Store a newly created skill - DISABLED
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255|unique:skills,name',
-            'description' => 'nullable|string|max:1000',
-            'category' => 'required|string|max:100',
-            'difficulty_level' => 'nullable|in:beginner,intermediate,advanced,expert',
-            'prerequisites' => 'nullable|string|max:500'
-        ]);
-
-        try {
-            $skill = Skill::create([
-                'skill_id' => Str::uuid(),
-                'name' => $request->name,
-                'description' => $request->description,
-                'category' => $request->category,
-                'difficulty_level' => $request->difficulty_level ?? 'beginner',
-                'prerequisites' => $request->prerequisites
-            ]);
-
-            return redirect()->route('skills.show', $skill->skill_id)
-                ->with('success', 'Skill created successfully!');
-                
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Failed to create skill: ' . $e->getMessage());
-        }
+        // Skills are now static - no creation allowed
+        return redirect()->route('skills.index')
+            ->with('error', 'Skill creation is no longer available. Skills are now static.');
     }
 
     /**
@@ -118,64 +96,29 @@ class SkillController extends Controller
      */
     public function edit(Skill $skill)
     {
-        $categories = Skill::select('category')->distinct()->pluck('category');
-        return view('skills.edit', compact('skill', 'categories'));
+        // Skills are now static - no editing allowed
+        return redirect()->route('skills.show', $skill->skill_id)
+            ->with('error', 'Skill editing is no longer available. Skills are now static.');
     }
 
     /**
-     * Update the specified skill
+     * Update the specified skill - DISABLED
      */
     public function update(Request $request, Skill $skill)
     {
-        $request->validate([
-            'name' => 'required|string|max:255|unique:skills,name,' . $skill->skill_id . ',skill_id',
-            'description' => 'nullable|string|max:1000',
-            'category' => 'required|string|max:100',
-            'difficulty_level' => 'nullable|in:beginner,intermediate,advanced,expert',
-            'prerequisites' => 'nullable|string|max:500'
-        ]);
-
-        try {
-            $skill->update([
-                'name' => $request->name,
-                'description' => $request->description,
-                'category' => $request->category,
-                'difficulty_level' => $request->difficulty_level ?? 'beginner',
-                'prerequisites' => $request->prerequisites
-            ]);
-
-            return redirect()->route('skills.show', $skill->skill_id)
-                ->with('success', 'Skill updated successfully!');
-                
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Failed to update skill: ' . $e->getMessage());
-        }
+        // Skills are now static - no updating allowed
+        return redirect()->route('skills.show', $skill->skill_id)
+            ->with('error', 'Skill editing is no longer available. Skills are now static.');
     }
 
     /**
-     * Remove the specified skill
+     * Remove the specified skill - DISABLED
      */
     public function destroy(Skill $skill)
     {
-        try {
-            // Check if skill is being used by any users
-            $userCount = $skill->users()->count();
-            if ($userCount > 0) {
-                return redirect()->back()
-                    ->with('error', "Cannot delete skill. It is currently possessed by {$userCount} user(s).");
-            }
-
-            $skill->delete();
-
-            return redirect()->route('skills.index')
-                ->with('success', 'Skill deleted successfully!');
-                
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Failed to delete skill: ' . $e->getMessage());
-        }
+        // Skills are now static - no deletion allowed
+        return redirect()->route('skills.index')
+            ->with('error', 'Skill deletion is no longer available. Skills are now static.');
     }
 
     /**

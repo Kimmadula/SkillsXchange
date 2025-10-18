@@ -512,10 +512,10 @@ Route::post('/tasks/{task}/evaluation', [\App\Http\Controllers\TaskController::c
 Route::get('/tasks/{task}/progress', [\App\Http\Controllers\TaskController::class, 'getTaskProgress'])->name('tasks.progress');
 Route::get('/tasks/{task}/submission-details', [\App\Http\Controllers\TaskController::class, 'getSubmissionDetails'])->name('tasks.submission-details');
 
-// Skill Management Routes
-Route::resource('skills', \App\Http\Controllers\SkillController::class);
-Route::post('/skills/{skill}/add-to-profile', [\App\Http\Controllers\SkillController::class, 'addToProfile'])->name('skills.add-to-profile');
-Route::delete('/skills/{skill}/remove-from-profile', [\App\Http\Controllers\SkillController::class, 'removeFromProfile'])->name('skills.remove-from-profile');
+// Skill Management Routes - READ ONLY (CRUD operations removed)
+// Only allow viewing skills, no create/edit/delete operations
+Route::get('/skills', [\App\Http\Controllers\SkillController::class, 'index'])->name('skills.index');
+Route::get('/skills/{skill}', [\App\Http\Controllers\SkillController::class, 'show'])->name('skills.show');
 Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 'getSkills'])->name('api.skills.search');
 
 // Skill History Routes
@@ -594,10 +594,10 @@ Route::get('/api/skills/analytics', [\App\Http\Controllers\SkillHistoryControlle
         Route::get('/admin/messages', [AdminController::class, 'messagesIndex'])->name('admin.messages.index');
         Route::get('/admin/settings', [AdminController::class, 'settingsIndex'])->name('admin.settings.index');
         
-        // Skills management
-        Route::get('/admin/skills/create', [AdminController::class, 'createSkill'])->name('admin.skill.create');
-        Route::post('/admin/skills', [AdminController::class, 'storeSkill'])->name('admin.skill.store');
-        Route::delete('/admin/skills/{skill}', [AdminController::class, 'deleteSkill'])->name('admin.skill.delete');
+        // Skills management - DISABLED (skills are now static)
+        // Route::get('/admin/skills/create', [AdminController::class, 'createSkill'])->name('admin.skill.create');
+        // Route::post('/admin/skills', [AdminController::class, 'storeSkill'])->name('admin.skill.store');
+        // Route::delete('/admin/skills/{skill}', [AdminController::class, 'deleteSkill'])->name('admin.skill.delete');
         
         // User management
         Route::patch('/admin/approve/{user}', [AdminController::class, 'approve'])->name('admin.approve');

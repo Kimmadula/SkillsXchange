@@ -59,9 +59,6 @@
                         <li><a class="dropdown-item" href="{{ route('skills.index') }}">
                             <i class="fas fa-list me-2"></i>Browse Skills
                         </a></li>
-                        <li><a class="dropdown-item" href="{{ route('skills.create') }}">
-                            <i class="fas fa-plus me-2"></i>Add New Skill
-                        </a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ route('skills.history') }}">
                             <i class="fas fa-history me-2"></i>My Skill History

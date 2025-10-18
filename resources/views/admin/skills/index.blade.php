@@ -238,29 +238,10 @@
                 </div>
                 @endif
 
-                <!-- Add New Skill Section -->
-                <div class="add-skill-card">
-                    <h3 class="card-title">Add New Skill</h3>
-                    <form method="POST" action="{{ route('admin.skill.store') }}" class="add-skill-form">
-                        @csrf
-                        <div class="form-group">
-                            <label for="name" class="form-label">Skill Name</label>
-                            <input id="name" name="name" type="text" value="{{ old('name') }}" required
-                                class="form-input" placeholder="e.g., Web Development" />
-                            @error('name')
-                            <div class="error-text">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        <div class="form-group">
-                            <label for="category" class="form-label">Category</label>
-                            <input id="category" name="category" type="text" value="{{ old('category') }}" required
-                                class="form-input" placeholder="e.g., IT" />
-                            @error('category')
-                            <div class="error-text">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        <button type="submit" class="btn btn-primary">Add Skill</button>
-                    </form>
+                <!-- Skills are now static - no creation allowed -->
+                <div class="alert alert-info">
+                    <h4>Skills are now static</h4>
+                    <p>Skill creation and editing has been disabled. Skills can only be viewed and managed through user profiles.</p>
                 </div>
 
                 <!-- All Skills Section -->
@@ -279,7 +260,7 @@
                                     <th>NAME</th>
                                     <th>CATEGORY</th>
                                     <th>USERS COUNT</th>
-                                    <th>ACTIONS</th>
+                                    <th>STATUS</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -291,12 +272,7 @@
                                     </td>
                                     <td>{{ $skill->users_count ?? 0 }} users</td>
                                     <td>
-                                        <form method="POST" action="{{ route('admin.skill.delete', $skill->skill_id) }}"
-                                            onsubmit="return confirm('Delete this skill?');" style="display: inline;">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-delete">Delete</button>
-                                        </form>
+                                        <span class="text-muted">Read-only</span>
                                     </td>
                                 </tr>
                                 @empty
