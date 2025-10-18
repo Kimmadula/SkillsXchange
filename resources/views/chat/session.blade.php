@@ -10,6 +10,10 @@
     window.partnerName = '{{ addslashes(($partner->firstname ?? "Unknown") . " " . ($partner->lastname ?? "User")) }}';
     window.initialMessageCount = parseInt('{{ $messages->count() }}');
     
+    // Pusher Configuration
+    window.PUSHER_APP_KEY = '{{ env('PUSHER_APP_KEY', '5c02e54d01ca577ae77e') }}';
+    window.PUSHER_APP_CLUSTER = '{{ env('PUSHER_APP_CLUSTER', 'ap1') }}';
+    
     // Firebase Video Call Integration
     let firebaseVideoCall = null;
     let videoCallListenersInitialized = false;
@@ -29,6 +33,86 @@
         callCooldown: 2000 // 2 seconds between calls
     };
     
+    // Handle user joined event
+    function handleUserJoined(data) {
+        console.log('👤 User joined:', data);
+        
+        // Check if the joined user is our partner
+        if (data.user_id == window.partnerId) {
+            updatePresenceStatus(true, data.user_name || 'Partner');
+            console.log('✅ Partner is now online');
+        }
+    }
+    
+    // Handle user left event
+    function handleUserLeft(data) {
+        console.log('👤 User left:', data);
+        
+        // Check if the left user is our partner
+        if (data.user_id == window.partnerId) {
+            updatePresenceStatus(false, data.user_name || 'Partner');
+            console.log('❌ Partner is now offline');
+        }
+    }
+    
+    // Update presence status display
+    function updatePresenceStatus(isOnline, userName = 'Partner') {
+        const presenceStatus = document.getElementById('presence-status');
+        if (presenceStatus) {
+            if (isOnline) {
+                presenceStatus.innerHTML = '🟢 ' + userName + ' is online';
+                presenceStatus.style.color = '#10b981'; // Green color
+            } else {
+                presenceStatus.innerHTML = '🔴 ' + userName + ' is offline';
+                presenceStatus.style.color = '#6b7280'; // Gray color
+            }
+        }
+    }
+    
+    // Broadcast user presence
+    function broadcastUserPresence(action) {
+        if (typeof window.Echo !== 'undefined') {
+            try {
+                // Send presence event to the trade channel
+                window.Echo.channel('trade-{{ $trade->id }}')
+                    .whisper('presence', {
+                        user_id: window.currentUserId,
+                        user_name: '{{ Auth::user()->firstname }} {{ Auth::user()->lastname }}',
+                        action: action, // 'joined' or 'left'
+                        timestamp: Date.now()
+                    });
+                console.log('📡 Broadcasted presence:', action);
+            } catch (error) {
+                console.error('Error broadcasting presence:', error);
+            }
+        }
+    }
+    
+    // Check initial presence status
+    function checkInitialPresenceStatus() {
+        console.log('🔍 Checking initial presence status...');
+        
+        // Broadcast that current user joined
+        broadcastUserPresence('joined');
+        
+        // For now, we'll assume partner is offline initially
+        // In a real implementation, you might want to check with the server
+        // or use a presence channel to get the current state
+        updatePresenceStatus(false, '{{ $partner->firstname ?? "Partner" }}');
+        
+        // You could add an API call here to check if the partner is currently online
+        // fetch('/api/trade/{{ $trade->id }}/presence')
+        //     .then(response => response.json())
+        //     .then(data => {
+        //         if (data.partner_online) {
+        //             updatePresenceStatus(true, data.partner_name);
+        //         }
+        //     })
+        //     .catch(error => {
+        //         console.log('Could not check initial presence status:', error);
+        //     });
+    }
+    
     // Listen for user presence events
     function initializePresenceListeners() {
         if (typeof window.Echo !== 'undefined') {
@@ -36,18 +120,24 @@
                 window.Echo.channel('trade-{{ $trade->id }}')
                     .listen('user-joined', function(data) {
                         console.log('User joined:', data);
-                        if (typeof handleUserJoined === 'function') {
-                            handleUserJoined(data);
-                        }
+                        handleUserJoined(data);
                     });
 
                 window.Echo.channel('trade-{{ $trade->id }}')
                     .listen('user-left', function(data) {
                         console.log('User left:', data);
-                        if (typeof handleUserLeft === 'function') {
+                        handleUserLeft(data);
+                    })
+                    .listenForWhisper('presence', function(data) {
+                        console.log('Presence whisper received:', data);
+                        if (data.action === 'joined') {
+                            handleUserJoined(data);
+                        } else if (data.action === 'left') {
                             handleUserLeft(data);
                         }
                     });
+                    
+                console.log('✅ Presence listeners initialized');
             } catch (error) {
                 console.error('Error setting up presence listeners:', error);
             }
@@ -55,6 +145,16 @@
             console.error('Laravel Echo not available. Make sure Pusher is properly configured.');
         }
     }
+    
+    // Cleanup presence when user leaves
+    function cleanupPresence() {
+        console.log('🧹 Cleaning up presence...');
+        broadcastUserPresence('left');
+    }
+    
+    // Add cleanup on page unload
+    window.addEventListener('beforeunload', cleanupPresence);
+    window.addEventListener('pagehide', cleanupPresence);
     
     // Define updateCallStatus function before Firebase initialization
     function updateCallStatus(status) {
@@ -159,6 +259,20 @@
                 if (remoteVideo) {
                     remoteVideo.srcObject = data.remoteStream;
                     remoteVideo.style.display = 'block';
+                    remoteVideo.autoplay = true;
+                    remoteVideo.playsInline = true;
+                    remoteVideo.muted = false; // Allow audio for remote video
+                    
+                    // Ensure video plays
+                    remoteVideo.play().then(() => {
+                        console.log('✅ Remote video started playing');
+                    }).catch(e => {
+                        console.log('Remote video play error:', e);
+                        // Try to play again after a short delay
+                        setTimeout(() => {
+                            remoteVideo.play().catch(err => console.log('Retry play error:', err));
+                        }, 1000);
+                    });
                 }
                 
                 videoCallState.isActive = true;
@@ -339,6 +453,9 @@
         
         // Also initialize presence listeners
         initializePresenceListeners();
+        
+        // Check initial presence status
+        checkInitialPresenceStatus();
     }
 
     // Initialize Firebase video call listeners when DOM is ready
@@ -849,56 +966,54 @@
 <!-- Video Chat Modal -->
 <div id="video-chat-modal" class="video-chat-modal">
     <div class="video-chat-container">
-        <button class="close-video" id="close-video-btn">×</button>
+        <button class="close-video" id="close-video-btn" title="Close Video Chat" aria-label="Close video chat">×</button>
 
-        <div class="video-status" id="video-status">Initializing video chat...</div>
-        <div class="call-timer" id="call-timer" style="display: none;">00:00</div>
+        <div class="video-status" id="video-status" role="status" aria-live="polite">Initializing video chat...</div>
+        <div class="call-timer" id="call-timer" style="display: none;" aria-label="Call duration">00:00</div>
 
-        <div class="video-grid" id="video-grid">
-            <div class="video-item local" id="local-video-item">
-                <video id="local-video" autoplay muted playsinline></video>
-                <div class="connection-status" id="local-status">Local</div>
+        <div class="video-grid" id="video-grid" role="region" aria-label="Video call participants">
+            <div class="video-item local" id="local-video-item" role="region" aria-label="Your video">
+                <video id="local-video" autoplay muted playsinline aria-label="Your video feed"></video>
+                <div class="connection-status" id="local-status" aria-label="Your connection status">Local</div>
                 <div class="video-overlay">
-                    <div class="user-name">{{ Auth::user()->firstname }} {{ Auth::user()->lastname }}</div>
+                    <div class="user-name" aria-label="Your name">{{ Auth::user()->firstname }} {{ Auth::user()->lastname }}</div>
                     <div class="video-controls-overlay">
                         <button class="control-btn" id="local-maximize-btn" onclick="maximizeVideo('local')"
-                            title="Maximize">⛶</button>
+                            title="Maximize your video" aria-label="Maximize your video">⛶</button>
                     </div>
                 </div>
             </div>
-            <div class="video-item remote" id="remote-video-item">
-                <video id="remote-video" autoplay playsinline></video>
-                <div class="connection-status" id="remote-status">Waiting...</div>
+            <div class="video-item remote" id="remote-video-item" role="region" aria-label="Partner's video">
+                <video id="remote-video" autoplay playsinline aria-label="Partner's video feed"></video>
+                <div class="connection-status" id="remote-status" aria-label="Partner's connection status">Waiting...</div>
                 <div class="video-overlay">
-                    <div class="user-name" id="remote-user-name">{{ $partner->firstname ?? 'Partner' }} {{
+                    <div class="user-name" id="remote-user-name" aria-label="Partner's name">{{ $partner->firstname ?? 'Partner' }} {{
                         $partner->lastname ?? '' }}</div>
                     <div class="video-controls-overlay">
                         <button class="control-btn" id="remote-maximize-btn" onclick="maximizeVideo('remote')"
-                            title="Maximize">⛶</button>
+                            title="Maximize partner's video" aria-label="Maximize partner's video">⛶</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="video-controls">
-            <button id="auto-call-toggle" class="video-btn secondary" title="Toggle Auto-call"
-                style="background: #10b981;">🔗 Auto-call ON</button>
-            <div id="presence-status"
+        <div class="video-controls" role="toolbar" aria-label="Video call controls">
+            <div id="presence-status" role="status" aria-live="polite"
                 style="color: #6b7280; font-size: 0.875rem; margin: 0 8px; display: flex; align-items: center;">🔴
                 Partner is offline</div>
-            <button id="start-call-btn" class="video-btn primary" title="Start Call">📞</button>
-            <button id="end-call-btn" class="video-btn danger" style="display: none;" title="End Call">📞</button>
+            <button id="start-call-btn" class="video-btn primary" title="Start Call" aria-label="Start video call">📞</button>
+            <button id="end-call-btn" class="video-btn danger" style="display: none;" title="End Call" aria-label="End video call">📞</button>
             <button id="toggle-audio-btn" class="video-btn success" style="display: none;"
-                title="Mute/Unmute">🎤</button>
+                title="Mute/Unmute" aria-label="Toggle microphone">🎤</button>
             <button id="toggle-video-btn" class="video-btn success" style="display: none;"
-                title="Turn Video On/Off">📹</button>
+                title="Turn Video On/Off" aria-label="Toggle camera">📹</button>
             <button id="mirror-video-btn" class="video-btn secondary" style="display: none;"
-                title="Mirror Video">🪞</button>
+                title="Mirror Video" aria-label="Mirror video display">🪞</button>
             <button id="screen-share-btn" class="video-btn secondary" style="display: none;"
-                title="Share Screen">🖥️</button>
-            <button id="maximize-btn" class="video-btn maximize" style="display: none;" title="Maximize">⛶</button>
+                title="Share Screen" aria-label="Share your screen">🖥️</button>
+            <button id="maximize-btn" class="video-btn maximize" style="display: none;" title="Maximize" aria-label="Maximize video display">⛶</button>
             <button id="chat-toggle-btn" class="video-btn secondary" style="display: none;"
-                title="Toggle Chat">💬</button>
+                title="Toggle Chat" aria-label="Toggle chat panel">💬</button>
         </div>
     </div>
 </div>
@@ -1631,18 +1746,21 @@
                                 console.log('✅ Close video button event listener added');
                             }
                             
-                            // Add event listeners for remaining buttons
-                            const autoCallToggle = document.getElementById('auto-call-toggle');
-                            if (autoCallToggle) {
-                                autoCallToggle.addEventListener('click', function() {
-                                    console.log('🔗 Auto-call toggle clicked');
-                                    if (typeof window.toggleAutoCall === 'function') {
-                                        window.toggleAutoCall();
+                            // Add event listener for end call button
+                            const endCallBtn = document.getElementById('end-call-btn');
+                            if (endCallBtn) {
+                                endCallBtn.addEventListener('click', function() {
+                                    console.log('📞 End call button clicked');
+                                    if (typeof window.endVideoCall === 'function') {
+                                        window.endVideoCall();
                                     } else {
-                                        console.error('toggleAutoCall function not available');
+                                        console.error('endVideoCall function not available');
                                     }
                                 });
+                                console.log('✅ End call button event listener added');
                             }
+                            
+                            // Add event listeners for remaining buttons
                             
                             const screenShareBtn = document.getElementById('screen-share-btn');
                             if (screenShareBtn) {
@@ -1683,9 +1801,7 @@
                             // Define video chat functions immediately after DOM is loaded
                             console.log('🔧 Defining video chat functions...');
                             
-                            // Duplicate function definitions removed - using the ones defined earlier
-                            
-                            // Make startVideoCall globally accessible (basic version for immediate use)
+                            // Consolidated video call functions
                             window.startVideoCall = async function() {
                                 console.log('🚀 Starting video call...');
                                 
@@ -1757,9 +1873,8 @@
                                 }
                             };
                             
-                            // Make startVideoCallFull globally accessible (simplified version)
                             window.startVideoCallFull = async function() {
-                                console.log('🚀 Starting video call with Firebase (simplified version)...');
+                                console.log('🚀 Starting video call with Firebase...');
                                 
                                 try {
                                     // Check if Firebase video call is available
@@ -1769,7 +1884,7 @@
                                         return;
                                     }
                                     
-                                    // Get partner ID (simplified version)
+                                    // Get partner ID
                                     const tradeOwnerId = {{ $trade->user_id }};
                                     const currentUserId = {{ auth()->id() }};
                                     const partnerId = currentUserId === tradeOwnerId ? 
@@ -1797,6 +1912,9 @@
                                         if (localVideo && firebaseVideoCall.localStream) {
                                             localVideo.srcObject = firebaseVideoCall.localStream;
                                             localVideo.style.display = 'block';
+                                            localVideo.muted = true; // Mute local video to prevent echo
+                                            localVideo.autoplay = true;
+                                            localVideo.playsInline = true;
                                         }
                                         
                                         // Update status
@@ -1818,7 +1936,6 @@
                                 }
                             };
                             
-                            // Make endVideoCall globally accessible (basic version for immediate use)
                             window.endVideoCall = function() {
                                 console.log('🛑 Ending video call...');
                                 
@@ -1888,16 +2005,16 @@
             <div style="padding: 16px; background: white; border-top: 1px solid #e5e7eb;">
                 <form id="message-form" style="display: flex; gap: 8px;">
                     <div style="flex: 1; position: relative;">
-                        <input type="text" id="message-input" placeholder="Type your message here..."
+                        <input type="text" id="message-input" placeholder="Type your message here..." aria-label="Type your message"
                             style="width: 100%; padding: 12px 40px 12px 12px; border: 1px solid #d1d5db; border-radius: 6px; outline: none;">
                         <button type="button" id="emoji-button"
                             style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;"
                             title="Add emoji">😊</button>
                     </div>
                     <div style="display: flex; gap: 4px; align-items: center;">
-                        <input type="file" id="image-upload" accept="image/*" style="display: none;"
+                        <input type="file" id="image-upload" accept="image/*" style="display: none;" aria-label="Upload image"
                             onchange="handleImageUpload(event)">
-                        <input type="file" id="video-upload" accept="video/*" style="display: none;"
+                        <input type="file" id="video-upload" accept="video/*" style="display: none;" aria-label="Upload video"
                             onchange="handleVideoUpload(event)">
                         <button type="button" onclick="document.getElementById('image-upload').click()"
                             style="padding: 8px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer; font-size: 16px;"
@@ -2254,13 +2371,13 @@
         <form id="add-task-form">
             <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 4px; font-weight: 500;">Task Title</label>
-                <input type="text" id="task-title" required
+                <input type="text" id="task-title" required aria-label="Task title"
                     style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
             </div>
             
             <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 4px; font-weight: 500;">Description (Optional)</label>
-                <textarea id="task-description" rows="3"
+                <textarea id="task-description" rows="3" aria-label="Task description"
                     style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; resize: vertical;"></textarea>
             </div>
 
@@ -2309,7 +2426,7 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
                 <div>
                     <label style="display: block; margin-bottom: 4px; font-weight: 500;">Priority</label>
-                    <select id="task-priority" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
+                    <select id="task-priority" aria-label="Task priority" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
                         <option value="low">Low</option>
                         <option value="medium" selected>Medium</option>
                         <option value="high">High</option>
@@ -2317,7 +2434,7 @@
                 </div>
                 <div>
                     <label style="display: block; margin-bottom: 4px; font-weight: 500;">Due Date (Optional)</label>
-                    <input type="date" id="task-due-date" min="{{ date('Y-m-d', strtotime('+1 day')) }}"
+                    <input type="date" id="task-due-date" min="{{ date('Y-m-d', strtotime('+1 day')) }}" aria-label="Task due date"
                         style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
                 </div>
             </div>
@@ -2516,8 +2633,8 @@
 if (window.Echo) {
     console.log('Initializing Pusher connection for trade {{ $trade->id }}');
     console.log('Pusher configuration:', {
-        key: window.PUSHER_APP_KEY,
-        cluster: window.PUSHER_APP_CLUSTER,
+        key: window.PUSHER_APP_KEY || '5c02e54d01ca577ae77e',
+        cluster: window.PUSHER_APP_CLUSTER || 'ap1',
         encrypted: true
     });
     console.log('Echo available:', !!window.Echo);
@@ -4486,11 +4603,7 @@ let pendingOffer = null; // Store the offer data for notification handling
 
 function resetVideoChat() {
     // Reset UI
-    if (isAutoCallEnabled) {
-        document.getElementById('video-status').textContent = 'Camera and microphone ready. Auto-connecting when partner joins...';
-    } else {
-        document.getElementById('video-status').textContent = 'Initializing video chat...';
-    }
+    document.getElementById('video-status').textContent = 'Initializing video chat...';
     document.getElementById('call-timer').style.display = 'none';
     document.getElementById('start-call-btn').style.display = 'flex';
     document.getElementById('end-call-btn').style.display = 'none';
@@ -4575,16 +4688,6 @@ function toggleMaximize() {
     maximizeVideo(maximizedVideo === 'remote' ? 'local' : 'remote');
 }
 
-function toggleAutoCall() {
-    console.log('🔗 Toggle auto-call clicked');
-    isAutoCallEnabled = !isAutoCallEnabled;
-    const toggle = document.getElementById('auto-call-toggle');
-    if (toggle) {
-        toggle.textContent = isAutoCallEnabled ? '🔗' : '⛓️‍💥';
-        toggle.title = isAutoCallEnabled ? 'Auto-call enabled' : 'Auto-call disabled';
-    }
-    console.log('Auto-call:', isAutoCallEnabled ? 'enabled' : 'disabled');
-}
 
 function toggleScreenShare() {
     console.log('🖥️ Toggle screen share clicked');
@@ -4697,7 +4800,6 @@ function toggleChat() {
 
 // Global variables
 let isScreenSharing = false;
-let isAutoCallEnabled = true;
 
 // Load video call fixes
 (function() {
@@ -4785,7 +4887,7 @@ async function initializeVideoChat() {
         document.getElementById('local-status').className = 'connection-status connected';
         
         // Update status
-        document.getElementById('video-status').textContent = 'Camera and microphone ready. Auto-connecting when partner joins...';
+        document.getElementById('video-status').textContent = 'Camera and microphone ready. Click start call to begin.';
         
         // Show start call button
         document.getElementById('start-call-btn').disabled = false;
