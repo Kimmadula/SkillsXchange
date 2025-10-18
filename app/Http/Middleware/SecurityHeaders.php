@@ -92,7 +92,7 @@ class SecurityHeaders
                "https://www.google-analytics.com " .
                "https://analytics.google.com; " .
                "media-src 'self' blob: data:; " .
-               "frame-src 'self' https://*.pusher.com; " .
+               "frame-src 'self' https://*.pusher.com https://*.firebasedatabase.app https://*.firebaseapp.com; " .
                "object-src 'none'; " .
                "base-uri 'self'; " .
                "form-action 'self' " . $currentDomain . " https://*.onrender.com; " .
