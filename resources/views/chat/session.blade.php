@@ -786,7 +786,7 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 12px;">
-                    <button id="video-call-btn" onclick="window.openVideoChat()"
+                    <button id="video-call-btn"
                         style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem;">📷</button>
 
                     <!-- Ensure openVideoChat is defined immediately -->
@@ -888,17 +888,7 @@
                             }
                         };
                         
-                        // Define closeVideoChat function immediately
-                        window.closeVideoChat = function() {
-                            console.log('🛑 Closing video chat...');
-                            const modal = document.getElementById('video-chat-modal');
-                            if (modal) {
-                                modal.style.display = 'none';
-                            }
-                            if (typeof window.endVideoCall === 'function') {
-                                window.endVideoCall();
-                            }
-                        };
+                        // closeVideoChat will be defined later in the main script
                         
                         // Define endVideoCall function immediately
                         window.endVideoCall = function() {
@@ -1445,41 +1435,7 @@
                         // Set up callee after a short delay to ensure Firebase is ready
                         setTimeout(setupCalleeForIncomingCalls, 2000);
                         
-                        // Fallback definition to ensure function is always available
-                        if (typeof window.openVideoChat !== 'function') {
-                            console.log('🔧 Creating fallback openVideoChat function...');
-                            window.openVideoChat = function() {
-                                console.log('🎥 Opening video chat (fallback)...');
-                                const modal = document.getElementById('video-chat-modal');
-                                if (modal) {
-                                    modal.style.display = 'flex';
-                                    
-                                    // Initialize camera immediately
-                                    initializeCamera();
-                                    
-                                    // Try to call startVideoCall if it exists
-                                    if (typeof window.startVideoCall === 'function') {
-                                        window.startVideoCall();
-                                    } else {
-                                        console.log('startVideoCall not available yet, will be called when ready');
-                                        // Set up a retry mechanism
-                                        const retryInterval = setInterval(() => {
-                                            if (typeof window.startVideoCall === 'function') {
-                                                clearInterval(retryInterval);
-                                                window.startVideoCall();
-                                            }
-                                        }, 100);
-                                        
-                                        // Stop retrying after 5 seconds
-                                        setTimeout(() => clearInterval(retryInterval), 5000);
-                                    }
-                                } else {
-                                    console.error('Video chat modal not found');
-                                    alert('Video chat is not available. Please refresh the page.');
-                                }
-                            };
-                            console.log('✅ Fallback openVideoChat function created:', typeof window.openVideoChat);
-                        }
+                        // openVideoChat will be defined later in the main script
                         
                         // Function to verify all video functions are available
                         function verifyVideoFunctions() {
