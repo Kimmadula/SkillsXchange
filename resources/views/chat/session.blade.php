@@ -2086,6 +2086,11 @@
                                 <button type="button" class="emoji-btn" onclick="insertEmoji('🎊')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🎊</button>
                                 <button type="button" class="emoji-btn" onclick="insertEmoji('🎈')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🎈</button>
                                 <button type="button" class="emoji-btn" onclick="insertEmoji('🎁')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🎁</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🎂')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🎂</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🎃')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🎃</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🎄')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🎄</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🎆')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🎆</button>
+                                <button type="button" class="emoji-btn" onclick="insertEmoji('🎇')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🎇</button>
                             </div>
                         </div>
                     </div>
@@ -4028,6 +4033,18 @@ function submitTaskWork(taskId) {
         return;
     }
     
+    // Refresh the page if session seems stale (older than 1 hour)
+    const sessionStart = new Date('{{ $trade->start_date }}');
+    const now = new Date();
+    const sessionAge = (now - sessionStart) / (1000 * 60 * 60); // hours
+    
+    if (sessionAge > 1) {
+        if (confirm('Your session has been active for a while. Would you like to refresh the page to ensure everything works properly?')) {
+            location.reload();
+            return;
+        }
+    }
+    
     // Create and show file submission modal
     showTaskSubmissionModal(taskId);
 }
@@ -4128,6 +4145,12 @@ function showTaskSubmissionModal(taskId) {
             if (response.redirected || response.status === 302) {
                 console.log('302 Redirect detected - likely session expired');
                 showError('Your session has expired. Please refresh the page and try again.');
+                // Add a refresh button
+                setTimeout(() => {
+                    if (confirm('Your session has expired. Would you like to refresh the page to restore your session?')) {
+                        location.reload();
+                    }
+                }, 1000);
                 return;
             }
             
