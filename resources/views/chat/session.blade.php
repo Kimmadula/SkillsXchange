@@ -103,6 +103,162 @@
         console.log('Call status:', status);
     }
 
+    // Define video call handler functions early to make them globally available
+    function handleVideoCallEnd(data) {
+        console.log('📞 Video call ended:', data);
+        if (typeof window.endVideoCall === 'function') {
+            window.endVideoCall();
+        }
+    }
+
+    async function handleVideoCallOffer(data) {
+        console.log('📞 Handling video call offer:', data);
+        
+        try {
+            // Use Firebase to answer the call
+            if (firebaseVideoCall) {
+                const success = await firebaseVideoCall.answerCall(data.offer);
+                
+                if (success) {
+                    // Setup local video display
+                    const localVideo = document.getElementById('local-video');
+                    if (localVideo && firebaseVideoCall.localStream) {
+                        localVideo.srcObject = firebaseVideoCall.localStream;
+                        localVideo.style.display = 'block';
+                    }
+                    
+                    videoCallState.isActive = true;
+                    videoCallState.isInitiator = false;
+                    videoCallState.partnerId = data.fromUserId;
+                    videoCallState.callId = data.callId;
+                    
+                    startCallTimer();
+                    
+                    console.log('✅ Video call answered successfully with Firebase');
+                } else {
+                    throw new Error('Failed to answer call with Firebase');
+                }
+            } else {
+                throw new Error('Firebase video call not available');
+            }
+            
+        } catch (error) {
+            console.error('Error handling offer:', error);
+            alert('Failed to answer call: ' + error.message);
+            endVideoCall();
+        }
+    }
+
+    async function handleVideoCallAnswer(data) {
+        console.log('📞 Handling video call answer:', data);
+        
+        try {
+            // If we have a remote stream from Firebase, display it
+            if (data.remoteStream) {
+                const remoteVideo = document.getElementById('remote-video');
+                if (remoteVideo) {
+                    remoteVideo.srcObject = data.remoteStream;
+                    remoteVideo.style.display = 'block';
+                }
+                
+                videoCallState.isActive = true;
+                videoCallState.isConnected = true;
+                
+                console.log('✅ Remote video stream received and displayed');
+            }
+            
+        } catch (error) {
+            console.error('Error handling answer:', error);
+        }
+    }
+
+    // Make video call functions globally available immediately
+    window.handleVideoCallEnd = handleVideoCallEnd;
+    window.handleVideoCallOffer = handleVideoCallOffer;
+    window.handleVideoCallAnswer = handleVideoCallAnswer;
+
+    // Define openVideoChat function immediately to make it globally available
+    window.openVideoChat = async function() {
+        console.log('🎥 Opening video chat...');
+        const modal = document.getElementById('video-chat-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            
+            // Initialize camera first and wait for it to complete
+            try {
+                console.log('📹 Initializing camera...');
+                
+                // Check if getUserMedia is supported
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    console.error('❌ Camera not supported');
+                    alert('Camera is not supported in this browser. Please use a modern browser.');
+                    return;
+                }
+                
+                // Request camera access
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user'
+                    },
+                    audio: true 
+                });
+                
+                console.log('✅ Camera access granted');
+                
+                // Display local video
+                const localVideo = document.getElementById('local-video');
+                if (localVideo) {
+                    localVideo.srcObject = stream;
+                    localVideo.style.display = 'block';
+                    localVideo.play();
+                }
+                
+                // Store stream globally for later use
+                window.localStream = stream;
+                
+                console.log('✅ Video chat opened successfully');
+                
+            } catch (error) {
+                console.error('❌ Error accessing camera:', error);
+                alert('Failed to access camera: ' + error.message);
+                modal.style.display = 'none';
+            }
+        } else {
+            console.error('❌ Video chat modal not found');
+        }
+    };
+
+    // Define closeVideoChat function
+    window.closeVideoChat = function() {
+        console.log('🎥 Closing video chat...');
+        const modal = document.getElementById('video-chat-modal');
+        if (modal) {
+            modal.style.display = 'none';
+            
+            // Stop local stream
+            if (window.localStream) {
+                window.localStream.getTracks().forEach(track => track.stop());
+                window.localStream = null;
+            }
+            
+            // Clear video elements
+            const localVideo = document.getElementById('local-video');
+            const remoteVideo = document.getElementById('remote-video');
+            if (localVideo) {
+                localVideo.srcObject = null;
+                localVideo.style.display = 'none';
+            }
+            if (remoteVideo) {
+                remoteVideo.srcObject = null;
+                remoteVideo.style.display = 'none';
+            }
+            
+            console.log('✅ Video chat closed');
+        }
+    };
+
     function initializeVideoCallListeners() {
         if (videoCallListenersInitialized) {
             console.log('⚠️ Video call listeners already initialized, skipping...');
@@ -786,7 +942,7 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 12px;">
-                    <button id="video-call-btn"
+                    <button id="video-call-btn" onclick="openVideoChat()"
                         style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem;">📷</button>
 
                     <!-- Ensure openVideoChat is defined immediately -->
@@ -1527,86 +1683,7 @@
                             // Define video chat functions immediately after DOM is loaded
                             console.log('🔧 Defining video chat functions...');
                             
-                            // Make openVideoChat globally accessible
-                            try {
-                                window.openVideoChat = async function() {
-                                    console.log('🎥 Opening video chat...');
-                                    const modal = document.getElementById('video-chat-modal');
-                                    if (modal) {
-                                        modal.style.display = 'flex';
-                                        
-                                        // Initialize camera first and wait for it to complete
-                                        try {
-                                            console.log('📹 Initializing camera...');
-                                            
-                                            // Check if getUserMedia is supported
-                                            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                                                console.error('❌ Camera not supported');
-                                                alert('Camera is not supported in this browser. Please use a modern browser.');
-                                                return;
-                                            }
-                                            
-                                            // Request camera access
-                                            const stream = await navigator.mediaDevices.getUserMedia({ 
-                                                video: { 
-                                                    width: { ideal: 1280 },
-                                                    height: { ideal: 720 },
-                                                    facingMode: 'user'
-                                                },
-                                                audio: true
-                                            });
-                                            
-                                            console.log('✅ Camera access granted');
-                                            
-                                            // Store stream globally
-                                            window.localStream = stream;
-                                            
-                                            // Display local video
-                                            const localVideo = document.getElementById('local-video');
-                                            if (localVideo) {
-                                                localVideo.srcObject = stream;
-                                                localVideo.style.display = 'block';
-                                                localVideo.play();
-                                                console.log('✅ Local video displayed');
-                                            }
-                                            
-                                            // Now start the call
-                                            if (typeof window.startVideoCall === 'function') {
-                                                window.startVideoCall();
-                                            } else {
-                                                console.log('startVideoCall not available yet');
-                                            }
-                                            
-                                        } catch (error) {
-                                            console.error('❌ Camera access denied:', error);
-                                            alert('Camera access is required for video calls. Please allow camera access and try again.');
-                                        }
-                                    } else {
-                                        console.error('Video chat modal not found');
-                                        alert('Video chat is not available. Please refresh the page.');
-                                    }
-                                };
-                                console.log('✅ openVideoChat function defined:', typeof window.openVideoChat);
-                            } catch (error) {
-                                console.error('❌ Error defining openVideoChat:', error);
-                            }
-                            
-                            // Make closeVideoChat globally accessible
-                            try {
-                                window.closeVideoChat = function() {
-                                    console.log('🛑 Closing video chat...');
-                                    const modal = document.getElementById('video-chat-modal');
-                                    if (modal) {
-                                        modal.style.display = 'none';
-                                    }
-                                    if (typeof window.endVideoCall === 'function') {
-                                        window.endVideoCall();
-                                    }
-                                };
-                                console.log('✅ closeVideoChat function defined:', typeof window.closeVideoChat);
-                            } catch (error) {
-                                console.error('❌ Error defining closeVideoChat:', error);
-                            }
+                            // Duplicate function definitions removed - using the ones defined earlier
                             
                             // Make startVideoCall globally accessible (basic version for immediate use)
                             window.startVideoCall = async function() {
@@ -2607,67 +2684,7 @@ if (window.Echo) {
         });
     }
 
-    // Handle incoming offer
-    async function handleVideoCallOffer(data) {
-        console.log('📞 Handling video call offer:', data);
-        
-        try {
-            // Use Firebase to answer the call
-            if (firebaseVideoCall) {
-                const success = await firebaseVideoCall.answerCall(data.offer);
-                
-                if (success) {
-                    // Setup local video display
-                    const localVideo = document.getElementById('local-video');
-                    if (localVideo && firebaseVideoCall.localStream) {
-                        localVideo.srcObject = firebaseVideoCall.localStream;
-                        localVideo.style.display = 'block';
-                    }
-                    
-                    videoCallState.isActive = true;
-                    videoCallState.isInitiator = false;
-                    videoCallState.partnerId = data.fromUserId;
-                    videoCallState.callId = data.callId;
-                    
-                    startCallTimer();
-                    
-                    console.log('✅ Video call answered successfully with Firebase');
-                } else {
-                    throw new Error('Failed to answer call with Firebase');
-                }
-            } else {
-                throw new Error('Firebase video call not available');
-            }
-            
-        } catch (error) {
-            console.error('Error handling offer:', error);
-            alert('Failed to answer call: ' + error.message);
-            endVideoCall();
-        }
-    }
-
-    // Handle incoming answer
-    async function handleVideoCallAnswer(data) {
-        console.log('📞 Handling video call answer:', data);
-        
-        try {
-            // If we have a remote stream from Firebase, display it
-            if (data.remoteStream) {
-                const remoteVideo = document.getElementById('remote-video');
-                if (remoteVideo) {
-                    remoteVideo.srcObject = data.remoteStream;
-                    remoteVideo.style.display = 'block';
-                }
-                videoCallState.remoteStream = data.remoteStream;
-            }
-            
-            updateCallStatus('Connected');
-            videoCallState.isConnected = true;
-            
-        } catch (error) {
-            console.error('Error handling answer:', error);
-        }
-    }
+    // Duplicate function definitions removed - using the ones defined earlier
 
     // Handle ICE candidate
     async function handleIceCandidate(data) {
@@ -2681,16 +2698,7 @@ if (window.Echo) {
         }
     }
 
-    // Handle call end
-    function handleVideoCallEnd(data) {
-        console.log('📞 Video call ended:', data);
-        endVideoCall();
-    }
-    
-    // Make video call functions globally available
-    window.handleVideoCallEnd = handleVideoCallEnd;
-    window.handleVideoCallOffer = handleVideoCallOffer;
-    window.handleVideoCallAnswer = handleVideoCallAnswer;
+    // Duplicate function definitions removed - using the ones defined earlier
     
     // Test function to verify event listening (can be called from browser console)
     window.testVideoCallEvents = function() {
