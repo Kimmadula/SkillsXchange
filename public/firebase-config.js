@@ -19,6 +19,7 @@ const firebaseConfig = {
 // Global Firebase variables
 window.firebaseInitialized = false;
 window.firebaseDatabase = null;
+window.firebaseConfig = firebaseConfig;
 
 // Initialize Firebase (Database only)
 function initializeFirebase() {
@@ -32,6 +33,13 @@ function initializeFirebase() {
         }
         
         console.log('🔍 Initializing Firebase (Database only)...');
+        
+        // Check if Firebase is available
+        if (typeof firebase === 'undefined') {
+            console.error('❌ Firebase SDK not loaded');
+            window.firebaseInitialized = false;
+            return;
+        }
         
         // Initialize Firebase app
         if (!firebase.apps.length) {

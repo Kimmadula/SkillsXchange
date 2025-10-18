@@ -187,23 +187,36 @@
 
     // Initialize Firebase video call listeners when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
+        let firebaseWaitCount = 0;
+        const maxFirebaseWait = 50; // 5 seconds max wait
+        
         // Wait for Firebase to be fully loaded
         const waitForFirebase = () => {
+            firebaseWaitCount++;
+            
+            if (firebaseWaitCount > maxFirebaseWait) {
+                console.warn('⚠️ Firebase initialization timeout, falling back to HTTP polling...');
+                initializeVideoCallListeners();
+                return;
+            }
+            
             if (typeof firebase !== 'undefined' && firebase.app) {
                 try {
                     firebase.app(); // Check if Firebase is initialized
+                    console.log('✅ Firebase is ready, initializing video call listeners...');
                     initializeVideoCallListeners();
                 } catch (error) {
                     if (error.code === 'app/no-app') {
-                        console.log('⏳ Waiting for Firebase to initialize...');
+                        console.log('⏳ Waiting for Firebase to initialize... (' + firebaseWaitCount + '/' + maxFirebaseWait + ')');
                         setTimeout(waitForFirebase, 100);
                     } else {
                         console.error('❌ Firebase initialization error:', error);
+                        console.log('🔄 Falling back to HTTP polling...');
                         initializeVideoCallListeners(); // Fallback to HTTP polling
                     }
                 }
             } else {
-                console.log('⏳ Waiting for Firebase SDK to load...');
+                console.log('⏳ Waiting for Firebase SDK to load... (' + firebaseWaitCount + '/' + maxFirebaseWait + ')');
                 setTimeout(waitForFirebase, 100);
             }
         };
