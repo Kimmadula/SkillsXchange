@@ -189,7 +189,7 @@ class TradeTask extends Model
 
     public function canBeSubmitted()
     {
-        return $this->current_status === 'in_progress' && $this->requires_submission;
+        return $this->current_status === 'assigned' && $this->requires_submission;
     }
 
     public function canBeEvaluated()
@@ -400,6 +400,7 @@ class TradeTask extends Model
 
     public function updateStatus($newStatus)
     {
+        $previousStatus = $this->current_status;
         $this->current_status = $newStatus;
         
         switch ($newStatus) {
@@ -408,6 +409,10 @@ class TradeTask extends Model
                 break;
             case 'submitted':
                 $this->submitted_at = now();
+                // If going directly from assigned to submitted, set started_at as well
+                if ($previousStatus === 'assigned' && !$this->started_at) {
+                    $this->started_at = now();
+                }
                 break;
             case 'evaluated':
             case 'completed':

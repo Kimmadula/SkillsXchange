@@ -4642,12 +4642,69 @@ function endSession() {
         }
     }
     
-    // End the session
-    if (confirm('Are you sure you want to end this session? This action cannot be undone.')) {
-        // Here you could add an API call to mark the session as ended
-        // For now, we'll just redirect
-        window.location.href = '{{ route("trades.ongoing") }}';
+    // Final confirmation
+    if (confirm('Are you sure you want to end this session? This will process skill learning and update your profile. This action cannot be undone.')) {
+        // Call backend API to complete session and process skill learning
+        completeSession();
     }
+}
+
+function completeSession() {
+    // Show loading state
+    const endButton = document.querySelector('button[onclick="endSession()"]');
+    const originalText = endButton.textContent;
+    endButton.textContent = 'Processing...';
+    endButton.disabled = true;
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+    
+    fetch('{{ route("chat.complete-session", $trade->id) }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            return response.json();
+        } else {
+            throw new Error('Server returned HTML instead of JSON. This usually indicates a server error.');
+        }
+    })
+    .then(data => {
+        if (data.success) {
+            // Show success message with skill learning results
+            let successMessage = 'Session completed successfully!';
+            if (data.skill_learning_results) {
+                successMessage += '\n\nSkills learned and added to your profile!';
+            }
+            showSuccess(successMessage);
+            
+            // Redirect to ongoing trades page after a short delay
+            setTimeout(() => {
+                window.location.href = '{{ route("trades.ongoing") }}';
+            }, 2000);
+        } else {
+            showError('Failed to complete session: ' + (data.error || 'Unknown error'));
+            // Re-enable button
+            endButton.textContent = originalText;
+            endButton.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Complete session error:', error);
+        showError('Failed to complete session: ' + error.message + '. Please try again.');
+        // Re-enable button
+        endButton.textContent = originalText;
+        endButton.disabled = false;
+    });
 }
 
 // ===== VIDEO CHAT FUNCTIONALITY =====
