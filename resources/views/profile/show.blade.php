@@ -655,15 +655,13 @@ document.addEventListener('DOMContentLoaded', function() {
 .profile-info-compact {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
 }
 
 .info-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-    padding: 0.75rem 0;
-    border-bottom: 1px solid #f8f9fa;
+    gap: 1rem;
 }
 
 .info-row:last-child {
@@ -674,6 +672,10 @@ document.addEventListener('DOMContentLoaded', function() {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 3px solid #e9ecef;
 }
 
 .info-group.full-width {
@@ -682,13 +684,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .info-label {
     font-weight: 600;
-    color: #6c757d;
-    font-size: 0.85rem;
+    color: #868e96;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
     margin-bottom: 0;
 }
 
 .info-value {
-    color: #495057;
+    color: #212529;
     font-size: 0.95rem;
     font-weight: 500;
 }
