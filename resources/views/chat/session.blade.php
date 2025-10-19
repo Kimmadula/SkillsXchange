@@ -4089,7 +4089,16 @@ function showTaskSubmissionModal(taskId) {
             body: formData, 
             credentials: 'same-origin'
         })
-        .then(response => response.json())
+        .then(response => {
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // If not JSON, it's likely an HTML error page
+                throw new Error('Server returned HTML instead of JSON. This usually indicates a server error.');
+            }
+        })
         .then(data => {
             if (data.success) {
                 hideTaskSubmissionModal();
@@ -4097,12 +4106,16 @@ function showTaskSubmissionModal(taskId) {
                 // Refresh task status
                 location.reload();
             } else {
-                showError('Failed to submit work: ' + (data.error || 'Unknown error'));
+                let errorMessage = 'Failed to submit work: ' + (data.error || 'Unknown error');
+                if (data.debug) {
+                    errorMessage += '\n\nDebug info: ' + JSON.stringify(data.debug, null, 2);
+                }
+                showError(errorMessage);
             }
         })
         .catch(error => {
             console.error('Submit error:', error);
-            showError('Failed to submit work. Please try again.');
+            showError('Failed to submit work: ' + error.message + '. Please check the console for details.');
         });
     });
 }

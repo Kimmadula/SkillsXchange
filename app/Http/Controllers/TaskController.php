@@ -436,7 +436,7 @@ class TaskController extends Controller
         $user = Auth::user();
         
         // Debug logging
-        \Log::info('Task submission request', [
+        Log::info('Task submission request', [
             'user_id' => $user ? $user->id : 'not authenticated',
             'task_id' => $task->id,
             'is_ajax' => $request->ajax(),
@@ -457,6 +457,20 @@ class TaskController extends Controller
         }
 
         if (!$task->canBeSubmitted()) {
+            $debugInfo = [
+                'current_status' => $task->current_status,
+                'requires_submission' => $task->requires_submission,
+                'can_be_submitted' => $task->canBeSubmitted(),
+                'task_id' => $task->id
+            ];
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'This task cannot be submitted at this time.',
+                    'debug' => $debugInfo
+                ], 400);
+            }
             return redirect()->back()->with('error', 'This task cannot be submitted at this time.');
         }
 
