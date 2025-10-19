@@ -29,8 +29,12 @@ class ProfileController extends Controller
             
             $user->load(['skills', 'skill']);
             
+            // Get acquired skills through trading
+            $acquiredSkills = $user->getAcquiredSkills();
+            
             return view('profile.show', [
                 'user' => $user,
+                'acquiredSkills' => $acquiredSkills,
             ]);
         } catch (\Exception $e) {
             Log::error('Profile show error: ' . $e->getMessage());

@@ -6,6 +6,7 @@ use App\Models\Trade;
 use App\Models\TradeTask;
 use App\Models\User;
 use App\Models\UserSkill;
+use App\Models\SkillAcquisitionHistory;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
@@ -48,7 +49,7 @@ class SkillLearningService
 
             // Process skill learning for trade owner (learner of looking_skill)
             if ($tradeOwnerCompletionRate >= 100) {
-                $skillAdded = $this->addSkillToUser($tradeOwner, $trade->looking_skill_id);
+                $skillAdded = $this->addSkillToUser($tradeOwner, $trade->looking_skill_id, $trade, $tradeOwnerCompletionRate);
                 $results['trade_owner_skill_added'] = $skillAdded;
                 
                 if ($skillAdded) {
@@ -62,7 +63,7 @@ class SkillLearningService
 
             // Process skill learning for requester (learner of offering_skill)
             if ($requesterCompletionRate >= 100) {
-                $skillAdded = $this->addSkillToUser($requester, $trade->offering_skill_id);
+                $skillAdded = $this->addSkillToUser($requester, $trade->offering_skill_id, $trade, $requesterCompletionRate);
                 $results['requester_skill_added'] = $skillAdded;
                 
                 if ($skillAdded) {
@@ -121,9 +122,11 @@ class SkillLearningService
      * 
      * @param User $user
      * @param int $skillId
+     * @param Trade $trade
+     * @param int $completionRate
      * @return bool
      */
-    private function addSkillToUser(User $user, int $skillId): bool
+    private function addSkillToUser(User $user, int $skillId, Trade $trade = null, int $completionRate = 100): bool
     {
         try {
             // Check if user already has this skill
@@ -135,18 +138,40 @@ class SkillLearningService
                 return false; // Skill already exists
             }
 
-            // Add the skill
-            UserSkill::create([
-                'user_id' => $user->id,
-                'skill_id' => $skillId
-            ]);
+            // Start database transaction
+            DB::beginTransaction();
 
-            return true;
+            try {
+                // Add the skill to user_skills table
+                UserSkill::create([
+                    'user_id' => $user->id,
+                    'skill_id' => $skillId
+                ]);
+
+                // Record skill acquisition in history
+                SkillAcquisitionHistory::create([
+                    'user_id' => $user->id,
+                    'skill_id' => $skillId,
+                    'trade_id' => $trade ? $trade->id : null,
+                    'acquisition_method' => 'trade_completion',
+                    'score_achieved' => $completionRate,
+                    'notes' => $trade ? "Acquired through trade completion (ID: {$trade->id})" : 'Acquired through trade completion',
+                    'acquired_at' => now()
+                ]);
+
+                DB::commit();
+                return true;
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
 
         } catch (\Exception $e) {
             Log::error('Error adding skill to user: ' . $e->getMessage(), [
                 'user_id' => $user->id,
                 'skill_id' => $skillId,
+                'trade_id' => $trade ? $trade->id : null,
                 'error' => $e->getMessage()
             ]);
             
