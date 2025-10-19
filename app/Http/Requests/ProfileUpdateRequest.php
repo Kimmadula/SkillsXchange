@@ -28,6 +28,12 @@ class ProfileUpdateRequest extends FormRequest
             'username' => ['required', 'string', 'max:50', Rule::unique(User::class)->ignore($userId)],
             'email' => ['required', 'email', 'max:255', Rule::unique(User::class)->ignore($userId)],
             'photo' => ['nullable', 'image', 'max:2048'],
+            'firstname' => ['nullable', 'string', 'max:255'],
+            'lastname' => ['nullable', 'string', 'max:255'],
+            'middlename' => ['nullable', 'string', 'max:255'],
+            'gender' => ['nullable', 'string', 'in:male,female,other'],
+            'bdate' => ['nullable', 'date', 'before:today'],
+            'address' => ['nullable', 'string', 'max:500'],
         ];
     }
 
