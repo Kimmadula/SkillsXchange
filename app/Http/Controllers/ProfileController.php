@@ -32,6 +32,13 @@ class ProfileController extends Controller
             // Get acquired skills through trading
             $acquiredSkills = $user->getAcquiredSkills();
             
+            // Debug logging
+            Log::info('Profile show - acquired skills debug', [
+                'user_id' => $user->id,
+                'acquired_skills_count' => $acquiredSkills ? $acquiredSkills->count() : 'null',
+                'acquired_skills' => $acquiredSkills ? $acquiredSkills->toArray() : 'null'
+            ]);
+            
             return view('profile.show', [
                 'user' => $user,
                 'acquiredSkills' => $acquiredSkills,

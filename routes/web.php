@@ -469,6 +469,55 @@ Route::middleware('auth')->group(function () {
         return response()->json(['message' => 'Test route hit successfully', 'data' => $request->all()]);
     })->name('profile.test');
 
+    // Test route to add sample skill acquisitions
+    Route::get('/test-skill-acquisition', function() {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'User not authenticated']);
+        }
+
+        // Get some skills
+        $skills = \App\Models\Skill::take(3)->get();
+        if ($skills->isEmpty()) {
+            return response()->json(['error' => 'No skills found. Please run SkillSeeder first.']);
+        }
+
+        $addedSkills = [];
+        foreach ($skills as $skill) {
+            // Check if user already has this skill
+            $existingSkill = \App\Models\UserSkill::where('user_id', $user->id)
+                ->where('skill_id', $skill->skill_id)
+                ->first();
+
+            if (!$existingSkill) {
+                // Add skill to user_skills table
+                \App\Models\UserSkill::create([
+                    'user_id' => $user->id,
+                    'skill_id' => $skill->skill_id
+                ]);
+
+                // Add skill acquisition history
+                \App\Models\SkillAcquisitionHistory::create([
+                    'user_id' => $user->id,
+                    'skill_id' => $skill->skill_id,
+                    'trade_id' => null,
+                    'acquisition_method' => 'manual_add',
+                    'score_achieved' => 100,
+                    'notes' => 'Test skill acquisition',
+                    'acquired_at' => now()
+                ]);
+
+                $addedSkills[] = $skill->name;
+            }
+        }
+
+        return response()->json([
+            'message' => 'Test skill acquisitions added',
+            'added_skills' => $addedSkills,
+            'user_skills_count' => $user->getAcquiredSkills()->count()
+        ]);
+    });
+
     // Trades (user dashboard area) - Restricted to regular users only
     Route::middleware('user.only')->group(function () {
         Route::get('/trades/create', [\App\Http\Controllers\TradeController::class, 'create'])->name('trades.create');
