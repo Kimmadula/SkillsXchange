@@ -2413,7 +2413,7 @@
         style="background: #f3f4f6; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e5e7eb;">
         <div style="font-size: 0.875rem; color: #6b7280;">
             <div>Session started: {{ \Carbon\Carbon::parse($trade->start_date)->format('M d, Y') }} at {{
-                \Carbon\Carbon::parse($trade->start_date)->format('g:i A') }}</div>
+                $trade->available_from ? \Carbon\Carbon::parse($trade->available_from)->format('g:i A') : 'Not specified' }}</div>
             <div>Current time: <span id="current-time">{{ now()->format('g:i A') }}</span> • Duration: <span
                     id="session-duration">0 minutes</span></div>
             <div>Status: <span id="session-status" style="color: #10b981; font-weight: 600;">🟢 Active</span> • Tasks:
@@ -4491,7 +4491,7 @@ async function completeSession() {
 }
 
 // Real-time clock and session duration timer
-let sessionStart = new Date('{{ $trade->start_date }}');
+let sessionStart = new Date('{{ $trade->start_date }} {{ $trade->available_from ?? "00:00:00" }}');
 let currentTimeElement = document.getElementById('current-time');
 let sessionDurationElement = document.getElementById('session-duration');
 
