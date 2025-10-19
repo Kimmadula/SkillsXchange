@@ -169,7 +169,7 @@ class Handler extends ExceptionHandler
         Log::warning('ViewException: ' . $message, [
             'url' => $request->url(),
             'user_id' => Auth::id(),
-            'view' => $exception->getView() ?? 'unknown',
+            'view' => method_exists($exception, 'getView') ? $exception->getView() : 'unknown',
             'trace' => $exception->getTraceAsString()
         ]);
 
