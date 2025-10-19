@@ -98,7 +98,7 @@ class DashboardController extends Controller
             $ongoingSessions = $allUserTrades->where('status', 'ongoing');
             
             // Get requests (exclude accepted ones from pending/declined lists)
-            $myRequests = \App\Models\TradeRequest::where('requester_id', $userId)
+            $myRequests = TradeRequest::where('requester_id', $userId)
                 ->whereIn('status', ['pending', 'declined'])
                 ->with(['trade.user', 'trade.offeringSkill', 'trade.lookingSkill'])
                 ->get();
@@ -107,7 +107,7 @@ class DashboardController extends Controller
             $declinedRequests = $myRequests->where('status', 'declined');
             
             // Get requests to user's trades (only pending ones)
-            $requestsToMyTrades = \App\Models\TradeRequest::whereHas('trade', function($query) use ($userId) {
+            $requestsToMyTrades = TradeRequest::whereHas('trade', function($query) use ($userId) {
                 $query->where('user_id', $userId);
             })->where('status', 'pending')
             ->with(['requester', 'trade.offeringSkill', 'trade.lookingSkill'])
