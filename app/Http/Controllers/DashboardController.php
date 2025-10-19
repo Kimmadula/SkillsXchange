@@ -42,9 +42,9 @@ class DashboardController extends Controller
             
             // Admin statistics
             $stats = [
-                'activeTrades' => Trade::where('status', 'active')->count(),
-                'completedTrades' => Trade::where('status', 'completed')->count(),
-                'pendingTrades' => Trade::where('status', 'pending')->count(),
+                'activeTrades' => Trade::where('status', 'ongoing')->count(),
+                'completedTrades' => Trade::where('status', 'closed')->count(),
+                'pendingTrades' => Trade::where('status', 'open')->count(),
                 'pendingUsers' => $pendingUsers->count(),
                 'totalTrades' => Trade::count(),
                 'totalUsers' => User::count(),
@@ -87,15 +87,15 @@ class DashboardController extends Controller
             // Check for expired sessions and mark them as closed
             $expiredSessions = collect();
             foreach ($allUserTrades as $trade) {
-                if ($trade->status === 'active' && $trade->isExpired()) {
+                if ($trade->status === 'ongoing' && $trade->isExpired()) {
                     $trade->update(['status' => 'closed']);
                     $expiredSessions->push($trade);
                 }
             }
             
             // Categorize trades
-            $completedSessions = $allUserTrades->where('status', 'completed');
-            $ongoingSessions = $allUserTrades->where('status', 'active');
+            $completedSessions = $allUserTrades->where('status', 'closed');
+            $ongoingSessions = $allUserTrades->where('status', 'ongoing');
             
             // Get requests (exclude accepted ones from pending/declined lists)
             $myRequests = \App\Models\TradeRequest::where('requester_id', $userId)
