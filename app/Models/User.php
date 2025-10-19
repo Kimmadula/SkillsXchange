@@ -94,12 +94,23 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function getAcquiredSkills()
     {
-        return $this->skillAcquisitions()
-            ->with('skill')
-            ->get()
-            ->pluck('skill')
-            ->unique('skill_id')
-            ->values();
+        try {
+            $acquisitions = $this->skillAcquisitions()
+                ->with('skill')
+                ->get();
+
+            // Filter out any acquisitions where skill is null
+            $skills = $acquisitions
+                ->pluck('skill')
+                ->filter() // Remove null values
+                ->unique('skill_id')
+                ->values();
+
+            return $skills;
+        } catch (\Exception $e) {
+            \Log::error('Error getting acquired skills for user ' . $this->id . ': ' . $e->getMessage());
+            return collect();
+        }
     }
 
     /**
