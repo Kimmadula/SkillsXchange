@@ -1,0 +1,10 @@
+[33m203c3ec[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat: Restore full profile functionality with proper error handling
+[33m1455aaa[m fix: Resolve profile view errors that cause redirect to dashboard
+[33mcf47b41[m fix: Disable ErrorHandlingMiddleware for profile route to prevent redirect
+[33m0d701d6[m fix: Temporarily disable database queries to test profile page access
+[33m9226235[m fix: Resolve linting error for date formatting in ProfileController
+[33mccb8ec1[m fix: Resolve profile page issues and remove pending verification status
+[33md4fca6f[m feat: Add modal-based profile editing with real-time updates
+[33m903db47[m feat: Redesign user profile page with acquired skills functionality
+[33m5d142d7[m feat: remove task verification requirement for session completion
+[33m78962ec[m Fix time/date formatting issues in trade listings and chat

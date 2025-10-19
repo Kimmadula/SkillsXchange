@@ -411,8 +411,8 @@ class ChatController extends Controller
             // Process skill learning
             $results = $skillLearningService->processSkillLearning($trade);
             
-            // Update trade status to completed
-            $trade->update(['status' => 'completed']);
+            // Update trade status to closed
+            $trade->update(['status' => 'closed']);
 
             return response()->json([
                 'success' => true,
