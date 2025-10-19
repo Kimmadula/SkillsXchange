@@ -29,19 +29,24 @@ class ProfileController extends Controller
             
             $user->load(['skills', 'skill']);
             
-            // Get acquired skills through trading
+            // Get all user skills (both registered and acquired)
+            $allUserSkills = $user->skills;
+            
+            // Get acquired skills through trading for reference
             $acquiredSkills = $user->getAcquiredSkills();
             
             // Debug logging
-            Log::info('Profile show - acquired skills debug', [
+            Log::info('Profile show - skills debug', [
                 'user_id' => $user->id,
+                'all_skills_count' => $allUserSkills ? $allUserSkills->count() : 'null',
                 'acquired_skills_count' => $acquiredSkills ? $acquiredSkills->count() : 'null',
-                'acquired_skills' => $acquiredSkills ? $acquiredSkills->toArray() : 'null'
+                'all_skills' => $allUserSkills ? $allUserSkills->pluck('name')->toArray() : 'null',
+                'acquired_skills' => $acquiredSkills ? $acquiredSkills->pluck('name')->toArray() : 'null'
             ]);
             
             return view('profile.show', [
                 'user' => $user,
-                'acquiredSkills' => $acquiredSkills,
+                'acquiredSkills' => $allUserSkills, // Use all skills instead of just acquired ones
             ]);
         } catch (\Exception $e) {
             Log::error('Profile show error: ' . $e->getMessage());

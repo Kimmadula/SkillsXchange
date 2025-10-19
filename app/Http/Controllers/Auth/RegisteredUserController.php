@@ -119,6 +119,19 @@ class RegisteredUserController extends Controller
             // Attach all selected skills to the user
             $user->skills()->attach($skillIds);
             
+            // Record skill acquisitions in history for registered skills
+            foreach ($skillIds as $skillId) {
+                \App\Models\SkillAcquisitionHistory::create([
+                    'user_id' => $user->id,
+                    'skill_id' => $skillId,
+                    'trade_id' => null,
+                    'acquisition_method' => 'manual_add',
+                    'score_achieved' => 100,
+                    'notes' => 'Registered skill during account creation',
+                    'acquired_at' => now()
+                ]);
+            }
+            
             DB::commit();
         } catch (\Exception $e) {
             DB::rollback();

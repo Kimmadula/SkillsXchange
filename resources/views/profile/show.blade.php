@@ -99,7 +99,7 @@
                                 <div class="info-value">{{ $user->created_at->format('M j, Y') }}</div>
                             </div>
                             <div class="info-group">
-                                <label class="info-label">Skills Acquired</label>
+                                <label class="info-label">Total Skills</label>
                                 <div class="info-value">{{ $acquiredSkills ? $acquiredSkills->count() : 0 }} skills</div>
                             </div>
                         </div>
@@ -130,23 +130,41 @@
                 <div class="profile-card">
                     <h3 class="h5 fw-bold mb-4">
                         <i class="fas fa-trophy me-2 text-warning"></i>Skill Lists
-                        <small class="text-muted d-block" style="font-size: 0.8rem; font-weight: normal;">Acquired through trading</small>
+                        <small class="text-muted d-block" style="font-size: 0.8rem; font-weight: normal;">All your skills</small>
                     </h3>
                     @if($acquiredSkills && $acquiredSkills->count() > 0)
                         <div class="skills-container">
                             @foreach($acquiredSkills as $skill)
-                                <span class="skill-pill {{ $skill->skill_id == ($user->skill_id ?? null) ? 'skill-pill-primary' : 'skill-pill-secondary' }}">
+                                @php
+                                    // Check if this skill was acquired through trading
+                                    $isAcquiredThroughTrading = $user->skillAcquisitions()
+                                        ->where('skill_id', $skill->skill_id)
+                                        ->where('acquisition_method', 'trade_completion')
+                                        ->exists();
+                                @endphp
+                                <span class="skill-pill {{ $skill->skill_id == ($user->skill_id ?? null) ? 'skill-pill-primary' : ($isAcquiredThroughTrading ? 'skill-pill-acquired' : 'skill-pill-registered') }}">
                                     {{ $skill->name }}
                                     @if($skill->skill_id == ($user->skill_id ?? null))
                                         <i class="fas fa-star ms-1" title="Primary Skill"></i>
+                                    @elseif($isAcquiredThroughTrading)
+                                        <i class="fas fa-graduation-cap ms-1" title="Acquired through trading"></i>
+                                    @else
+                                        <i class="fas fa-user-plus ms-1" title="Registered skill"></i>
                                     @endif
                                 </span>
                             @endforeach
                         </div>
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Total skills: {{ $acquiredSkills->count() }} | 
+                                <span class="text-success">Acquired through trading: {{ $user->getAcquiredSkills()->count() }}</span>
+                            </small>
+                        </div>
                     @else
                         <div class="text-muted mb-3">
-                            <p>No skills acquired through trading yet.</p>
-                            <p><small>Debug: Acquired skills count: {{ $acquiredSkills ? $acquiredSkills->count() : 'null' }}</small></p>
+                            <p>No skills added yet.</p>
+                            <p><small>Debug: All skills count: {{ $acquiredSkills ? $acquiredSkills->count() : 'null' }}</small></p>
                             <a href="{{ route('trades.matches') }}" class="btn btn-sm btn-outline-primary">Start trading to acquire new skills</a>
                         </div>
                     @endif
@@ -737,6 +755,18 @@ document.addEventListener('DOMContentLoaded', function() {
     background: #f8f9fa;
     color: #495057;
     border-color: #dee2e6;
+}
+
+.skill-pill-acquired {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border-color: #28a745;
+}
+
+.skill-pill-registered {
+    background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);
+    color: white;
+    border-color: #6f42c1;
 }
 
 .skill-pill:hover {
