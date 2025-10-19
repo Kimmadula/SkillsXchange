@@ -2295,14 +2295,7 @@
                                     </span>
                                     @endif
 
-                                    <!-- Verification Status Badge (Legacy) -->
-                                    @if($task->completed)
-                                    @if($task->verified)
-                                    <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;">✓ Verified</span>
-                                    @else
-                                    <span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;">⏳ Pending Verification</span>
-                                    @endif
-                                    @endif
+                                    <!-- Verification Status Badge (Legacy) - Removed -->
                                 </div>
 
                                 <!-- Task Actions - Edit/Delete for creators -->
@@ -4286,20 +4279,7 @@ function updateTaskInUI(task) {
     if (existingActions) existingActions.remove();
     if (existingNotes) existingNotes.remove();
     
-    // Add verification badge if completed
-    if (task.completed) {
-        const badge = document.createElement('span');
-        if (task.verified) {
-            badge.style.cssText = 'background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;';
-            badge.textContent = '✓ Verified';
-        } else {
-            badge.style.cssText = 'background: #f59e0b; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;';
-            badge.textContent = '⏳ Pending Verification';
-        }
-        
-        const titleContainer = taskElement.querySelector('div[style*="display: flex; align-items: center"]');
-        titleContainer.appendChild(badge);
-    }
+    // Verification badge removed
     
     // Add verification notes if verified and has notes
     if (task.verified && task.verification_notes) {
