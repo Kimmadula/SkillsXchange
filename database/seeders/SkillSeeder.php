@@ -26,6 +26,16 @@ class SkillSeeder extends Seeder
             ['name' => 'Digital Marketing', 'category' => 'Business'],
             ['name' => 'Video Editing', 'category' => 'Media'],
             ['name' => 'Writing', 'category' => 'Communication'],
+            ['name' => 'Painting', 'category' => 'Arts'],
+            ['name' => 'Dancing', 'category' => 'Arts'],
+            ['name' => 'Gardening', 'category' => 'Lifestyle'],
+            ['name' => 'Carpentry', 'category' => 'Craft'],
+            ['name' => 'Sewing', 'category' => 'Craft'],
+            ['name' => 'Programming', 'category' => 'IT'],
+            ['name' => 'Data Analysis', 'category' => 'IT'],
+            ['name' => 'Public Speaking', 'category' => 'Communication'],
+            ['name' => 'Drawing', 'category' => 'Arts'],
+            ['name' => 'Singing', 'category' => 'Arts'],
         ];
 
         foreach ($skills as $skill) {

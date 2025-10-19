@@ -78,6 +78,31 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Get the user's skill acquisition history.
+     * 
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function skillAcquisitions()
+    {
+        return $this->hasMany(\App\Models\SkillAcquisitionHistory::class);
+    }
+
+    /**
+     * Get unique skills acquired through trading.
+     * 
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function getAcquiredSkills()
+    {
+        return $this->skillAcquisitions()
+            ->with('skill')
+            ->get()
+            ->pluck('skill')
+            ->unique('skill_id')
+            ->values();
+    }
+
+    /**
      * Get the user's full name.
      */
     public function getNameAttribute()
