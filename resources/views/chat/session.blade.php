@@ -10,14 +10,6 @@
     window.partnerName = '{{ addslashes(($partner->firstname ?? "Unknown") . " " . ($partner->lastname ?? "User")) }}';
     window.initialMessageCount = parseInt('{{ $messages->count() }}');
     
-    // Session validation function
-    window.validateSession = function() {
-        if (!window.authUserId || window.authUserId === 0) {
-            showError('Your session has expired. Please refresh the page and log in again.');
-            return false;
-        }
-        return true;
-    };
 
     // Emoji picker functions
     window.toggleEmojiPicker = function() {
@@ -4028,23 +4020,6 @@ function startTask(taskId) {
 }
 
 function submitTaskWork(taskId) {
-    // Check if user is still authenticated before showing modal
-    if (!window.validateSession()) {
-        return;
-    }
-    
-    // Refresh the page if session seems stale (older than 1 hour)
-    const sessionStart = new Date('{{ $trade->start_date }}');
-    const now = new Date();
-    const sessionAge = (now - sessionStart) / (1000 * 60 * 60); // hours
-    
-    if (sessionAge > 1) {
-        if (confirm('Your session has been active for a while. Would you like to refresh the page to ensure everything works properly?')) {
-            location.reload();
-            return;
-        }
-    }
-    
     // Create and show file submission modal
     showTaskSubmissionModal(taskId);
 }
@@ -4114,64 +4089,8 @@ function showTaskSubmissionModal(taskId) {
             body: formData, 
             credentials: 'same-origin'
         })
-        .then(response => {
-            console.log('Submit response status:', response.status);
-            console.log('Submit response URL:', response.url);
-            
-            // Check for authentication issues first
-            if (response.status === 401) {
-                console.log('401 Unauthorized - session expired');
-                showError('Your session has expired. Please refresh the page and log in again.');
-                setTimeout(() => {
-                    if (confirm('Your session has expired. Would you like to refresh the page?')) {
-                        location.reload();
-                    }
-                }, 2000);
-                return;
-            }
-            
-            if (response.status === 419) {
-                console.log('419 CSRF token mismatch');
-                showError('Security token expired. Please refresh the page and try again.');
-                setTimeout(() => {
-                    if (confirm('Security token expired. Would you like to refresh the page?')) {
-                        location.reload();
-                    }
-                }, 2000);
-                return;
-            }
-            
-            // Check for redirect (session expired) - but don't redirect for chat
-            if (response.redirected || response.status === 302) {
-                console.log('302 Redirect detected - likely session expired');
-                showError('Your session has expired. Please refresh the page and try again.');
-                // Add a refresh button
-                setTimeout(() => {
-                    if (confirm('Your session has expired. Would you like to refresh the page to restore your session?')) {
-                        location.reload();
-                    }
-                }, 1000);
-                return;
-            }
-            
-            // Check if response is JSON
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            } else {
-                // If not JSON, get text to see what we're getting
-                return response.text().then(text => {
-                    console.error('Expected JSON but got:', text.substring(0, 500));
-                    if (text.includes('login') || text.includes('Login') || text.includes('authentication')) {
-                        throw new Error('Session expired - please refresh the page');
-                    }
-                    throw new Error('Unexpected response format');
-                });
-            }
-        })
+        .then(response => response.json())
         .then(data => {
-            if (!data) return; // Handle redirect case
-
             if (data.success) {
                 hideTaskSubmissionModal();
                 showSuccess('Work submitted successfully!');
@@ -4183,16 +4102,7 @@ function showTaskSubmissionModal(taskId) {
         })
         .catch(error => {
             console.error('Submit error:', error);
-            if (error.message && (error.message.includes('Session expired') || error.message.includes('authentication'))) {
-                showError('Your session has expired. Please refresh the page and try again.');
-                setTimeout(() => {
-                    if (confirm('Your session has expired. Would you like to refresh the page?')) {
-                        location.reload();
-                    }
-                }, 2000);
-            } else {
-                showError('Failed to submit work: ' + error.message);
-            }
+            showError('Failed to submit work. Please try again.');
         });
     });
 }

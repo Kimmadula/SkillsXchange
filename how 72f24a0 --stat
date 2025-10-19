@@ -1,0 +1,104 @@
+[33mcommit 72f24a09de137aefe728cde043c1f59d3f489d4f[m
+Author: Kim Madula <Kim@gmail.com>
+Date:   Sat Oct 18 18:50:09 2025 +0800
+
+    Fixing Submit Work authorization issues
+
+[1mdiff --git a/resources/views/chat/session.blade.php b/resources/views/chat/session.blade.php[m
+[1mindex e5d5fa0..2a94c1a 100644[m
+[1m--- a/resources/views/chat/session.blade.php[m
+[1m+++ b/resources/views/chat/session.blade.php[m
+[36m@@ -10,6 +10,54 @@[m
+     window.partnerName = '{{ addslashes(($partner->firstname ?? "Unknown") . " " . ($partner->lastname ?? "User")) }}';[m
+     window.initialMessageCount = parseInt('{{ $messages->count() }}');[m
+     [m
+[32m+[m[32m    // Session validation function[m
+[32m+[m[32m    window.validateSession = function() {[m
+[32m+[m[32m        if (!window.currentUserId || window.currentUserId === 0) {[m
+[32m+[m[32m            showError('Your session has expired. Please refresh the page and log in again.');[m
+[32m+[m[32m            return false;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        return true;[m
+[32m+[m[32m    };[m
+[32m+[m
+[32m+[m[32m    // Emoji picker functions[m
+[32m+[m[32m    window.toggleEmojiPicker = function() {[m
+[32m+[m[32m        const picker = document.getElementById('emoji-picker');[m
+[32m+[m[32m        if (picker.style.display === 'none' || picker.style.display === '') {[m
+[32m+[m[32m            picker.style.display = 'block';[m
+[32m+[m[32m        } else {[m
+[32m+[m[32m            picker.style.display = 'none';[m
+[32m+[m[32m        }[m
+[32m+[m[32m    };[m
+[32m+[m
+[32m+[m[32m    window.insertEmoji = function(emoji) {[m
+[32m+[m[32m        const input = document.getElementById('message-input');[m
+[32m+[m[32m        const currentValue = input.value;[m
+[32m+[m[32m        const cursorPosition = input.selectionStart;[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Insert emoji at cursor position[m
+[32m+[m[32m        const newValue = currentValue.slice(0, cursorPosition) + emoji + currentValue.slice(cursorPosition);[m
+[32m+[m[32m        input.value = newValue;[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Set cursor position after the emoji[m
+[32m+[m[32m        input.setSelectionRange(cursorPosition + emoji.length, cursorPosition + emoji.length);[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Focus back to input[m
+[32m+[m[32m        input.focus();[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Hide emoji picker[m
+[32m+[m[32m        document.getElementById('emoji-picker').style.display = 'none';[m
+[32m+[m[32m    };[m
+[32m+[m
+[32m+[m[32m    // Close emoji picker when clicking outside[m
+[32m+[m[32m    document.addEventListener('click', function(event) {[m
+[32m+[m[32m        const picker = document.getElementById('emoji-picker');[m
+[32m+[m[32m        const button = document.getElementById('emoji-button');[m
+[32m+[m[41m        [m
+[32m+[m[32m        if (picker && !picker.contains(event.target) && !button.contains(event.target)) {[m
+[32m+[m[32m            picker.style.display = 'none';[m
+[32m+[m[32m        }[m
+[32m+[m[32m    });[m
+[32m+[m[41m    [m
+     // Pusher Configuration[m
+     window.PUSHER_APP_KEY = '{{ env('PUSHER_APP_KEY', '5c02e54d01ca577ae77e') }}';[m
+     window.PUSHER_APP_CLUSTER = '{{ env('PUSHER_APP_CLUSTER', 'ap1') }}';[m
+[36m@@ -870,6 +918,15 @@[m [mfunction initializeVideoCallListeners() {[m
+         background-color: #e5e7eb !important;[m
+     }[m
+ [m
+[32m+[m[32m    /* Emoji picker styles */[m
+[32m+[m[32m    .emoji-btn:hover {[m
+[32m+[m[32m        background-color: #f3f4f6 !important;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    .emoji-btn:active {[m
+[32m+[m[32m        background-color: #e5e7eb !important;[m
+[32m+[m[32m    }[m
+[32m+[m
+     /* Message styles */[m
+     .message-container {[m
+         margin-bottom: 16px;[m
+[36m@@ -1996,9 +2053,41 @@[m [mfunctions.forEach(funcName => {[m
+                     <div style="flex: 1; position: relative;">[m
+                         <input type="text" id="message-input" placeholder="Type your message here..." aria-label="Type your message"[m
+                             style="width: 100%; padding: 12px 40px 12px 12px; border: 1px solid #d1d5db; border-radius: 6px; outline: none;">[m
+[31m-                        <button type="button" id="emoji-button"[m
+[32m+[m[32m                        <button type="button" id="emoji-button" onclick="toggleEmojiPicker()"[m
+                             style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 18px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;"[m
+                             title="Add emoji">😊</button>[m
+[32m+[m[41m                        [m
+[32m+[m[32m                        <!-- Emoji Picker -->[m
+[32m+[m[32m                        <div id="emoji-picker" style="display: none; position: absolute; bottom: 100%; right: 0; background: white; border: 1px solid #d1d5db; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); padding: 12px; width: 300px; max-height: 200px; overflow-y: auto; z-index: 1000;">[m
+[32m+[m[32m                            <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px;">[m
+[32m+[m[32m                                <button type="button" class="emoji-btn" onclick="insertEmoji('😀')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">😀</button>[m
+[32m+[m[32m                                <button type="button" class="emoji-btn" onclick="insertEmoji('😊')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">😊</button>[m
+[32m+[m[32m                                <button type="button" class="emoji-btn" onclick="insertEmoji('😍')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">😍</button>[m
+[32m+[m[32m                                <button type="button" class="emoji-btn" onclick="insertEmoji('🤔')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">🤔</button>[m
+[32m+[m[32m                                <button type="button" class="emoji-btn" onclick="insertEmoji('😮')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">😮</button>[m
+[32m+[m[32m                                <button type="button" class="emoji-btn" onclick="insertEmoji('😢')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">😢</button>[m
+[32m+[m[32m                                <button type="button" class="emoji-btn" onclick="insertEmoji('😡')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">😡</button>[m
+[32m+[m[32m                                <button type="button" class="emoji-btn" onclick="insertEmoji('😂')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">😂</button>[m
+[32m+[m[32m                                <button type="button" class="emoji-btn" onclick="insertEmoji('👍')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">👍</button>[m
+[32m+[m[32m                                <button type="button" class="emoji-btn" onclick="insertEmoji('👎')" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 4px; transition: background-color 0.2s;">👎</button>[m
+[32m
