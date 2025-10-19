@@ -27,11 +27,13 @@
                             <strong>Looking for:</strong> {{ optional($t->lookingSkill)->name }}
                         </div>
                         <div style="color:#6b7280; font-size:0.9rem; margin-bottom:4px;">
-                            📅 {{ $t->start_date }} to {{ $t->end_date ?? 'open' }}
+                            📅 {{ \Carbon\Carbon::parse($t->start_date)->format('M d, Y') }} to {{ $t->end_date ? \Carbon\Carbon::parse($t->end_date)->format('M d, Y') : 'open' }}
                         </div>
+                        @if($t->available_from && $t->available_to)
                         <div style="color:#6b7280; font-size:0.9rem; margin-bottom:4px;">
-                            🕒 {{ $t->start_time }} - {{ $t->end_time }}
+                            🕒 {{ \Carbon\Carbon::parse($t->available_from)->format('g:i A') }} - {{ \Carbon\Carbon::parse($t->available_to)->format('g:i A') }}
                         </div>
+                        @endif
                         <div style="color:#6b7280; font-size:0.9rem; margin-bottom:4px;">
                             📍 {{ $t->location ?: 'Any location' }}
                         </div>

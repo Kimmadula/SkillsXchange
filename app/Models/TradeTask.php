@@ -189,7 +189,7 @@ class TradeTask extends Model
 
     public function canBeSubmitted()
     {
-        return $this->current_status === 'assigned' && $this->requires_submission;
+        return in_array($this->current_status, ['assigned', 'in_progress']) && $this->requires_submission;
     }
 
     public function canBeEvaluated()
