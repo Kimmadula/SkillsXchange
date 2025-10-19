@@ -144,7 +144,7 @@
                             @endforeach
                         </div>
                     @else
-                        <p class="text-muted">No skills acquired through trading yet. <a href="{{ route('trades.index') }}">Start trading to acquire new skills</a></p>
+                        <p class="text-muted">No skills acquired through trading yet. <a href="{{ route('trades.matches') }}">Start trading to acquire new skills</a></p>
                     @endif
                 </div>
             </div>
