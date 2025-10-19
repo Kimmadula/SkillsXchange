@@ -174,13 +174,12 @@ class SkillLearningService
             return false;
         }
 
-        // Check if all tasks are either completed and verified, or not completed
+        // Check if all tasks are completed (verification no longer required)
         $incompleteTasks = $trade->tasks()
-            ->where('completed', true)
-            ->where('verified', false)
+            ->where('completed', false)
             ->exists();
 
-        // If there are completed but unverified tasks, the session is not ready
+        // If there are incomplete tasks, the session is not ready
         return !$incompleteTasks;
     }
 

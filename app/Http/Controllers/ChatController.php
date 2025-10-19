@@ -403,7 +403,7 @@ class ChatController extends Controller
             // Check if trade is ready for skill learning processing
             if (!$skillLearningService->isTradeReadyForSkillLearning($trade)) {
                 return response()->json([
-                    'error' => 'Session is not ready for completion. Please ensure all completed tasks are verified.',
+                    'error' => 'Session is not ready for completion. Please ensure all tasks are completed.',
                     'ready_for_processing' => false
                 ], 400);
             }

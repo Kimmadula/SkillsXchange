@@ -44,21 +44,45 @@ class ProfileController extends Controller
     public function edit(Request $request): View
     {
         try {
+            // Debug logging
+            Log::info('Profile edit access attempt', [
+                'user_authenticated' => Auth::check(),
+                'user_id' => Auth::id(),
+                'session_id' => session()->getId(),
+                'url' => $request->url(),
+                'headers' => $request->headers->all()
+            ]);
+            
             $user = $request->user();
             
             if (!$user) {
+                Log::warning('Profile edit: User not found', [
+                    'auth_check' => Auth::check(),
+                    'user_id' => Auth::id(),
+                    'session_id' => session()->getId()
+                ]);
                 abort(404, 'User not found');
             }
             
             $user->load(['skills']);
             $skills = Skill::all();
             
+            Log::info('Profile edit: Successfully loaded', [
+                'user_id' => $user->id,
+                'skills_count' => $skills->count()
+            ]);
+            
             return view('profile.edit', [
                 'user' => $user,
                 'skills' => $skills,
             ]);
         } catch (\Exception $e) {
-            Log::error('Profile edit error: ' . $e->getMessage());
+            Log::error('Profile edit error: ' . $e->getMessage(), [
+                'user_authenticated' => Auth::check(),
+                'user_id' => Auth::id(),
+                'session_id' => session()->getId(),
+                'trace' => $e->getTraceAsString()
+            ]);
             abort(500, 'Error loading profile edit form');
         }
     }
