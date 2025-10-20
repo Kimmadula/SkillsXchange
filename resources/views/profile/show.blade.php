@@ -56,52 +56,51 @@
                     <h3 class="h5 fw-bold mb-4">
                         <i class="fas fa-user me-2"></i>Personal Information
                     </h3>
-                    <div class="profile-info-compact">
-                        <div class="info-row">
-                            <div class="info-group">
-                                <label class="info-label">Full Name</label>
-                                <div class="info-value">{{ $user->name }}</div>
-                            </div>
-                            <div class="info-group">
-                                <label class="info-label">Username</label>
-                                <div class="info-value">{{ $user->username }}</div>
-                            </div>
+                    <div class="profile-info-list">
+                        <div class="info-item">
+                            <span class="info-label">Full Name</span>
+                            <span class="info-separator">:</span>
+                            <span class="info-value">{{ $user->name }}</span>
                         </div>
-                        <div class="info-row">
-                            <div class="info-group">
-                                <label class="info-label">Email</label>
-                                <div class="info-value">{{ $user->email }}</div>
-                            </div>
-                            <div class="info-group">
-                                <label class="info-label">Gender</label>
-                                <div class="info-value">{{ ucfirst($user->gender) }}</div>
-                            </div>
+                        <div class="info-item">
+                            <span class="info-label">Username</span>
+                            <span class="info-separator">:</span>
+                            <span class="info-value">{{ $user->username }}</span>
                         </div>
-                        <div class="info-row">
-                            <div class="info-group">
-                                <label class="info-label">Birth Date</label>
-                                <div class="info-value">{{ $user->bdate ? $user->bdate->format('M j, Y') : 'Not provided' }}</div>
-                            </div>
-                            <div class="info-group">
-                                <label class="info-label">Age</label>
-                                <div class="info-value">{{ $user->bdate ? $user->bdate->diffInYears(now()) . ' years old' : 'Not provided' }}</div>
-                            </div>
+                        <div class="info-item">
+                            <span class="info-label">Email</span>
+                            <span class="info-separator">:</span>
+                            <span class="info-value">{{ $user->email }}</span>
                         </div>
-                        <div class="info-row">
-                            <div class="info-group full-width">
-                                <label class="info-label">Address</label>
-                                <div class="info-value">{{ $user->address ?: 'Not provided' }}</div>
-                            </div>
+                        <div class="info-item">
+                            <span class="info-label">Gender</span>
+                            <span class="info-separator">:</span>
+                            <span class="info-value">{{ ucfirst($user->gender) }}</span>
                         </div>
-                        <div class="info-row">
-                            <div class="info-group">
-                                <label class="info-label">Member Since</label>
-                                <div class="info-value">{{ $user->created_at->format('M j, Y') }}</div>
-                            </div>
-                            <div class="info-group">
-                                <label class="info-label">Total Skills</label>
-                                <div class="info-value">{{ $acquiredSkills ? $acquiredSkills->count() : 0 }} skills</div>
-                            </div>
+                        <div class="info-item">
+                            <span class="info-label">Birth Date</span>
+                            <span class="info-separator">:</span>
+                            <span class="info-value">{{ $user->bdate ? $user->bdate->format('M j, Y') : 'Not provided' }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Age</span>
+                            <span class="info-separator">:</span>
+                            <span class="info-value">{{ $user->bdate ? $user->bdate->diffInYears(now()) . ' years old' : 'Not provided' }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Address</span>
+                            <span class="info-separator">:</span>
+                            <span class="info-value">{{ $user->address ?: 'Not provided' }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Member Since</span>
+                            <span class="info-separator">:</span>
+                            <span class="info-value">{{ $user->created_at->format('M j, Y') }}</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Total Skills</span>
+                            <span class="info-separator">:</span>
+                            <span class="info-value">{{ $acquiredSkills ? $acquiredSkills->count() : 0 }} skills</span>
                         </div>
                     </div>
                 </div>
@@ -688,61 +687,55 @@ document.addEventListener('DOMContentLoaded', function() {
     margin-bottom: 1.5rem;
 }
 
-/* Profile Info Grid - Compact Layout */
-.profile-info-compact {
+/* Profile Info List Layout */
+.profile-info-list {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
 }
 
-.info-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-}
-
-.info-row:last-child {
-    border-bottom: none;
-}
-
-.info-group {
+.info-item {
     display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    padding: 0.75rem;
-    background: #f8f9fa;
-    border-radius: 6px;
-    border-left: 3px solid #e9ecef;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f1f3f4;
 }
 
-.info-group.full-width {
-    grid-column: 1 / -1;
+.info-item:last-child {
+    border-bottom: none;
 }
 
 .info-label {
     font-weight: 600;
-    color: #868e96;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 0;
+    color: #495057;
+    font-size: 0.9rem;
+    min-width: 120px;
+    text-align: left;
+}
+
+.info-separator {
+    color: #6c757d;
+    font-weight: 600;
+    margin: 0 0.5rem;
+    font-size: 0.9rem;
 }
 
 .info-value {
     color: #212529;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 500;
+    flex: 1;
 }
 
-/* Responsive adjustments for compact layout */
+/* Responsive adjustments for list layout */
 @media (max-width: 768px) {
-    .info-row {
-        grid-template-columns: 1fr;
-        gap: 1rem;
+    .info-label {
+        min-width: 100px;
+        font-size: 0.85rem;
     }
     
-    .info-group.full-width {
-        grid-column: 1;
+    .info-value {
+        font-size: 0.85rem;
     }
 }
 
