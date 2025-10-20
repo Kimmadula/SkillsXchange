@@ -140,6 +140,11 @@ class ProfileController extends Controller
             $user->username = $validatedData['username'];
             $user->email = $validatedData['email'];
             
+            // Track username editing (only if it has changed and hasn't been edited before)
+            if (isset($validatedData['username']) && $user->username !== $user->getOriginal('username') && !$user->username_edited) {
+                $user->username_edited = true;
+            }
+            
             // Update personal information if provided
             if (isset($validatedData['firstname'])) {
                 $user->firstname = $validatedData['firstname'];
@@ -154,6 +159,10 @@ class ProfileController extends Controller
                 $user->gender = $validatedData['gender'];
             }
             if (isset($validatedData['bdate'])) {
+                // Track birth date editing (only if it has changed and hasn't been edited before)
+                if ($user->bdate !== $user->getOriginal('bdate') && !$user->bdate_edited) {
+                    $user->bdate_edited = true;
+                }
                 $user->bdate = $validatedData['bdate'];
             }
             if (isset($validatedData['address'])) {
@@ -258,43 +267,6 @@ class ProfileController extends Controller
         }
     }
 
-    /**
-     * Update the user's username.
-     */
-    public function updateUsername(Request $request): RedirectResponse
-    {
-        try {
-            $validated = $request->validate([
-                'username' => ['required', 'string', 'max:255', 'unique:users,username,' . $request->user()->id],
-            ]);
-
-            $user = $request->user();
-            
-            if (!$user) {
-                abort(404, 'User not found');
-            }
-
-            $user->update([
-                'username' => $validated['username'],
-            ]);
-
-            Log::info('Username updated successfully', [
-                'user_id' => $user->id,
-                'new_username' => $validated['username'],
-                'ip' => $request->ip()
-            ]);
-
-            return Redirect::route('profile.show')->with('status', 'username-updated');
-            
-        } catch (\Exception $e) {
-            Log::error('Username update error: ' . $e->getMessage(), [
-                'user_id' => $request->user()?->id,
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return Redirect::back()->withErrors(['username' => 'Failed to update username. Please try again.']);
-        }
-    }
 
     /**
      * Update the user's password.
