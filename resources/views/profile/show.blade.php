@@ -133,32 +133,69 @@
                         <small class="text-muted d-block" style="font-size: 0.8rem; font-weight: normal;">All your skills</small>
                     </h3>
                     @if($acquiredSkills && $acquiredSkills->count() > 0)
-                        <div class="skills-container">
-                            @foreach($acquiredSkills as $skill)
-                                @php
-                                    // Check if this skill was acquired through trading
-                                    $isAcquiredThroughTrading = $user->skillAcquisitions()
-                                        ->where('skill_id', $skill->skill_id)
-                                        ->where('acquisition_method', 'trade_completion')
-                                        ->exists();
-                                @endphp
-                                <span class="skill-pill {{ $skill->skill_id == ($user->skill_id ?? null) ? 'skill-pill-primary' : ($isAcquiredThroughTrading ? 'skill-pill-acquired' : 'skill-pill-registered') }}">
-                                    {{ $skill->name }}
-                                    @if($skill->skill_id == ($user->skill_id ?? null))
-                                        <i class="fas fa-star ms-1" title="Primary Skill"></i>
-                                    @elseif($isAcquiredThroughTrading)
-                                        <i class="fas fa-graduation-cap ms-1" title="Acquired through trading"></i>
-                                    @else
-                                        <i class="fas fa-user-plus ms-1" title="Registered skill"></i>
-                                    @endif
-                                </span>
-                            @endforeach
-                        </div>
+                        @php
+                            // Separate registered and acquired skills
+                            $registeredSkills = collect();
+                            $acquiredSkillsList = collect();
+                            
+                            foreach($acquiredSkills as $skill) {
+                                $isAcquiredThroughTrading = $user->skillAcquisitions()
+                                    ->where('skill_id', $skill->skill_id)
+                                    ->where('acquisition_method', 'trade_completion')
+                                    ->exists();
+                                
+                                if ($isAcquiredThroughTrading) {
+                                    $acquiredSkillsList->push($skill);
+                                } else {
+                                    $registeredSkills->push($skill);
+                                }
+                            }
+                        @endphp
+                        
+                        <!-- Registered Skills -->
+                        @if($registeredSkills->count() > 0)
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2">
+                                    <i class="fas fa-user-plus me-1"></i>Registered Skills
+                                </h6>
+                                <div class="skills-container">
+                                    @foreach($registeredSkills as $skill)
+                                        <span class="skill-pill skill-pill-registered">
+                                            {{ $skill->name }}
+                                            @if($skill->skill_id == ($user->skill_id ?? null))
+                                                <i class="fas fa-star ms-1" title="Primary Skill"></i>
+                                            @else
+                                                <i class="fas fa-user-plus ms-1" title="Registered skill"></i>
+                                            @endif
+                                        </span>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                        
+                        <!-- Acquired Skills -->
+                        @if($acquiredSkillsList->count() > 0)
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2">
+                                    <i class="fas fa-graduation-cap me-1"></i>Acquired Skills
+                                </h6>
+                                <div class="skills-container">
+                                    @foreach($acquiredSkillsList as $skill)
+                                        <span class="skill-pill skill-pill-acquired">
+                                            {{ $skill->name }}
+                                            <i class="fas fa-graduation-cap ms-1" title="Acquired through trading"></i>
+                                        </span>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                        
                         <div class="mt-3">
                             <small class="text-muted">
                                 <i class="fas fa-info-circle me-1"></i>
                                 Total skills: {{ $acquiredSkills->count() }} | 
-                                <span class="text-success">Acquired through trading: {{ $user->getAcquiredSkills()->count() }}</span>
+                                <span class="text-primary">Registered: {{ $registeredSkills->count() }}</span> | 
+                                <span class="text-success">Acquired: {{ $acquiredSkillsList->count() }}</span>
                             </small>
                         </div>
                     @else
@@ -768,9 +805,9 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .skill-pill-registered {
-    background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
     color: white;
-    border-color: #6f42c1;
+    border-color: #007bff;
 }
 
 .skill-pill:hover {
