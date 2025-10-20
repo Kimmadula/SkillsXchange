@@ -117,9 +117,6 @@
                         <button type="button" class="btn btn-success btn-action mb-2" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
                             <i class="fas fa-key me-2"></i>Change Password
                         </button>
-                        <button type="button" class="btn btn-warning btn-action mb-2" data-bs-toggle="modal" data-bs-target="#changeUsernameModal">
-                            <i class="fas fa-user-edit me-2"></i>Change Username
-                        </button>
                     </div>
                 </div>
             </div>
@@ -265,16 +262,39 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="bdate" class="form-label">Birth Date</label>
-                            <input type="date" class="form-control" id="bdate" name="bdate" value="{{ $user->bdate ? $user->bdate->format('Y-m-d') : '' }}">
+                            @if($user->bdate_edited)
+                                <input type="date" class="form-control" id="bdate" name="bdate" value="{{ $user->bdate ? $user->bdate->format('Y-m-d') : '' }}" readonly>
+                                <div class="form-text text-warning">
+                                    <i class="fas fa-lock me-1"></i>Birth date can only be edited once and has already been modified.
+                                </div>
+                            @else
+                                <input type="date" class="form-control" id="bdate" name="bdate" value="{{ $user->bdate ? $user->bdate->format('Y-m-d') : '' }}">
+                                <div class="form-text text-info">
+                                    <i class="fas fa-info-circle me-1"></i>Birth date can only be edited once.
+                                </div>
+                            @endif
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="username" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="username" name="username" value="{{ $user->username }}" required>
+                            @if($user->username_edited)
+                                <input type="text" class="form-control" id="username" name="username" value="{{ $user->username }}" readonly>
+                                <div class="form-text text-warning">
+                                    <i class="fas fa-lock me-1"></i>Username can only be edited once and has already been modified.
+                                </div>
+                            @else
+                                <input type="text" class="form-control" id="username" name="username" value="{{ $user->username }}" required>
+                                <div class="form-text text-info">
+                                    <i class="fas fa-info-circle me-1"></i>Username can only be edited once.
+                                </div>
+                            @endif
                         </div>
                     </div>
                     <div class="mb-3">
                         <label for="email" class="form-label">Email</label>
-                        <input type="email" class="form-control" id="email" name="email" value="{{ $user->email }}" required>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ $user->email }}" readonly>
+                        <div class="form-text text-warning">
+                            <i class="fas fa-exclamation-triangle me-1"></i>Email cannot be edited at this time. Email editing will be available in a future update and can only be changed once.
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="address" class="form-label">Address</label>
@@ -328,34 +348,6 @@
     </div>
 </div>
 
-<!-- Change Username Modal -->
-<div class="modal fade" id="changeUsernameModal" tabindex="-1" aria-labelledby="changeUsernameModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="changeUsernameModalLabel">Change Username</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="POST" action="{{ route('profile.username.update') }}">
-                @csrf
-                @method('patch')
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="new_username" class="form-label">New Username</label>
-                        <input type="text" class="form-control" id="new_username" name="username" value="{{ $user->username }}" required>
-                        <div class="form-text">Choose a unique username that others can use to find you.</div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-warning">
-                        <i class="fas fa-user-edit me-2"></i>Change Username
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 
 <!-- Delete Account Modal -->
 <div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
