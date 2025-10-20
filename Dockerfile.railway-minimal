@@ -1,0 +1,58 @@
+FROM php:8.2-cli
+
+# Install minimal system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Install PHP extensions
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath
+
+# Install Composer with timeout
+RUN curl -sS --max-time 30 --retry 3 https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy only essential files
+COPY composer.json composer.lock ./
+COPY artisan ./
+COPY start.sh ./
+COPY app/ ./app/
+COPY bootstrap/ ./bootstrap/
+COPY config/ ./config/
+COPY database/ ./database/
+COPY public/ ./public/
+COPY resources/ ./resources/
+COPY routes/ ./routes/
+
+# Create .env file
+RUN echo "APP_NAME=SkillsXchange\nAPP_ENV=production\nAPP_KEY=\nAPP_DEBUG=false\nDB_CONNECTION=mysql\nDB_HOST=mysql.railway.internal\nDB_PORT=3306\nDB_DATABASE=railway\nDB_USERNAME=root\nDB_PASSWORD=\nLOG_CHANNEL=stderr\nCACHE_DRIVER=file\nSESSION_DRIVER=file\nQUEUE_CONNECTION=sync\nMAIL_MAILER=log" > .env
+
+# Install dependencies with timeout
+RUN timeout 300 composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --no-plugins --prefer-dist --no-cache
+
+# Create minimal fallback CSS
+RUN mkdir -p public/css && echo 'body{font-family:system-ui,-apple-system,sans-serif;margin:0;padding:0}.btn{display:inline-block;padding:0.5rem 1rem;text-decoration:none;border-radius:0.25rem}.btn-primary{background:#2563eb;color:white}.alert{padding:1rem;margin:1rem 0;border-radius:0.25rem}.container{max-width:1200px;margin:0 auto;padding:0 1rem}.navbar{background:white;padding:1rem 0;box-shadow:0 2px 4px rgba(0,0,0,0.1)}' > public/css/fallback.css
+
+# Create storage directories
+RUN mkdir -p storage/app storage/framework/cache storage/framework/sessions storage/framework/views storage/logs \
+    && chmod -R 775 storage bootstrap/cache || true
+
+# Clean up
+RUN rm -rf /tmp/* /var/tmp/* /root/.composer/cache/* || true
+
+# Make start script executable
+RUN chmod +x start.sh
+
+# Expose port
+EXPOSE $PORT
+
+# Start the application
+CMD ./start.sh
