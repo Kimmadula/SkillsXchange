@@ -337,7 +337,7 @@
                 <h5 class="modal-title" id="changeUsernameModalLabel">Change Username</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="{{ route('profile.update') }}">
+            <form method="POST" action="{{ route('profile.username.update') }}">
                 @csrf
                 @method('patch')
                 <div class="modal-body">
@@ -776,7 +776,7 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 .skill-pill {
-    display: inline-flex;
+    display: inline-flex !important;
     align-items: center;
     padding: 0.5rem 1rem;
     border-radius: 25px;
@@ -784,6 +784,7 @@ document.addEventListener('DOMContentLoaded', function() {
     font-weight: 500;
     transition: all 0.3s ease;
     border: 2px solid transparent;
+    margin: 0.25rem;
 }
 
 .skill-pill-primary {
@@ -817,6 +818,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 .skill-pill i {
     font-size: 0.8rem;
+}
+
+/* Ensure skill pills are always visible */
+.skills-container .skill-pill {
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 /* Responsive Design */
