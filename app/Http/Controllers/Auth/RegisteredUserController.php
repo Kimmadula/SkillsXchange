@@ -63,11 +63,20 @@ class RegisteredUserController extends Controller
             'bdate' => ['required', 'date', 'before_or_equal:' . now()->subYears(18)->toDateString()],
             'address' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:50', 'unique:users'],
+            // Normalize later but keep unique constraint here
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'photo' => ['nullable', 'image', 'max:2048'],
             'selected_skills' => ['required', 'string'],
         ]);
+
+        // Normalize email to enforce one-account-per-email regardless of case or whitespace
+        $normalizedEmail = strtolower(trim($request->email));
+        if (User::where('email', $normalizedEmail)->exists()) {
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['email' => 'This email address is already registered. Please log in or use a different email.']);
+        }
 
         $photoPath = null;
         if ($request->hasFile('photo')) {
@@ -105,7 +114,7 @@ class RegisteredUserController extends Controller
                 'bdate' => $request->bdate,
                 'address' => $request->address,
                 'username' => $request->username,
-                'email' => $request->email,
+                'email' => $normalizedEmail,
                 'password' => Hash::make($request->password),
                 'photo' => $photoPath,
                 'skill_id' => $skillIds[0], // Keep the first skill as primary for backward compatibility
