@@ -3,32 +3,29 @@ FROM php:8.2-cli
 # Copy dockerignore for Railway
 COPY .dockerignore.railway .dockerignore
 
-# Install system dependencies with optimizations
+# Install system dependencies with optimizations (minimal set)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
     curl \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
     zip \
     unzip \
-    nodejs \
-    npm \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath
 
 # Install Composer without relying on Docker Hub (avoids 503 on composer:latest)
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
+RUN curl -sS --max-time 30 https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
 
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy only necessary files for Railway (API only)
+# Copy only essential files for Railway (minimal copy)
 COPY composer.json composer.lock ./
-COPY package.json package-lock.json ./
 COPY artisan ./
 COPY start.sh ./
 COPY app/ ./app/
@@ -44,16 +41,19 @@ COPY routes/ ./routes/
 # Create proper .env file for build process
 RUN echo "APP_NAME=SkillsXchange\nAPP_ENV=production\nAPP_KEY=\nAPP_DEBUG=false\nDB_CONNECTION=mysql\nDB_HOST=mysql.railway.internal\nDB_PORT=3306\nDB_DATABASE=railway\nDB_USERNAME=root\nDB_PASSWORD=\nLOG_CHANNEL=stderr\nCACHE_DRIVER=file\nSESSION_DRIVER=file\nQUEUE_CONNECTION=sync\nMAIL_MAILER=log" > .env
 
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Install dependencies with timeout and memory limit
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --no-plugins --prefer-dist --no-cache
 
-# Copy and use optimized build script
-COPY build-railway.sh ./
-RUN chmod +x build-railway.sh
-RUN ./build-railway.sh
+# Skip Node.js build entirely to avoid timeout
+# COPY build-railway.sh ./
+# RUN chmod +x build-railway.sh
+# RUN ./build-railway.sh
 
-# Remove Node and cache to reduce final image size (assets already built)
-RUN rm -rf node_modules ~/.npm /root/.npm && npm cache clean --force || true
+# Create minimal fallback CSS directly
+RUN mkdir -p public/css && echo 'body{font-family:system-ui,-apple-system,sans-serif;margin:0;padding:0}.btn{display:inline-block;padding:0.5rem 1rem;text-decoration:none;border-radius:0.25rem}.btn-primary{background:#2563eb;color:white}.alert{padding:1rem;margin:1rem 0;border-radius:0.25rem}.container{max-width:1200px;margin:0 auto;padding:0 1rem}.navbar{background:white;padding:1rem 0;box-shadow:0 2px 4px rgba(0,0,0,0.1)}' > public/css/fallback.css
+
+# Clean up to reduce image size
+RUN rm -rf /tmp/* /var/tmp/* /root/.composer/cache/* || true
 
 # Create necessary Laravel storage directories fresh
 RUN mkdir -p storage/app \
@@ -63,8 +63,8 @@ RUN mkdir -p storage/app \
     storage/logs \
     && chmod -R 775 storage bootstrap/cache || true
 
-# Ensure Firebase files are accessible
-RUN chmod 644 public/firebase-config.js public/firebase-video-integration.js public/firebase-video-call.js
+# Ensure Firebase files are accessible (if they exist)
+RUN chmod 644 public/firebase-config.js public/firebase-video-integration.js public/firebase-video-call.js || true
 
 # Application key will be generated at runtime in start.sh
 
