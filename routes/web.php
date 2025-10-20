@@ -514,7 +514,7 @@ Route::middleware('auth')->group(function () {
         return response()->json([
             'message' => 'Test skill acquisitions added',
             'added_skills' => $addedSkills,
-            'user_skills_count' => $user->getAcquiredSkills()->count()
+            'user_skills_count' => \App\Models\UserSkill::where('user_id', $user->id)->count()
         ]);
     });
 

@@ -145,41 +145,15 @@ class RegisteredUserController extends Controller
         event(new Registered($user));
 
         Auth::login($user);
-        
-        try {
-            // Send email verification notification using Laravel's built-in system
-            Log::info('Attempting to send email verification', [
-                'user_id' => $user->id,
-                'user_email' => $user->email,
-                'user_name' => $user->firstname . ' ' . $user->lastname,
-                'mail_config' => [
-                    'driver' => config('mail.default'),
-                    'from_address' => config('mail.from.address'),
-                    'from_name' => config('mail.from.name'),
-                ],
-                'email_destination' => 'TO: ' . $user->email . ' (user email address)',
-                'email_sender' => 'FROM: ' . config('mail.from.address') . ' (system sender)'
-            ]);
-            
-            $user->sendEmailVerificationNotification();
-            
-            Log::info('Email verification sent successfully', [
-                'user_id' => $user->id,
-                'email' => $user->email
-            ]);
-            
-            return redirect()->route('verification.notice')->with('status', 'Registration successful! Please check your email at ' . $user->email . ' and click the verification link to complete your registration. You will also need admin approval to access all features.');
-        } catch (\Exception $e) {
-            // If email sending fails, still allow registration but log the error
-            Log::error('Email verification failed to send: ' . $e->getMessage(), [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return redirect()->route('verification.notice')->with('status', 'Registration successful! However, there was an issue sending the verification email. Please try logging in to resend the verification email, or contact support if the problem persists.');
-        }
+
+        // Do NOT send email verification here; it's already dispatched by the
+        // Registered event via SendEmailVerificationNotification listener.
+        Log::info('User registered, email verification dispatched via event listener', [
+            'user_id' => $user->id,
+            'email' => $user->email
+        ]);
+
+        return redirect()->route('verification.notice')->with('status', 'Registration successful! Please check your email at ' . $user->email . ' and click the verification link to complete your registration. You will also need admin approval to access all features.');
     }
 
 }
