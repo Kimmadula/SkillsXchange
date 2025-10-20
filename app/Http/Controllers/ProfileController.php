@@ -259,6 +259,44 @@ class ProfileController extends Controller
     }
 
     /**
+     * Update the user's username.
+     */
+    public function updateUsername(Request $request): RedirectResponse
+    {
+        try {
+            $validated = $request->validate([
+                'username' => ['required', 'string', 'max:255', 'unique:users,username,' . $request->user()->id],
+            ]);
+
+            $user = $request->user();
+            
+            if (!$user) {
+                abort(404, 'User not found');
+            }
+
+            $user->update([
+                'username' => $validated['username'],
+            ]);
+
+            Log::info('Username updated successfully', [
+                'user_id' => $user->id,
+                'new_username' => $validated['username'],
+                'ip' => $request->ip()
+            ]);
+
+            return Redirect::route('profile.show')->with('status', 'username-updated');
+            
+        } catch (\Exception $e) {
+            Log::error('Username update error: ' . $e->getMessage(), [
+                'user_id' => $request->user()?->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return Redirect::back()->withErrors(['username' => 'Failed to update username. Please try again.']);
+        }
+    }
+
+    /**
      * Update the user's password.
      */
     public function updatePassword(Request $request): RedirectResponse
