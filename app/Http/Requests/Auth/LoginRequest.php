@@ -49,6 +49,14 @@ class LoginRequest extends FormRequest
                 'login' => trans('auth.failed'),
             ]);
         }
+
+        // Ensure the authenticated user has a verified email
+        if (Auth::user()->email_verified_at === null) {
+            Auth::logout();
+            throw ValidationException::withMessages([
+                'login' => 'Please verify your email address before logging in.',
+            ]);
+        }
     }
 
     // Rate limiting methods removed - rate limiting disabled

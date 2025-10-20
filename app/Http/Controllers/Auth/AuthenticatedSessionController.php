@@ -34,8 +34,14 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
-        // Allow users to access dashboard even if not verified
-        // Email verification is now optional and can be done in profile
+        // Require verified email before accessing the app
+        if ($user->email_verified_at === null) {
+            // Keep the session authenticated so the user can access the
+            // verification notice and resend link, but do not send them
+            // to the dashboard until email is verified.
+            return redirect()->route('verification.notice')
+                ->with('status', 'Please verify your email address to continue.');
+        }
 
         $request->session()->regenerate();
 
