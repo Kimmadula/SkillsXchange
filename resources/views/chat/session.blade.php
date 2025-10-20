@@ -4303,6 +4303,14 @@ function updateTaskInUI(task) {
     }
 }
 
+// Session-end rating (non-functional scaffold): safe helper to open modal if present
+function showSessionRatingModal() {
+    var modal = document.getElementById('session-rating-modal');
+    if (modal) {
+        modal.style.display = 'block';
+    }
+}
+
 // Skill Learning Functions
 async function loadSkillLearningStatus() {
     try {
@@ -4669,6 +4677,8 @@ function completeSession() {
             
             // Redirect to ongoing trades page after a short delay
             setTimeout(() => {
+                // If rating feature is enabled, show the non-functional rating modal (coming soon)
+                try { showSessionRatingModal(); } catch (e) {}
                 window.location.href = '{{ route("trades.ongoing") }}';
             }, 2000);
         } else {
@@ -4686,6 +4696,9 @@ function completeSession() {
         endButton.disabled = false;
     });
 }
+
+// Include non-functional session rating modal (feature-flagged)
+@include('components.ratings.session-end-modal')
 
 // ===== VIDEO CHAT FUNCTIONALITY =====
 
