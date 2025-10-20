@@ -38,7 +38,8 @@ COPY database/ ./database/
 COPY public/ ./public/
 COPY resources/ ./resources/
 COPY routes/ ./routes/
-COPY storage/ ./storage/
+# Do not copy local storage; create clean runtime dirs instead to keep image small
+# COPY storage/ ./storage/
 
 # Create proper .env file for build process
 RUN echo "APP_NAME=SkillsXchange\nAPP_ENV=production\nAPP_KEY=\nAPP_DEBUG=false\nDB_CONNECTION=mysql\nDB_HOST=mysql.railway.internal\nDB_PORT=3306\nDB_DATABASE=railway\nDB_USERNAME=root\nDB_PASSWORD=\nLOG_CHANNEL=stderr\nCACHE_DRIVER=file\nSESSION_DRIVER=file\nQUEUE_CONNECTION=sync\nMAIL_MAILER=log" > .env
@@ -50,6 +51,17 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 COPY build-railway.sh ./
 RUN chmod +x build-railway.sh
 RUN ./build-railway.sh
+
+# Remove Node and cache to reduce final image size (assets already built)
+RUN rm -rf node_modules ~/.npm /root/.npm && npm cache clean --force || true
+
+# Create necessary Laravel storage directories fresh
+RUN mkdir -p storage/app \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/logs \
+    && chmod -R 775 storage bootstrap/cache || true
 
 # Ensure Firebase files are accessible
 RUN chmod 644 public/firebase-config.js public/firebase-video-integration.js public/firebase-video-call.js
