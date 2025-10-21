@@ -1324,20 +1324,25 @@
     </div>
 
     <!-- Active Trade Session Banner -->
-    <div style="background: #1e40af; color: white; padding: 12px 16px; text-align: center;">
-        <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 4px;">
-            💛 Active Trade Session
-        </div>
-        <div style="font-size: 0.9rem;">
-            Trading: {{ $trade->offeringSkill->name ?? 'Unknown' }} for {{ $trade->lookingSkill->name ?? 'Unknown' }}
-        </div>
-        <div style="margin-top: 8px;">
+    <div style="background: #1e40af; color: white; padding: 12px 16px; position: relative;">
+        <!-- Back Arrow - Upper Left Corner -->
+        <div style="position: absolute; top: 12px; left: 16px;">
             <a href="{{ route('dashboard') }}" style="color: white; font-size: 1.5rem; text-decoration: none; padding: 8px; display: inline-block; border-radius: 4px; transition: background-color 0.2s;" 
                onmouseover="this.style.backgroundColor='rgba(255,255,255,0.1)'" 
                onmouseout="this.style.backgroundColor='transparent'"
                title="Back to Dashboard">
                 <i class="fas fa-arrow-left"></i>
             </a>
+        </div>
+        
+        <!-- Center Content -->
+        <div style="text-align: center;">
+            <div style="font-size: 1.2rem; font-weight: bold; margin-bottom: 4px;">
+                💛 Active Trade Session
+            </div>
+            <div style="font-size: 0.9rem;">
+                Trading: {{ $trade->offeringSkill->name ?? 'Unknown' }} for {{ $trade->lookingSkill->name ?? 'Unknown' }}
+            </div>
         </div>
     </div>
 
