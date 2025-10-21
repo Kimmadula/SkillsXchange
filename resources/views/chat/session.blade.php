@@ -50,6 +50,89 @@
         }
     });
     
+    // Mobile tasks toggle functionality
+    window.toggleMobileTasks = function() {
+        const tasksSidebar = document.querySelector('.tasks-sidebar');
+        const toggleButton = document.getElementById('mobile-tasks-toggle');
+        
+        if (tasksSidebar && toggleButton) {
+            const isVisible = tasksSidebar.classList.contains('show') || tasksSidebar.style.display === 'flex';
+            
+            if (isVisible) {
+                tasksSidebar.style.display = 'none';
+                tasksSidebar.classList.remove('show');
+                toggleButton.textContent = '☑️';
+                toggleButton.title = 'Show Tasks';
+            } else {
+                tasksSidebar.style.display = 'flex';
+                tasksSidebar.classList.add('show');
+                toggleButton.textContent = '✖️';
+                toggleButton.title = 'Hide Tasks';
+                
+                // Scroll to tasks section when opened
+                setTimeout(() => {
+                    tasksSidebar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            }
+        }
+    };
+    
+    // Initialize mobile tasks visibility on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const tasksSidebar = document.querySelector('.tasks-sidebar');
+        const toggleButton = document.getElementById('mobile-tasks-toggle');
+        
+        // Check if we're on mobile
+        if (window.innerWidth <= 768) {
+            if (tasksSidebar) {
+                tasksSidebar.style.display = 'none';
+            }
+            if (toggleButton) {
+                toggleButton.style.display = 'inline-block';
+            }
+        }
+        
+        // Update task count badge
+        updateTaskCountBadge();
+    });
+    
+    // Update task count badge
+    function updateTaskCountBadge() {
+        const myTasks = document.querySelectorAll('#my-tasks .task-item');
+        const partnerTasks = document.querySelectorAll('#partner-tasks .task-item');
+        const totalTasks = myTasks.length + partnerTasks.length;
+        const badge = document.getElementById('tasks-count-badge');
+        
+        if (badge) {
+            if (totalTasks > 0) {
+                badge.textContent = totalTasks;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+    }
+    
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        const tasksSidebar = document.querySelector('.tasks-sidebar');
+        const toggleButton = document.getElementById('mobile-tasks-toggle');
+        
+        if (window.innerWidth <= 768) {
+            if (toggleButton) {
+                toggleButton.style.display = 'inline-block';
+            }
+        } else {
+            if (tasksSidebar) {
+                tasksSidebar.style.display = 'flex';
+                tasksSidebar.classList.remove('show');
+            }
+            if (toggleButton) {
+                toggleButton.style.display = 'none';
+            }
+        }
+    });
+    
     // Pusher Configuration
     window.PUSHER_APP_KEY = '{{ env('PUSHER_APP_KEY', '5c02e54d01ca577ae77e') }}';
     window.PUSHER_APP_CLUSTER = '{{ env('PUSHER_APP_CLUSTER', 'ap1') }}';
@@ -1118,9 +1201,9 @@
     </div>
 
     <!-- Main Content -->
-    <div style="flex: 1; display: flex; overflow: hidden;">
+    <div style="flex: 1; display: flex; overflow: hidden;" class="main-content-container">
         <!-- Session Chat (Left Panel) -->
-        <div style="flex: 1; display: flex; flex-direction: column; border-right: 1px solid #e5e7eb;">
+        <div style="flex: 1; display: flex; flex-direction: column; border-right: 1px solid #e5e7eb;" class="chat-panel">
             <!-- Chat Header -->
             <div
                 style="background: #1e40af; color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;">
@@ -1136,6 +1219,13 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 12px;">
+                    <!-- Mobile Tasks Toggle Button -->
+                    <button id="mobile-tasks-toggle" onclick="toggleMobileTasks()"
+                        style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem; display: none; position: relative;" 
+                        class="mobile-only" title="Show Tasks">
+                        ☑️
+                        <span id="tasks-count-badge" style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; display: none;">0</span>
+                    </button>
                     <button id="video-call-btn" onclick="openVideoChat()"
                         style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem;">📷</button>
 
@@ -2107,7 +2197,7 @@
 
         <!-- Session Tasks (Right Sidebar) -->
         <div
-            style="width: 350px; background: white; border-left: 1px solid #e5e7eb; display: flex; flex-direction: column;">
+            style="width: 350px; background: white; border-left: 1px solid #e5e7eb; display: flex; flex-direction: column;" class="tasks-sidebar">
             <!-- Sidebar Header -->
             <div
                 style="background: #f3f4f6; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px;">
@@ -5231,8 +5321,157 @@ async function initializePeerConnection() {
 
 // All remaining duplicate functions removed - script section cleaned up
 
-
 </script>
+
+<style>
+/* Mobile Responsive Styles for Tasks */
+@media (max-width: 768px) {
+    .main-content-container {
+        flex-direction: column !important;
+    }
+    
+    .chat-panel {
+        flex: 1 !important;
+        border-right: none !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        min-height: 60vh;
+    }
+    
+    .tasks-sidebar {
+        width: 100% !important;
+        border-left: none !important;
+        border-top: 1px solid #e5e7eb !important;
+        max-height: 40vh;
+        overflow-y: auto;
+        display: none; /* Hidden by default on mobile */
+    }
+    
+    /* Show mobile toggle button */
+    .mobile-only {
+        display: inline-block !important;
+    }
+    
+    /* Show tasks when toggled */
+    .tasks-sidebar.show {
+        display: flex !important;
+    }
+    
+    /* Make task items more mobile-friendly */
+    .task-item {
+        margin-bottom: 8px !important;
+        padding: 8px !important;
+    }
+    
+    .task-item > div {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+    }
+    
+    .task-item > div > div:first-child {
+        width: 100% !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+    
+    .task-item > div > div:last-child {
+        width: 100% !important;
+        justify-content: flex-start !important;
+        flex-wrap: wrap !important;
+        gap: 4px !important;
+    }
+    
+    /* Make buttons smaller on mobile */
+    .task-item button {
+        font-size: 0.7rem !important;
+        padding: 3px 6px !important;
+    }
+    
+    /* Adjust task details for mobile */
+    .task-item > div:last-child {
+        margin-left: 0 !important;
+        font-size: 0.7rem !important;
+        flex-direction: column !important;
+        gap: 4px !important;
+    }
+    
+    /* Make progress bars more visible on mobile */
+    .task-item + div {
+        margin-top: 8px !important;
+    }
+}
+
+/* Tablet styles */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .tasks-sidebar {
+        width: 300px !important;
+    }
+}
+
+/* Ensure tasks are always accessible */
+@media (max-width: 768px) {
+    .tasks-sidebar {
+        position: relative !important;
+        z-index: 10 !important;
+    }
+    
+    /* Add a scroll indicator for tasks */
+    .tasks-sidebar::after {
+        content: "↑ Scroll to see more tasks";
+        position: sticky;
+        bottom: 0;
+        background: #f3f4f6;
+        padding: 8px;
+        text-align: center;
+        font-size: 0.75rem;
+        color: #6b7280;
+        border-top: 1px solid #e5e7eb;
+        display: block;
+    }
+    
+    /* Improve mobile task interaction */
+    .task-item {
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    }
+    
+    .task-item button {
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+        min-height: 32px;
+        min-width: 32px;
+    }
+    
+    /* Make dropdown menus more mobile-friendly */
+    .dropdown-menu {
+        position: absolute !important;
+        z-index: 1000 !important;
+        min-width: 120px !important;
+    }
+}
+
+/* Improve task interaction on mobile */
+@media (max-width: 768px) {
+    .task-item input[type="checkbox"] {
+        width: 20px !important;
+        height: 20px !important;
+        margin-right: 8px !important;
+    }
+    
+    .task-item span {
+        font-size: 0.9rem !important;
+        line-height: 1.4 !important;
+    }
+    
+    /* Make badges more readable on mobile */
+    .task-item .badge {
+        font-size: 0.7rem !important;
+        padding: 2px 6px !important;
+        margin: 2px !important;
+    }
+}
+</style>
 
 {{-- Include session rating modal --}}
 @include('components.ratings.session-end-modal')
