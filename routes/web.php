@@ -552,6 +552,40 @@ Route::middleware('auth')->group(function () {
         ]);
     });
 
+    // Debug route to check ratings table
+    Route::get('/debug-ratings-table', function () {
+        try {
+            // Check if table exists
+            $tableExists = \Schema::hasTable('session_ratings');
+            
+            if (!$tableExists) {
+                return response()->json([
+                    'error' => 'session_ratings table does not exist',
+                    'table_exists' => false
+                ]);
+            }
+            
+            // Check table structure
+            $columns = \Schema::getColumnListing('session_ratings');
+            
+            // Try to query the table
+            $ratings = \App\Models\SessionRating::count();
+            
+            return response()->json([
+                'table_exists' => true,
+                'columns' => $columns,
+                'total_ratings' => $ratings,
+                'message' => 'Table exists and is accessible'
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+                'table_exists' => false
+            ]);
+        }
+    });
+
     // Debug route to check skill acquisition history
     Route::get('/debug-skill-acquisition', function () {
         $user = Auth::user();
@@ -753,6 +787,31 @@ Route::get('/api/skills/analytics', [\App\Http\Controllers\SkillHistoryControlle
         
         // API routes for AJAX calls
         Route::get('/api/user-ratings/{userId}', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatings'])->name('api.user-ratings.get');
+        
+        // Fallback API route for testing
+        Route::get('/api/test-ratings/{userId}', function($userId) {
+            $user = Auth::user();
+            if (!$user || $user->id != $userId) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+            
+            // Check if session_ratings table exists
+            try {
+                $ratings = \App\Models\SessionRating::where('rated_user_id', $userId)->get();
+                return response()->json([
+                    'success' => true,
+                    'ratings' => $ratings,
+                    'table_exists' => true,
+                    'count' => $ratings->count()
+                ]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Database error: ' . $e->getMessage(),
+                    'table_exists' => false
+                ]);
+            }
+        });
     });
     
     // Admin functionality (moved from /admin to main dashboard) - Restricted to admin users only
