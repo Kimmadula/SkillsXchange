@@ -9,6 +9,9 @@ use App\Models\TaskEvaluation;
 use App\Models\Skill;
 use App\Models\User;
 use App\Services\TaskSkillService;
+use App\Events\TaskCreated;
+use App\Events\TaskUpdated;
+use App\Events\TaskDeleted;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -139,6 +142,9 @@ class TaskController extends Controller
             ]);
 
             $task->load(['creator', 'assignee']);
+
+            // Broadcast task created event
+            broadcast(new TaskCreated($task, $trade->id));
 
             return redirect()->route('tasks.show', $task)->with('success', 'Task created successfully!');
             
@@ -295,6 +301,9 @@ class TaskController extends Controller
                 'strict_file_types' => $request->boolean('strict_file_types'),
             ]);
 
+            // Broadcast task updated event
+            broadcast(new TaskUpdated($task, $task->trade_id));
+
             // Check if this is an AJAX request
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
@@ -347,6 +356,9 @@ class TaskController extends Controller
                 'verified_by' => $task->completed ? null : $task->verified_by
             ]);
 
+            // Broadcast task updated event
+            broadcast(new TaskUpdated($task, $task->trade_id));
+
             return response()->json([
                 'success' => true,
                 'task' => $task->load(['creator', 'assignee', 'verifier'])
@@ -374,12 +386,21 @@ class TaskController extends Controller
         }
 
         try {
+            // Store task info before deletion for broadcasting
+            $taskId = $task->id;
+            $tradeId = $task->trade_id;
+            $creatorName = $task->creator->firstname . ' ' . $task->creator->lastname;
+            $assigneeName = $task->assignee->firstname . ' ' . $task->assignee->lastname;
+            
             // Delete related submissions and evaluations first
             $task->submissions()->delete();
             $task->evaluations()->delete();
             
             // Delete the task
             $task->delete();
+            
+            // Broadcast task deleted event
+            broadcast(new TaskDeleted($taskId, $tradeId, $creatorName, $assigneeName));
             
             if (request()->wantsJson()) {
                 return response()->json(['success' => true, 'message' => 'Task deleted successfully!']);
@@ -420,6 +441,10 @@ class TaskController extends Controller
 
         try {
             $task->updateStatus('in_progress');
+            
+            // Broadcast task updated event
+            broadcast(new TaskUpdated($task, $task->trade_id));
+            
             return redirect()->back()->with('success', 'Task started successfully!');
             
         } catch (\Exception $e) {
@@ -536,6 +561,9 @@ class TaskController extends Controller
 
             // Update task status
             $task->updateStatus('submitted');
+
+            // Broadcast task updated event
+            broadcast(new TaskUpdated($task, $task->trade_id));
 
             // Check if this is an AJAX request
             if ($request->ajax() || $request->wantsJson()) {
@@ -656,6 +684,9 @@ class TaskController extends Controller
             // Update task status
             $newTaskStatus = $status === 'pass' ? 'completed' : 'evaluated';
             $task->updateStatus($newTaskStatus);
+
+            // Broadcast task updated event
+            broadcast(new TaskUpdated($task, $task->trade_id));
 
             $message = $status === 'pass' ? 'Task evaluated and marked as passed!' : 'Task evaluation completed.';
             

@@ -113,6 +113,40 @@
         }
     }
     
+    // Show notification function
+    function showNotification(message, type = 'info') {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+            color: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            font-size: 0.875rem;
+            max-width: 300px;
+            animation: slideIn 0.3s ease-out;
+        `;
+        notification.textContent = message;
+        
+        // Add to page
+        document.body.appendChild(notification);
+        
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-in';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
+    }
+    
     // Handle window resize
     window.addEventListener('resize', function() {
         const tasksSidebar = document.querySelector('.tasks-sidebar');
@@ -2845,6 +2879,26 @@ if (window.Echo) {
             console.log('Received task update event:', data);
             updateTask(data.task);
             updateProgress();
+        })
+        .listen('task-created', function(data) {
+            console.log('Received task created event:', data);
+            addTaskToUI(data.task);
+            updateTaskCount();
+            updateProgress();
+            updateTaskCountBadge();
+            
+            // Show notification for new task
+            showNotification(`New task created: ${data.task.title}`, 'success');
+        })
+        .listen('task-deleted', function(data) {
+            console.log('Received task deleted event:', data);
+            removeTaskFromUI(data.task_id);
+            updateTaskCount();
+            updateProgress();
+            updateTaskCountBadge();
+            
+            // Show notification for deleted task
+            showNotification('A task has been deleted', 'info');
         });
 
     // Video call functionality - Messenger style
@@ -4340,6 +4394,14 @@ function addTaskToUI(task) {
     container.appendChild(taskDiv);
 }
 
+function removeTaskFromUI(taskId) {
+    const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+    if (taskElement) {
+        taskElement.remove();
+        console.log('Task removed from UI:', taskId);
+    }
+}
+
 function updateTaskInUI(task) {
     const taskElement = document.querySelector(`[data-task-id="${task.id}"]`);
     if (!taskElement) return;
@@ -5469,6 +5531,29 @@ async function initializePeerConnection() {
         font-size: 0.7rem !important;
         padding: 2px 6px !important;
         margin: 2px !important;
+    }
+}
+
+/* Notification animations */
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
     }
 }
 </style>
