@@ -1085,14 +1085,20 @@ async function loadUserFeedback() {
     try {
         console.log('Loading user feedback for user ID: {{ $user->id }}');
         
+        // Add timeout to prevent infinite loading
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
         const response = await fetch(`/api/user-ratings/{{ $user->id }}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            }
+            },
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
         console.log('Response status:', response.status);
         
         if (!response.ok) {
@@ -1110,6 +1116,9 @@ async function loadUserFeedback() {
         }
     } catch (error) {
         console.error('Error loading user feedback:', error);
+        if (error.name === 'AbortError') {
+            console.error('Request timed out');
+        }
         displayNoFeedback();
     }
 }
@@ -1206,7 +1215,7 @@ function displayNoFeedback() {
     container.innerHTML = `
         <div class="text-center py-4">
             <i class="fas fa-star fa-3x text-muted mb-3"></i>
-            <p class="text-muted mb-0">No feedback yet</p>
+            <p class="text-muted mb-0">No feedback or ratings found</p>
             <small class="text-muted">Complete skill exchange sessions to receive feedback from other users!</small>
         </div>
     `;
