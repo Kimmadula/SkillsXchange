@@ -1326,10 +1326,10 @@
     <!-- Active Trade Session Banner -->
     <div style="background: #1e40af; color: white; padding: 12px 16px; position: relative;">
         <!-- Back Arrow - Upper Left Corner -->
-        <div style="position: absolute; top: 12px; left: 16px;">
-            <a href="{{ route('dashboard') }}" style="color: white; font-size: 1.5rem; text-decoration: none; padding: 8px; display: inline-block; border-radius: 4px; transition: background-color 0.2s;" 
-               onmouseover="this.style.backgroundColor='rgba(255,255,255,0.1)'" 
-               onmouseout="this.style.backgroundColor='transparent'"
+        <div style="position: absolute; top: 8px; left: 12px;">
+            <a href="{{ route('dashboard') }}" style="color: white; font-size: 2rem; text-decoration: none; padding: 12px; display: inline-block; border-radius: 6px; transition: all 0.2s; background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);" 
+               onmouseover="this.style.backgroundColor='rgba(255,255,255,0.2)'; this.style.transform='scale(1.1)'" 
+               onmouseout="this.style.backgroundColor='rgba(255,255,255,0.1)'; this.style.transform='scale(1)'"
                title="Back to Dashboard">
                 <i class="fas fa-arrow-left"></i>
             </a>
