@@ -70,19 +70,46 @@
     
     // Close mobile tasks
     window.closeMobileTasks = function() {
+        console.log('Closing mobile tasks...');
         const tasksSidebar = document.querySelector('.tasks-sidebar');
         const toggleButton = document.getElementById('mobile-tasks-toggle');
         const closeButton = document.getElementById('close-tasks-mobile');
         
         if (tasksSidebar && toggleButton) {
             tasksSidebar.style.display = 'none';
-            tasksSidebar.classList.remove('show');
+            tasksSidebar.classList.remove('show', 'fullscreen');
             toggleButton.textContent = '☑️';
             toggleButton.title = 'Show Tasks';
             
             if (closeButton) {
                 closeButton.style.display = 'none';
             }
+            
+            // Show chat panel again if it was hidden
+            const chatPanel = document.querySelector('.chat-panel');
+            if (chatPanel) {
+                chatPanel.style.display = 'flex';
+            }
+            
+            console.log('Mobile tasks closed successfully');
+        }
+    };
+    
+    // Close desktop tasks
+    window.closeTasksDesktop = function() {
+        console.log('Closing desktop tasks...');
+        const tasksSidebar = document.querySelector('.tasks-sidebar');
+        const closeButton = document.getElementById('close-tasks-desktop');
+        
+        if (tasksSidebar) {
+            tasksSidebar.style.display = 'none';
+            tasksSidebar.classList.remove('show', 'fullscreen');
+            
+            if (closeButton) {
+                closeButton.style.display = 'none';
+            }
+            
+            console.log('Desktop tasks closed successfully');
         }
     };
     
@@ -131,6 +158,12 @@
             const closeButton = document.getElementById('close-tasks-mobile');
             if (closeButton) {
                 closeButton.style.display = 'inline-block';
+            }
+        } else {
+            // Desktop - show desktop close button
+            const desktopCloseButton = document.getElementById('close-tasks-desktop');
+            if (desktopCloseButton) {
+                desktopCloseButton.style.display = 'inline-block';
             }
         }
         
@@ -206,6 +239,10 @@
             if (closeButton) {
                 closeButton.style.display = 'inline-block';
             }
+            const desktopCloseButton = document.getElementById('close-tasks-desktop');
+            if (desktopCloseButton) {
+                desktopCloseButton.style.display = 'none';
+            }
         } else {
             if (tasksSidebar) {
                 tasksSidebar.style.display = 'flex';
@@ -221,6 +258,10 @@
             const closeButton = document.getElementById('close-tasks-mobile');
             if (closeButton) {
                 closeButton.style.display = 'none';
+            }
+            const desktopCloseButton = document.getElementById('close-tasks-desktop');
+            if (desktopCloseButton) {
+                desktopCloseButton.style.display = 'inline-block';
             }
         }
     });
@@ -1290,6 +1331,11 @@
         <div style="font-size: 0.9rem;">
             Trading: {{ $trade->offeringSkill->name ?? 'Unknown' }} for {{ $trade->lookingSkill->name ?? 'Unknown' }}
         </div>
+        <div style="margin-top: 8px;">
+            <a href="{{ route('trades.index') }}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-arrow-left me-1"></i>Back to Trades
+            </a>
+        </div>
     </div>
 
     <!-- Main Content -->
@@ -2300,12 +2346,15 @@
             <div
                 style="background: #f3f4f6; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between;">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <span>☑️</span>
-                    <span style="font-weight: 600;">Session Tasks</span>
+                <span>☑️</span>
+                <span style="font-weight: 600;">Session Tasks</span>
                 </div>
                 <button id="close-tasks-mobile" onclick="closeMobileTasks()" 
-                        style="background: none; border: none; color: #6b7280; cursor: pointer; font-size: 1.2rem; display: none;" 
-                        class="mobile-only">✖️</button>
+                        style="background: none; border: none; color: #6b7280; cursor: pointer; font-size: 1.2rem; display: none; padding: 4px;" 
+                        class="mobile-only" title="Close Tasks">✖️</button>
+                <button id="close-tasks-desktop" onclick="closeTasksDesktop()" 
+                        style="background: none; border: none; color: #6b7280; cursor: pointer; font-size: 1rem; padding: 4px;" 
+                        class="desktop-only" title="Close Tasks">✖️</button>
             </div>
 
             <!-- Tasks Content -->
@@ -5465,6 +5514,17 @@ async function initializePeerConnection() {
 </script>
 
 <style>
+/* Desktop Styles for Tasks */
+@media (min-width: 769px) {
+    .desktop-only {
+        display: inline-block !important;
+    }
+    
+    .mobile-only {
+        display: none !important;
+    }
+}
+
 /* Mobile Responsive Styles for Tasks */
 @media (max-width: 768px) {
     .main-content-container {
@@ -5488,6 +5548,11 @@ async function initializePeerConnection() {
     /* Show mobile toggle button */
     .mobile-only {
         display: inline-block !important;
+    }
+    
+    /* Hide desktop close button on mobile */
+    .desktop-only {
+        display: none !important;
     }
     
     /* Show tasks when toggled - as overlay */
