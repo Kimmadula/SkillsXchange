@@ -130,22 +130,16 @@
                     </h3>
                     @if($acquiredSkills && $acquiredSkills->count() > 0)
                         @php
-                            // Separate registered and acquired skills
-                            $registeredSkills = collect();
-                            $acquiredSkillsList = collect();
+                            // Get all user skills
+                            $allUserSkills = $user->skills;
                             
-                            foreach($acquiredSkills as $skill) {
-                                $isAcquiredThroughTrading = $user->skillAcquisitions()
-                                    ->where('skill_id', $skill->skill_id)
-                                    ->where('acquisition_method', 'trade_completion')
-                                    ->exists();
-                                
-                                if ($isAcquiredThroughTrading) {
-                                    $acquiredSkillsList->push($skill);
-                                } else {
-                                    $registeredSkills->push($skill);
-                                }
-                            }
+                            // Get skills acquired through trading
+                            $acquiredSkillsList = $user->getAcquiredSkills();
+                            
+                            // Get registered skills (skills not acquired through trading)
+                            $registeredSkills = $allUserSkills->filter(function($skill) use ($acquiredSkillsList) {
+                                return !$acquiredSkillsList->contains('skill_id', $skill->skill_id);
+                            });
                         @endphp
                         
                         <!-- Registered Skills -->
@@ -201,6 +195,23 @@
                             <a href="{{ route('trades.matches') }}" class="btn btn-sm btn-outline-primary">Start trading to acquire new skills</a>
                         </div>
                     @endif
+                </div>
+                
+                <!-- User Feedback & Ratings Section -->
+                <div class="profile-card mt-4">
+                    <h3 class="h5 fw-bold mb-4">
+                        <i class="fas fa-star me-2 text-warning"></i>Feedback & Ratings
+                        <small class="text-muted d-block" style="font-size: 0.8rem; font-weight: normal;">What others say about you</small>
+                    </h3>
+                    
+                    <div id="user-feedback-section">
+                        <div class="text-center py-3">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading feedback...</span>
+                            </div>
+                            <p class="text-muted mt-2">Loading your feedback...</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1016,6 +1027,188 @@ document.addEventListener('DOMContentLoaded', function() {
         margin-bottom: 1rem;
         margin-right: 0 !important;
     }
+}
+</style>
+
+<script>
+// Load user feedback and ratings
+document.addEventListener('DOMContentLoaded', function() {
+    loadUserFeedback();
+});
+
+async function loadUserFeedback() {
+    try {
+        const response = await fetch(`/api/user-ratings/{{ $user->id }}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            }
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            displayUserFeedback(data.ratings);
+        } else {
+            displayNoFeedback();
+        }
+    } catch (error) {
+        console.error('Error loading user feedback:', error);
+        displayNoFeedback();
+    }
+}
+
+function displayUserFeedback(ratings) {
+    const container = document.getElementById('user-feedback-section');
+    
+    if (ratings.length === 0) {
+        displayNoFeedback();
+        return;
+    }
+
+    // Calculate average ratings
+    const avgOverall = ratings.reduce((sum, r) => sum + (r.overall_rating || 0), 0) / ratings.length;
+    const avgCommunication = ratings.reduce((sum, r) => sum + (r.communication_rating || 0), 0) / ratings.length;
+    const avgHelpfulness = ratings.reduce((sum, r) => sum + (r.helpfulness_rating || 0), 0) / ratings.length;
+    const avgKnowledge = ratings.reduce((sum, r) => sum + (r.knowledge_rating || 0), 0) / ratings.length;
+
+    container.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <div class="rating-summary mb-4">
+                    <h6 class="text-muted mb-3">Average Ratings</h6>
+                    <div class="rating-item mb-2">
+                        <span class="rating-label">Overall Experience:</span>
+                        <div class="stars">${generateStars(avgOverall)}</div>
+                        <span class="rating-value">${avgOverall.toFixed(1)}/5</span>
+                    </div>
+                    <div class="rating-item mb-2">
+                        <span class="rating-label">Communication:</span>
+                        <div class="stars">${generateStars(avgCommunication)}</div>
+                        <span class="rating-value">${avgCommunication.toFixed(1)}/5</span>
+                    </div>
+                    <div class="rating-item mb-2">
+                        <span class="rating-label">Helpfulness:</span>
+                        <div class="stars">${generateStars(avgHelpfulness)}</div>
+                        <span class="rating-value">${avgHelpfulness.toFixed(1)}/5</span>
+                    </div>
+                    <div class="rating-item mb-2">
+                        <span class="rating-label">Knowledge:</span>
+                        <div class="stars">${generateStars(avgKnowledge)}</div>
+                        <span class="rating-value">${avgKnowledge.toFixed(1)}/5</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="feedback-stats">
+                    <h6 class="text-muted mb-3">Feedback Summary</h6>
+                    <div class="stat-item">
+                        <i class="fas fa-star text-warning"></i>
+                        <span>Total Ratings: ${ratings.length}</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-comments text-info"></i>
+                        <span>Written Feedback: ${ratings.filter(r => r.written_feedback).length}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="feedback-list mt-4">
+            <h6 class="text-muted mb-3">Recent Feedback</h6>
+            ${ratings.slice(0, 5).map(rating => `
+                <div class="feedback-item border rounded p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <strong>${rating.rater.firstname} ${rating.rater.lastname}</strong>
+                            <small class="text-muted d-block">${new Date(rating.created_at).toLocaleDateString()}</small>
+                        </div>
+                        <div class="rating-display">
+                            <div class="stars">${generateStars(rating.overall_rating)}</div>
+                        </div>
+                    </div>
+                    ${rating.written_feedback ? `
+                        <div class="feedback-text mt-2">
+                            <p class="mb-0">"${rating.written_feedback}"</p>
+                        </div>
+                    ` : ''}
+                    <div class="rating-breakdown mt-2">
+                        <small class="text-muted">
+                            Communication: ${generateStars(rating.communication_rating)} | 
+                            Helpfulness: ${generateStars(rating.helpfulness_rating)} | 
+                            Knowledge: ${generateStars(rating.knowledge_rating)}
+                        </small>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function displayNoFeedback() {
+    const container = document.getElementById('user-feedback-section');
+    container.innerHTML = `
+        <div class="text-center py-4">
+            <i class="fas fa-star fa-3x text-muted mb-3"></i>
+            <p class="text-muted mb-0">No feedback yet</p>
+            <small class="text-muted">Complete skill exchange sessions to receive feedback from other users!</small>
+        </div>
+    `;
+}
+
+function generateStars(rating) {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+    
+    return '★'.repeat(fullStars) + 
+           (hasHalfStar ? '☆' : '') + 
+           '☆'.repeat(emptyStars);
+}
+</script>
+
+<style>
+.rating-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.rating-label {
+    min-width: 120px;
+    font-size: 0.9rem;
+}
+
+.stars {
+    color: #ffc107;
+    font-size: 1.1rem;
+}
+
+.rating-value {
+    font-weight: 600;
+    color: #495057;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.feedback-item {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef !important;
+}
+
+.feedback-text {
+    font-style: italic;
+    color: #495057;
+}
+
+.rating-breakdown .stars {
+    font-size: 0.9rem;
 }
 </style>
 @endpush
