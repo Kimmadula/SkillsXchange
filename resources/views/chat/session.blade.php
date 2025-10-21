@@ -77,6 +77,31 @@
         }
     };
     
+    // Mobile full-screen tasks functionality
+    window.toggleFullScreenTasks = function() {
+        const tasksSidebar = document.querySelector('.tasks-sidebar');
+        const fullScreenButton = document.getElementById('mobile-full-tasks');
+        const chatPanel = document.querySelector('.chat-panel');
+        
+        if (tasksSidebar && fullScreenButton && chatPanel) {
+            const isFullScreen = tasksSidebar.classList.contains('fullscreen');
+            
+            if (isFullScreen) {
+                // Exit full screen
+                tasksSidebar.classList.remove('fullscreen');
+                chatPanel.style.display = 'flex';
+                fullScreenButton.textContent = '📋';
+                fullScreenButton.title = 'Full Screen Tasks';
+            } else {
+                // Enter full screen
+                tasksSidebar.classList.add('fullscreen');
+                chatPanel.style.display = 'none';
+                fullScreenButton.textContent = '💬';
+                fullScreenButton.title = 'Back to Chat';
+            }
+        }
+    };
+    
     // Initialize mobile tasks visibility on page load
     document.addEventListener('DOMContentLoaded', function() {
         const tasksSidebar = document.querySelector('.tasks-sidebar');
@@ -89,6 +114,10 @@
             }
             if (toggleButton) {
                 toggleButton.style.display = 'inline-block';
+            }
+            const fullScreenButton = document.getElementById('mobile-full-tasks');
+            if (fullScreenButton) {
+                fullScreenButton.style.display = 'inline-block';
             }
         }
         
@@ -156,13 +185,21 @@
             if (toggleButton) {
                 toggleButton.style.display = 'inline-block';
             }
+            const fullScreenButton = document.getElementById('mobile-full-tasks');
+            if (fullScreenButton) {
+                fullScreenButton.style.display = 'inline-block';
+            }
         } else {
             if (tasksSidebar) {
                 tasksSidebar.style.display = 'flex';
-                tasksSidebar.classList.remove('show');
+                tasksSidebar.classList.remove('show', 'fullscreen');
             }
             if (toggleButton) {
                 toggleButton.style.display = 'none';
+            }
+            const fullScreenButton = document.getElementById('mobile-full-tasks');
+            if (fullScreenButton) {
+                fullScreenButton.style.display = 'none';
             }
         }
     });
@@ -1259,6 +1296,12 @@
                         class="mobile-only" title="Show Tasks">
                         ☑️
                         <span id="tasks-count-badge" style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; display: none;">0</span>
+                    </button>
+                    <!-- Mobile Full Tasks Button -->
+                    <button id="mobile-full-tasks" onclick="toggleFullScreenTasks()"
+                        style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem; display: none; position: relative;" 
+                        class="mobile-only" title="Full Screen Tasks">
+                        📋
                     </button>
                     <button id="video-call-btn" onclick="openVideoChat()"
                         style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem;">📷</button>
@@ -5396,14 +5439,17 @@ async function initializePeerConnection() {
         flex: 1 !important;
         border-right: none !important;
         border-bottom: 1px solid #e5e7eb !important;
-        min-height: 60vh;
+        min-height: 40vh;
+        max-height: 40vh;
+        overflow-y: auto;
     }
     
     .tasks-sidebar {
         width: 100% !important;
         border-left: none !important;
         border-top: 1px solid #e5e7eb !important;
-        max-height: 40vh;
+        min-height: 60vh;
+        max-height: 60vh;
         overflow-y: auto;
         display: none; /* Hidden by default on mobile */
     }
@@ -5418,36 +5464,60 @@ async function initializePeerConnection() {
         display: flex !important;
     }
     
-    /* Make task items more mobile-friendly */
+    /* Full screen mode for tasks */
+    .tasks-sidebar.fullscreen {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 1000 !important;
+        background: white !important;
+        max-height: 100vh !important;
+        min-height: 100vh !important;
+        display: flex !important;
+    }
+    
+    /* Make task items more mobile-friendly with more space */
     .task-item {
-        margin-bottom: 8px !important;
-        padding: 8px !important;
+        margin-bottom: 12px !important;
+        padding: 16px !important;
+        min-height: 80px !important;
+        border-radius: 8px !important;
+        background: #f8fafc !important;
+        border: 1px solid #e2e8f0 !important;
     }
     
     .task-item > div {
         flex-direction: column !important;
         align-items: flex-start !important;
-        gap: 8px !important;
+        gap: 12px !important;
     }
     
     .task-item > div > div:first-child {
         width: 100% !important;
         flex-direction: row !important;
         align-items: center !important;
-        gap: 8px !important;
+        gap: 12px !important;
+        margin-bottom: 8px !important;
     }
     
     .task-item > div > div:last-child {
         width: 100% !important;
         justify-content: flex-start !important;
         flex-wrap: wrap !important;
-        gap: 4px !important;
+        gap: 8px !important;
+        margin-top: 8px !important;
     }
     
-    /* Make buttons smaller on mobile */
+    /* Make buttons larger and more touch-friendly on mobile */
     .task-item button {
-        font-size: 0.7rem !important;
-        padding: 3px 6px !important;
+        font-size: 0.8rem !important;
+        padding: 8px 12px !important;
+        min-height: 36px !important;
+        min-width: 60px !important;
+        border-radius: 6px !important;
+        font-weight: 500 !important;
     }
     
     /* Adjust task details for mobile */
@@ -5516,21 +5586,25 @@ async function initializePeerConnection() {
 /* Improve task interaction on mobile */
 @media (max-width: 768px) {
     .task-item input[type="checkbox"] {
-        width: 20px !important;
-        height: 20px !important;
-        margin-right: 8px !important;
+        width: 24px !important;
+        height: 24px !important;
+        margin-right: 12px !important;
+        accent-color: #3b82f6 !important;
     }
     
     .task-item span {
-        font-size: 0.9rem !important;
-        line-height: 1.4 !important;
+        font-size: 1rem !important;
+        line-height: 1.5 !important;
+        font-weight: 500 !important;
     }
     
     /* Make badges more readable on mobile */
     .task-item .badge {
-        font-size: 0.7rem !important;
-        padding: 2px 6px !important;
+        font-size: 0.75rem !important;
+        padding: 4px 8px !important;
         margin: 2px !important;
+        border-radius: 4px !important;
+        font-weight: 500 !important;
     }
 }
 
