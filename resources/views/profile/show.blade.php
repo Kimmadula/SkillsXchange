@@ -152,6 +152,21 @@
                                 'acquired_skills' => $acquiredSkillsList->pluck('name')->toArray(),
                                 'registered_skills' => $registeredSkills->pluck('name')->toArray()
                             ]);
+                            
+                            // Additional debug: Check skill acquisition history
+                            $acquisitionHistory = $user->skillAcquisitions()->with('skill')->get();
+                            \Log::info('Skill acquisition history debug', [
+                                'user_id' => $user->id,
+                                'acquisition_count' => $acquisitionHistory->count(),
+                                'acquisitions' => $acquisitionHistory->map(function($acquisition) {
+                                    return [
+                                        'skill_name' => $acquisition->skill ? $acquisition->skill->name : 'Unknown',
+                                        'method' => $acquisition->acquisition_method,
+                                        'trade_id' => $acquisition->trade_id,
+                                        'created_at' => $acquisition->created_at
+                                    ];
+                                })->toArray()
+                            ]);
                         @endphp
                         
                         <!-- Registered Skills -->
@@ -1062,6 +1077,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function loadUserFeedback() {
     try {
+        console.log('Loading user feedback for user ID: {{ $user->id }}');
+        
         const response = await fetch(`/api/user-ratings/{{ $user->id }}`, {
             method: 'GET',
             headers: {
@@ -1070,11 +1087,19 @@ async function loadUserFeedback() {
             }
         });
 
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const data = await response.json();
+        console.log('Response data:', data);
         
         if (data.success) {
             displayUserFeedback(data.ratings);
         } else {
+            console.log('API returned success: false, message:', data.message);
             displayNoFeedback();
         }
     } catch (error) {
