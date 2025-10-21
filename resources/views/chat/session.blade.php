@@ -5234,7 +5234,7 @@ async function initializePeerConnection() {
 
 </script>
 
-// Include session rating modal
+{{-- Include session rating modal --}}
 @include('components.ratings.session-end-modal')
 
 @endsection

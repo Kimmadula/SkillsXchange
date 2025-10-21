@@ -518,6 +518,71 @@ Route::middleware('auth')->group(function () {
         ]);
     });
 
+    // Test route to check ratings API
+    Route::get('/test-ratings-api', function () {
+        $user = Auth::user();
+        
+        // Test the ratings API directly
+        $ratings = \App\Models\SessionRating::where('rated_user_id', $user->id)
+            ->with(['rater:id,firstname,lastname,username'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+            
+        return response()->json([
+            'user_id' => $user->id,
+            'ratings_count' => $ratings->count(),
+            'ratings' => $ratings->toArray(),
+            'api_url' => '/api/user-ratings/' . $user->id
+        ]);
+    });
+
+    // Debug route to check completed session skill learning
+    Route::get('/debug-skill-learning', function () {
+        $user = Auth::user();
+        
+        // Get user's completed trades
+        $completedTrades = \App\Models\Trade::where('status', 'closed')
+            ->where(function($query) use ($user) {
+                $query->where('user_id', $user->id)
+                      ->orWhereHas('requests', function($q) use ($user) {
+                          $q->where('requester_id', $user->id)->where('status', 'accepted');
+                      });
+            })
+            ->with(['tasks', 'lookingSkill', 'offeringSkill'])
+            ->get();
+
+        $debugInfo = [];
+        
+        foreach ($completedTrades as $trade) {
+            $skillLearningService = new \App\Services\SkillLearningService();
+            $summary = $skillLearningService->getSkillLearningSummary($trade);
+            
+            $debugInfo[] = [
+                'trade_id' => $trade->id,
+                'trade_title' => $trade->lookingSkill->name . ' ↔ ' . $trade->offeringSkill->name,
+                'status' => $trade->status,
+                'tasks_count' => $trade->tasks->count(),
+                'tasks' => $trade->tasks->map(function($task) {
+                    return [
+                        'id' => $task->id,
+                        'title' => $task->title,
+                        'assigned_to' => $task->assigned_to,
+                        'completed' => $task->completed,
+                        'verified' => $task->verified,
+                        'current_status' => $task->current_status
+                    ];
+                }),
+                'skill_learning_summary' => $summary
+            ];
+        }
+
+        return response()->json([
+            'user_id' => $user->id,
+            'completed_trades_count' => $completedTrades->count(),
+            'completed_trades' => $debugInfo
+        ]);
+    });
+
     // Trades (user dashboard area) - Restricted to regular users only
     Route::middleware('user.only')->group(function () {
         Route::get('/trades/create', [\App\Http\Controllers\TradeController::class, 'create'])->name('trades.create');

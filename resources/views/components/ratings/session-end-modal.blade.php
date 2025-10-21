@@ -122,6 +122,15 @@ function closeSessionRatingModal() {
 	const modal = document.getElementById('session-rating-modal');
 	if (modal) {
 		modal.style.display = 'none';
+		
+		// If this is called after session completion, redirect to ongoing trades
+		// Check if we're in a completed session by looking for session completion indicators
+		if (document.getElementById('session-status') && 
+			document.getElementById('session-status').textContent.includes('Completed')) {
+			setTimeout(() => {
+				window.location.href = '{{ route("trades.ongoing") }}';
+			}, 1000);
+		}
 	}
 }
 
@@ -202,6 +211,11 @@ document.addEventListener('DOMContentLoaded', function() {
 				
 				// Close modal
 				closeSessionRatingModal();
+				
+				// Redirect to ongoing trades page after a short delay
+				setTimeout(() => {
+					window.location.href = '{{ route("trades.ongoing") }}';
+				}, 1500);
 			} else {
 				// Show error message
 				if (typeof showError === 'function') {
