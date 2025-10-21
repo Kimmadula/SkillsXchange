@@ -1332,8 +1332,8 @@
             Trading: {{ $trade->offeringSkill->name ?? 'Unknown' }} for {{ $trade->lookingSkill->name ?? 'Unknown' }}
         </div>
         <div style="margin-top: 8px;">
-            <a href="{{ route('trades.index') }}" class="btn btn-outline-light btn-sm">
-                <i class="fas fa-arrow-left me-1"></i>Back to Trades
+            <a href="{{ route('dashboard') }}" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
             </a>
         </div>
     </div>
