@@ -7,6 +7,8 @@ use App\Models\TradeMessage;
 use App\Models\TradeTask;
 use App\Events\MessageSent;
 use App\Events\TaskUpdated;
+use App\Events\TaskCreated;
+use App\Events\TaskDeleted;
 use App\Services\SkillLearningService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -251,9 +253,9 @@ class ChatController extends Controller
 
             $task->load(['creator', 'assignee']);
 
-            // Broadcast task update using Laravel events
+            // Broadcast task created event
             try {
-                event(new TaskUpdated($task, $trade->id));
+                event(new TaskCreated($task, $trade->id));
             } catch (\Exception $e) {
                 Log::error('Broadcasting failed: ' . $e->getMessage());
                 // Continue even if broadcasting fails
