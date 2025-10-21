@@ -1325,13 +1325,25 @@
 
     <!-- Active Trade Session Banner -->
     <div style="background: #1e40af; color: white; padding: 12px 16px; position: relative;">
-        <!-- Back Arrow - Upper Left Corner -->
-        <div style="position: absolute; top: 8px; left: 12px;">
-            <a href="{{ route('dashboard') }}" style="color: white; font-size: 2rem; text-decoration: none; padding: 12px; display: inline-block; border-radius: 6px; transition: all 0.2s; background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);" 
-               onmouseover="this.style.backgroundColor='rgba(255,255,255,0.2)'; this.style.transform='scale(1.1)'" 
-               onmouseout="this.style.backgroundColor='rgba(255,255,255,0.1)'; this.style.transform='scale(1)'"
-               title="Back to Dashboard">
+        <!-- Back to Dashboard Button - Upper Left Corner -->
+        <div style="position: absolute; top: 20px; left: 20px;">
+            <a href="{{ route('dashboard') }}" 
+            style="color: white; 
+                    font-size: 0.875rem; 
+                    text-decoration: none; 
+                    padding: 8px 16px; 
+                    display: inline-flex; 
+                    align-items: center; 
+                    gap: 8px;
+                    border-radius: 4px; 
+                    transition: all 0.2s; 
+                    background-color: transparent; 
+                    border: 1px solid rgba(255,255,255,0.5);" 
+            onmouseover="this.style.backgroundColor='rgba(255,255,255,0.15)'; this.style.borderColor='rgba(255,255,255,0.8)'" 
+            onmouseout="this.style.backgroundColor='transparent'; this.style.borderColor='rgba(255,255,255,0.5)'"
+            title="Back to Dashboard">
                 <i class="fas fa-arrow-left"></i>
+                <span>Back to Dashboard</span>
             </a>
         </div>
         
