@@ -1332,8 +1332,11 @@
             Trading: {{ $trade->offeringSkill->name ?? 'Unknown' }} for {{ $trade->lookingSkill->name ?? 'Unknown' }}
         </div>
         <div style="margin-top: 8px;">
-            <a href="{{ route('dashboard') }}" class="btn btn-outline-light btn-sm">
-                <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+            <a href="{{ route('dashboard') }}" style="color: white; font-size: 1.5rem; text-decoration: none; padding: 8px; display: inline-block; border-radius: 4px; transition: background-color 0.2s;" 
+               onmouseover="this.style.backgroundColor='rgba(255,255,255,0.1)'" 
+               onmouseout="this.style.backgroundColor='transparent'"
+               title="Back to Dashboard">
+                <i class="fas fa-arrow-left"></i>
             </a>
         </div>
     </div>
