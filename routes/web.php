@@ -636,6 +636,9 @@ Route::get('/api/skills/analytics', [\App\Http\Controllers\SkillHistoryControlle
         Route::post('/session/rating', [\App\Http\Controllers\SessionRatingController::class, 'store'])->name('session.rating.store');
         Route::get('/user/{user}/ratings', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatings'])->name('user.ratings');
         Route::get('/user/{user}/rating-stats', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatingStats'])->name('user.rating-stats');
+        
+        // API routes for AJAX calls
+        Route::get('/api/user-ratings/{userId}', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatings'])->name('api.user-ratings.get');
     });
     
     // Admin functionality (moved from /admin to main dashboard) - Restricted to admin users only
