@@ -54,25 +54,34 @@
     window.toggleMobileTasks = function() {
         const tasksSidebar = document.querySelector('.tasks-sidebar');
         const toggleButton = document.getElementById('mobile-tasks-toggle');
+        const closeButton = document.getElementById('close-tasks-mobile');
         
         if (tasksSidebar && toggleButton) {
-            const isVisible = tasksSidebar.classList.contains('show') || tasksSidebar.style.display === 'flex';
+            tasksSidebar.style.display = 'flex';
+            tasksSidebar.classList.add('show');
+            toggleButton.textContent = '✖️';
+            toggleButton.title = 'Hide Tasks';
             
-            if (isVisible) {
-                tasksSidebar.style.display = 'none';
-                tasksSidebar.classList.remove('show');
-                toggleButton.textContent = '☑️';
-                toggleButton.title = 'Show Tasks';
-            } else {
-                tasksSidebar.style.display = 'flex';
-                tasksSidebar.classList.add('show');
-                toggleButton.textContent = '✖️';
-                toggleButton.title = 'Hide Tasks';
-                
-                // Scroll to tasks section when opened
-                setTimeout(() => {
-                    tasksSidebar.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 100);
+            if (closeButton) {
+                closeButton.style.display = 'inline-block';
+            }
+        }
+    };
+    
+    // Close mobile tasks
+    window.closeMobileTasks = function() {
+        const tasksSidebar = document.querySelector('.tasks-sidebar');
+        const toggleButton = document.getElementById('mobile-tasks-toggle');
+        const closeButton = document.getElementById('close-tasks-mobile');
+        
+        if (tasksSidebar && toggleButton) {
+            tasksSidebar.style.display = 'none';
+            tasksSidebar.classList.remove('show');
+            toggleButton.textContent = '☑️';
+            toggleButton.title = 'Show Tasks';
+            
+            if (closeButton) {
+                closeButton.style.display = 'none';
             }
         }
     };
@@ -118,6 +127,10 @@
             const fullScreenButton = document.getElementById('mobile-full-tasks');
             if (fullScreenButton) {
                 fullScreenButton.style.display = 'inline-block';
+            }
+            const closeButton = document.getElementById('close-tasks-mobile');
+            if (closeButton) {
+                closeButton.style.display = 'inline-block';
             }
         }
         
@@ -189,6 +202,10 @@
             if (fullScreenButton) {
                 fullScreenButton.style.display = 'inline-block';
             }
+            const closeButton = document.getElementById('close-tasks-mobile');
+            if (closeButton) {
+                closeButton.style.display = 'inline-block';
+            }
         } else {
             if (tasksSidebar) {
                 tasksSidebar.style.display = 'flex';
@@ -200,6 +217,10 @@
             const fullScreenButton = document.getElementById('mobile-full-tasks');
             if (fullScreenButton) {
                 fullScreenButton.style.display = 'none';
+            }
+            const closeButton = document.getElementById('close-tasks-mobile');
+            if (closeButton) {
+                closeButton.style.display = 'none';
             }
         }
     });
@@ -2277,9 +2298,14 @@
             style="width: 350px; background: white; border-left: 1px solid #e5e7eb; display: flex; flex-direction: column;" class="tasks-sidebar">
             <!-- Sidebar Header -->
             <div
-                style="background: #f3f4f6; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px;">
-                <span>☑️</span>
-                <span style="font-weight: 600;">Session Tasks</span>
+                style="background: #f3f4f6; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span>☑️</span>
+                    <span style="font-weight: 600;">Session Tasks</span>
+                </div>
+                <button id="close-tasks-mobile" onclick="closeMobileTasks()" 
+                        style="background: none; border: none; color: #6b7280; cursor: pointer; font-size: 1.2rem; display: none;" 
+                        class="mobile-only">✖️</button>
             </div>
 
             <!-- Tasks Content -->
@@ -5432,26 +5458,21 @@ async function initializePeerConnection() {
 /* Mobile Responsive Styles for Tasks */
 @media (max-width: 768px) {
     .main-content-container {
-        flex-direction: column !important;
+        flex-direction: row !important;
     }
     
     .chat-panel {
         flex: 1 !important;
+        width: 100% !important;
         border-right: none !important;
-        border-bottom: 1px solid #e5e7eb !important;
-        min-height: 40vh;
-        max-height: 40vh;
+        border-bottom: none !important;
+        min-height: 100vh;
+        max-height: 100vh;
         overflow-y: auto;
     }
     
     .tasks-sidebar {
-        width: 100% !important;
-        border-left: none !important;
-        border-top: 1px solid #e5e7eb !important;
-        min-height: 60vh;
-        max-height: 60vh;
-        overflow-y: auto;
-        display: none; /* Hidden by default on mobile */
+        display: none !important; /* Completely hidden by default on mobile */
     }
     
     /* Show mobile toggle button */
@@ -5459,9 +5480,17 @@ async function initializePeerConnection() {
         display: inline-block !important;
     }
     
-    /* Show tasks when toggled */
+    /* Show tasks when toggled - as overlay */
     .tasks-sidebar.show {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 1000 !important;
+        background: white !important;
         display: flex !important;
+        flex-direction: column !important;
     }
     
     /* Full screen mode for tasks */
@@ -5473,9 +5502,8 @@ async function initializePeerConnection() {
         height: 100vh !important;
         z-index: 1000 !important;
         background: white !important;
-        max-height: 100vh !important;
-        min-height: 100vh !important;
         display: flex !important;
+        flex-direction: column !important;
     }
     
     /* Make task items more mobile-friendly with more space */
