@@ -2945,12 +2945,22 @@ if (window.Echo) {
     // Listen for task updates
     window.Echo.channel('trade-{{ $trade->id }}')
         .listen('task-updated', function(data) {
-            console.log('Received task update event:', data);
+            console.log('✅ Received task update event:', data);
+            console.log('✅ Task data:', data.task);
+            console.log('✅ Current user ID:', window.authUserId);
+            console.log('✅ Task assigned to:', data.task.assigned_to);
+            console.log('✅ Task created by:', data.task.created_by);
+            
             updateTask(data.task);
             updateProgress();
         })
         .listen('task-created', function(data) {
-            console.log('Received task created event:', data);
+            console.log('✅ Received task created event:', data);
+            console.log('✅ Task data:', data.task);
+            console.log('✅ Current user ID:', window.authUserId);
+            console.log('✅ Task assigned to:', data.task.assigned_to);
+            console.log('✅ Task created by:', data.task.created_by);
+            
             addTaskToUI(data.task);
             updateTaskCount();
             updateProgress();
