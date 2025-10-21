@@ -133,13 +133,25 @@
                             // Get all user skills
                             $allUserSkills = $user->skills;
                             
-                            // Get skills acquired through trading
+                            // Get skills acquired through trading (from skill_acquisition_history)
                             $acquiredSkillsList = $user->getAcquiredSkills();
                             
-                            // Get registered skills (skills not acquired through trading)
+                            // Get registered skills (skills that are NOT in acquisition history)
                             $registeredSkills = $allUserSkills->filter(function($skill) use ($acquiredSkillsList) {
+                                // Check if this skill is NOT in the acquired skills list
                                 return !$acquiredSkillsList->contains('skill_id', $skill->skill_id);
                             });
+                            
+                            // Debug: Log the counts
+                            \Log::info('Profile skills debug', [
+                                'user_id' => $user->id,
+                                'all_skills_count' => $allUserSkills->count(),
+                                'acquired_skills_count' => $acquiredSkillsList->count(),
+                                'registered_skills_count' => $registeredSkills->count(),
+                                'all_skills' => $allUserSkills->pluck('name')->toArray(),
+                                'acquired_skills' => $acquiredSkillsList->pluck('name')->toArray(),
+                                'registered_skills' => $registeredSkills->pluck('name')->toArray()
+                            ]);
                         @endphp
                         
                         <!-- Registered Skills -->
@@ -186,6 +198,18 @@
                                 Total skills: {{ $acquiredSkills->count() }} | 
                                 <span class="text-primary">Registered: {{ $registeredSkills->count() }}</span> | 
                                 <span class="text-success">Acquired: {{ $acquiredSkillsList->count() }}</span>
+                            </small>
+                            <br>
+                            <small class="text-muted">
+                                Debug: All skills: {{ $allUserSkills->pluck('name')->join(', ') }}
+                            </small>
+                            <br>
+                            <small class="text-muted">
+                                Debug: Acquired skills: {{ $acquiredSkillsList->pluck('name')->join(', ') ?: 'None' }}
+                            </small>
+                            <br>
+                            <small class="text-muted">
+                                Debug: Registered skills: {{ $registeredSkills->pluck('name')->join(', ') ?: 'None' }}
                             </small>
                         </div>
                     @else
