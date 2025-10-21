@@ -4739,9 +4739,6 @@ function completeSession() {
     });
 }
 
-// Include non-functional session rating modal (feature-flagged)
-@include('components.ratings.session-end-modal')
-
 // ===== VIDEO CHAT FUNCTIONALITY =====
 
 // WebRTC variables
@@ -5236,4 +5233,8 @@ async function initializePeerConnection() {
 
 
 </script>
+
+// Include session rating modal
+@include('components.ratings.session-end-modal')
+
 @endsection
