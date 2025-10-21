@@ -167,6 +167,12 @@
                                     ];
                                 })->toArray()
                             ]);
+                            
+                            // Debug: Show what's in skill_acquisition_history
+                            \Log::info('Raw skill acquisition history', [
+                                'user_id' => $user->id,
+                                'raw_acquisitions' => $acquisitionHistory->toArray()
+                            ]);
                         @endphp
                         
                         <!-- Registered Skills -->
