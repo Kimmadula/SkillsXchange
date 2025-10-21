@@ -98,7 +98,9 @@ class User extends Authenticatable implements MustVerifyEmail
     public function getAcquiredSkills()
     {
         try {
+            // Only get skills acquired through trading, not manual registration
             $acquisitions = $this->skillAcquisitions()
+                ->where('acquisition_method', 'trade_completion')
                 ->with('skill')
                 ->get();
 

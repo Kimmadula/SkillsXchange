@@ -536,6 +536,55 @@ Route::middleware('auth')->group(function () {
         ]);
     });
 
+    // Clean up skill acquisition history (remove manual registrations)
+    Route::get('/cleanup-skill-acquisition', function () {
+        $user = Auth::user();
+        
+        // Remove acquisitions that are not from trade completion
+        $removed = \App\Models\SkillAcquisitionHistory::where('user_id', $user->id)
+            ->where('acquisition_method', '!=', 'trade_completion')
+            ->delete();
+            
+        return response()->json([
+            'user_id' => $user->id,
+            'removed_count' => $removed,
+            'message' => 'Cleaned up non-trade acquisitions'
+        ]);
+    });
+
+    // Debug route to check skill acquisition history
+    Route::get('/debug-skill-acquisition', function () {
+        $user = Auth::user();
+        
+        // Get all skill acquisitions
+        $acquisitions = \App\Models\SkillAcquisitionHistory::where('user_id', $user->id)
+            ->with(['skill', 'trade'])
+            ->get();
+            
+        // Get all user skills
+        $allSkills = $user->skills;
+        
+        // Get acquired skills using the method
+        $acquiredSkills = $user->getAcquiredSkills();
+        
+        return response()->json([
+            'user_id' => $user->id,
+            'all_skills' => $allSkills->pluck('name')->toArray(),
+            'acquired_skills_method' => $acquiredSkills->pluck('name')->toArray(),
+            'acquisition_history' => $acquisitions->map(function($acquisition) {
+                return [
+                    'id' => $acquisition->id,
+                    'skill_name' => $acquisition->skill ? $acquisition->skill->name : 'Unknown',
+                    'method' => $acquisition->acquisition_method,
+                    'trade_id' => $acquisition->trade_id,
+                    'score_achieved' => $acquisition->score_achieved,
+                    'acquired_at' => $acquisition->acquired_at,
+                    'notes' => $acquisition->notes
+                ];
+            })->toArray()
+        ]);
+    });
+
     // Debug route to check completed session skill learning
     Route::get('/debug-skill-learning', function () {
         $user = Auth::user();
