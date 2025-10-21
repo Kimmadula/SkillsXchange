@@ -631,6 +631,13 @@ Route::get('/api/skills/analytics', [\App\Http\Controllers\SkillHistoryControlle
         Route::get('/chat/{trade}/skill-learning-status', [\App\Http\Controllers\ChatController::class, 'getSkillLearningStatus'])->name('chat.skill-learning-status');
     });
     
+    // Session Rating routes (accessible to all authenticated users)
+    Route::middleware('auth')->group(function () {
+        Route::post('/session/rating', [\App\Http\Controllers\SessionRatingController::class, 'store'])->name('session.rating.store');
+        Route::get('/user/{user}/ratings', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatings'])->name('user.ratings');
+        Route::get('/user/{user}/rating-stats', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatingStats'])->name('user.rating-stats');
+    });
+    
     // Admin functionality (moved from /admin to main dashboard) - Restricted to admin users only
     Route::middleware('admin')->group(function () {
         // Main dashboard

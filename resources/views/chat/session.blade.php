@@ -4303,12 +4303,40 @@ function updateTaskInUI(task) {
     }
 }
 
-// Session-end rating (non-functional scaffold): safe helper to open modal if present
-function showSessionRatingModal() {
-    var modal = document.getElementById('session-rating-modal');
-    if (modal) {
+// Track session start time for duration calculation
+window.sessionStartTime = Date.now();
+
+// Session-end rating modal functions
+function showSessionRatingModal(tradeId, ratedUserId, sessionDuration = 0) {
+    const modal = document.getElementById('session-rating-modal');
+    if (!modal) return;
+    
+    // Set form data
+    document.getElementById('session-rating-trade-id').value = tradeId || '';
+    document.getElementById('session-rating-rated-user-id').value = ratedUserId || '';
+    document.getElementById('session-rating-duration').value = sessionDuration;
+    
+    // Reset form
+    document.getElementById('session-rating-form').reset();
+    resetAllStarRatings();
+    
+    // Show modal
         modal.style.display = 'block';
     }
+
+function closeSessionRatingModal() {
+    const modal = document.getElementById('session-rating-modal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+function resetAllStarRatings() {
+    document.querySelectorAll('.rating-stars').forEach(ratingGroup => {
+        ratingGroup.querySelectorAll('.star').forEach(star => {
+            star.classList.remove('active');
+        });
+    });
 }
 
 // Skill Learning Functions
@@ -4675,12 +4703,26 @@ function completeSession() {
             }
             showSuccess(successMessage);
             
-            // Redirect to ongoing trades page after a short delay
+            // Show rating modal before redirecting
             setTimeout(() => {
-                // If rating feature is enabled, show the non-functional rating modal (coming soon)
-                try { showSessionRatingModal(); } catch (e) {}
+                // Get the other user ID for rating
+                const currentUserId = {{ auth()->user()->id }};
+                const tradeOwnerId = {{ $trade->user_id }};
+                const otherUserId = currentUserId === tradeOwnerId ? 
+                    {{ $trade->requests()->where('status', 'accepted')->first()->requester_id ?? 'null' }} : 
+                    tradeOwnerId;
+                
+                // Calculate session duration (if available)
+                const sessionDuration = Math.floor((Date.now() - (window.sessionStartTime || Date.now())) / 1000);
+                
+                // Show rating modal with proper parameters
+                if (otherUserId && typeof showSessionRatingModal === 'function') {
+                    showSessionRatingModal({{ $trade->id }}, otherUserId, sessionDuration);
+                } else {
+                    // If no other user or rating modal not available, redirect directly
                 window.location.href = '{{ route("trades.ongoing") }}';
-            }, 2000);
+                }
+            }, 1500);
         } else {
             showError('Failed to complete session: ' + (data.error || 'Unknown error'));
             // Re-enable button

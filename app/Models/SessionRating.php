@@ -26,6 +26,30 @@ class SessionRating extends Model
     protected $casts = [
         'skills_discussed' => 'array',
     ];
+
+    /**
+     * Get the user who gave the rating
+     */
+    public function rater()
+    {
+        return $this->belongsTo(User::class, 'rater_id');
+    }
+
+    /**
+     * Get the user who was rated
+     */
+    public function ratedUser()
+    {
+        return $this->belongsTo(User::class, 'rated_user_id');
+    }
+
+    /**
+     * Get the trade associated with this rating
+     */
+    public function trade()
+    {
+        return $this->belongsTo(Trade::class, 'session_id');
+    }
 }
 
 
