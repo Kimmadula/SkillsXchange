@@ -1,3 +1,8 @@
+use App\Http\Controllers\UserReportController;
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('/chat/{trade}/report', [UserReportController::class, 'store'])->name('chat.report-user');
+});
 <?php
 
 use App\Http\Controllers\ProfileController;
@@ -813,6 +818,10 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
     Route::middleware('admin')->group(function () {
         // Main dashboard
         Route::get('/admin', [AdminController::class, 'index'])->name('admin.dashboard');
+        // User Reports moderation
+        Route::get('/admin/user-reports', [\App\Http\Controllers\Admin\UserReportAdminController::class, 'index'])->name('admin.user-reports.index');
+        Route::get('/admin/user-reports/{report}', [\App\Http\Controllers\Admin\UserReportAdminController::class, 'show'])->name('admin.user-reports.show');
+        Route::patch('/admin/user-reports/{report}', [\App\Http\Controllers\Admin\UserReportAdminController::class, 'updateStatus'])->name('admin.user-reports.update');
         
         // Admin tabs
         Route::get('/admin/users', [AdminController::class, 'usersIndex'])->name('admin.users.index');

@@ -2675,13 +2675,55 @@
                 <span id="task-count">0</span>
             </div>
         </div>
-        <button onclick="endSession()"
-            style="background: #ef4444; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">End
-            Session</button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <button onclick="openReportUserModal()"
+                style="background: #f59e0b; color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-flag"></i> Report User
+            </button>
+            <button onclick="endSession()"
+                style="background: #ef4444; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;">End
+                Session</button>
+        </div>
     </div>
 </div>
 
 <!-- Add Task Modal -->
+
+<!-- Report User Modal -->
+<div id="report-user-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1100;">
+	<div style="max-width: 520px; width: 92%; margin: 10vh auto; background: #ffffff; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+		<div style="padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between;">
+			<h3 style="margin: 0; font-size: 1.125rem; font-weight: 600; color: #111827;">Report {{ $partner->firstname }} {{ $partner->lastname }}</h3>
+			<button type="button" onclick="closeReportUserModal()" style="background: transparent; border: none; font-size: 1.25rem; cursor: pointer; color: #6b7280;">×</button>
+		</div>
+		<div style="padding: 16px 20px;">
+			<form id="report-user-form">
+				<input type="hidden" name="reported_user_id" id="reported_user_id" value="{{ $partner->id }}">
+				<div style="margin-bottom: 12px;">
+					<label style="display: block; font-size: 0.9rem; color: #374151; margin-bottom: 6px;">Reason</label>
+					<select id="report_reason" required style="width: 100%; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 6px;">
+						<option value="" selected disabled>Select a reason</option>
+						<option value="harassment">Harassment/Bullying</option>
+						<option value="spam">Spam/Scam</option>
+						<option value="inappropriate">Inappropriate Content</option>
+						<option value="fraud">Fraud/Fake Identity</option>
+						<option value="safety">Safety Concerns</option>
+						<option value="other">Other</option>
+					</select>
+				</div>
+				<div>
+					<label style="display: block; font-size: 0.9rem; color: #374151; margin-bottom: 6px;">Details</label>
+					<textarea id="report_description" required minlength="10" maxlength="2000" placeholder="Describe what happened..." style="width: 100%; min-height: 120px; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 6px; resize: vertical;"></textarea>
+					<small style="color: #6b7280;">Include relevant details (dates, what was said/done). No private info.</small>
+				</div>
+			</form>
+		</div>
+		<div style="padding: 12px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; gap: 8px;">
+			<button type="button" onclick="closeReportUserModal()" style="background: #e5e7eb; color: #111827; border: none; border-radius: 6px; padding: 8px 12px; font-size: 0.9rem; cursor: pointer;">Cancel</button>
+			<button type="button" onclick="submitUserReport()" id="report-submit-btn" style="background: #ef4444; color: white; border: none; border-radius: 6px; padding: 8px 12px; font-size: 0.9rem; cursor: pointer;">Submit Report</button>
+		</div>
+	</div>
+</div>
 <div id="add-task-modal"
     style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;"
     onclick="handleModalClick(event)">
@@ -4938,6 +4980,64 @@ function checkForNewMessages() {
                 adjustPollingFrequency();
             }
         });
+}
+
+// Report User: open/close helpers
+function openReportUserModal() {
+    var modal = document.getElementById('report-user-modal');
+    if (modal) modal.style.display = 'block';
+}
+
+function closeReportUserModal() {
+    var modal = document.getElementById('report-user-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+// Report User: submit
+function submitUserReport() {
+    const reason = document.getElementById('report_reason').value;
+    const description = document.getElementById('report_description').value.trim();
+    const reportedUserId = document.getElementById('reported_user_id').value;
+    const submitBtn = document.getElementById('report-submit-btn');
+
+    if (!reason) { showError('Please select a reason.'); return; }
+    if (!description || description.length < 10) { showError('Please provide at least 10 characters.'); return; }
+
+    submitBtn.disabled = true;
+    const original = submitBtn.textContent;
+    submitBtn.textContent = 'Submitting...';
+
+    fetch('{{ route("chat.report-user", $trade->id) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            reported_user_id: parseInt(reportedUserId),
+            reason: reason,
+            description: description
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            closeReportUserModal();
+            showSuccess('Report submitted. Thank you.');
+        } else {
+            showError(data.error || 'Failed to submit report.');
+        }
+    })
+    .catch(err => {
+        console.error('Report error:', err);
+        showError('Failed to submit report. Please try again.');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = original;
+    });
 }
 
 function endSession() {
