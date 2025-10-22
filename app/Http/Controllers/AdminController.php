@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Skill;
 use App\Models\Trade;
 use App\Models\UserSkill;
+use App\Models\UserReport;
 use App\Http\Requests\StoreSkillRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -59,6 +60,34 @@ class AdminController extends Controller
                 'message' => "{$activeTrades} trades are currently active",
                 'icon' => 'exchange',
                 'url' => route('admin.exchanges.index'),
+                'created_at' => now()
+            ]);
+        }
+
+        // Pending user reports
+        $pendingReports = UserReport::where('status', 'pending')->count();
+        if ($pendingReports > 0) {
+            $notifications->push([
+                'id' => 'pending_reports',
+                'type' => 'danger',
+                'title' => 'Pending User Reports',
+                'message' => "{$pendingReports} user reports need review",
+                'icon' => 'flag',
+                'url' => route('admin.user-reports.index'),
+                'created_at' => now()
+            ]);
+        }
+
+        // Recent user reports (last 24 hours)
+        $recentReports = UserReport::where('created_at', '>=', now()->subDay())->count();
+        if ($recentReports > 0) {
+            $notifications->push([
+                'id' => 'recent_reports',
+                'type' => 'warning',
+                'title' => 'New User Reports',
+                'message' => "{$recentReports} user reports submitted in the last 24 hours",
+                'icon' => 'alert-triangle',
+                'url' => route('admin.user-reports.index'),
                 'created_at' => now()
             ]);
         }
