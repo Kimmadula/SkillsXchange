@@ -716,11 +716,6 @@ Route::get('/skills', [\App\Http\Controllers\SkillController::class, 'index'])->
 Route::get('/skills/{skill}', [\App\Http\Controllers\SkillController::class, 'show'])->name('skills.show');
 Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 'getSkills'])->name('api.skills.search');
 
-// Skill History Routes
-Route::get('/my-skills/history', [\App\Http\Controllers\SkillHistoryController::class, 'index'])->name('skills.history');
-Route::get('/my-skills/history/{history}', [\App\Http\Controllers\SkillHistoryController::class, 'show'])->name('skills.history.show');
-Route::get('/my-skills/history-export', [\App\Http\Controllers\SkillHistoryController::class, 'export'])->name('skills.history.export');
-Route::get('/api/skills/analytics', [\App\Http\Controllers\SkillHistoryController::class, 'getAnalytics'])->name('api.skills.analytics');
         
         // API routes for task management
         Route::get('/api/trades/{trade}/participants', function(\App\Models\Trade $trade) {
@@ -845,6 +840,12 @@ Route::get('/api/skills/analytics', [\App\Http\Controllers\SkillHistoryControlle
         Route::get('/admin/profile', [AdminController::class, 'profile'])->name('admin.profile');
         Route::put('/admin/profile', [AdminController::class, 'updateProfile'])->name('admin.profile.update');
     });
+    
+    // Skill History Routes (moved inside auth middleware)
+    Route::get('/my-skills/history', [\App\Http\Controllers\SkillHistoryController::class, 'index'])->name('skills.history');
+    Route::get('/my-skills/history/{history}', [\App\Http\Controllers\SkillHistoryController::class, 'show'])->name('skills.history.show');
+    Route::get('/my-skills/history-export', [\App\Http\Controllers\SkillHistoryController::class, 'export'])->name('skills.history.export');
+    Route::get('/api/skills/analytics', [\App\Http\Controllers\SkillHistoryController::class, 'getAnalytics'])->name('api.skills.analytics');
 });
 
 // Admin routes available at /admin
