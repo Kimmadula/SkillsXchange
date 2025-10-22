@@ -767,6 +767,29 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         Route::get('/chat/{trade}/video-call/messages', [\App\Http\Controllers\VideoCallController::class, 'pollMessages'])->name('video-call.messages');
     });
     
+    // Debug route for chat access
+    Route::get('/debug-chat-access/{trade}', function (\App\Models\Trade $trade) {
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Not authenticated'], 401);
+        }
+        
+        $isTradeOwner = $trade->user_id === $user->id;
+        $hasAcceptedRequest = $trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists();
+        
+        return response()->json([
+            'user_id' => $user->id,
+            'trade_id' => $trade->id,
+            'trade_owner_id' => $trade->user_id,
+            'is_trade_owner' => $isTradeOwner,
+            'has_accepted_request' => $hasAcceptedRequest,
+            'can_access_chat' => $isTradeOwner || $hasAcceptedRequest,
+            'trade_status' => $trade->status,
+            'requests_count' => $trade->requests()->count(),
+            'accepted_requests_count' => $trade->requests()->where('status', 'accepted')->count()
+        ]);
+    })->name('debug.chat-access');
+
     // Chat routes (accessible to all authenticated users, but blocked for admins in controller)
     Route::middleware('auth')->group(function () {
         Route::get('/chat/{trade}', [\App\Http\Controllers\ChatController::class, 'show'])->name('chat.show');
