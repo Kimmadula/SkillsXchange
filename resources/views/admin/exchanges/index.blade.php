@@ -87,8 +87,8 @@
                 <p class="page-subtitle">Manage skill exchanges and trades</p>
             </div>
             <div class="header-right">
-                <div class="notifications" x-data="{ open: false }">
-                    <div class="notification-icon" @click="open = !open">
+                <div class="notifications" x-data="{ notificationsOpen: false }">
+                    <div class="notification-icon" @click="notificationsOpen = !notificationsOpen">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -97,7 +97,7 @@
                     </div>
                     
                     <!-- Notification Dropdown -->
-                    <div x-show="open" @click.away="open = false" x-transition class="notification-dropdown">
+                    <div x-show="notificationsOpen" @click.away="notificationsOpen = false" x-transition class="notification-dropdown">
                         <div class="notification-header">
                             <h3 class="notification-title">Notifications</h3>
                             <span class="notification-count">{{ $notifications->count() }} new</span>
@@ -155,8 +155,8 @@
                         </div>
                     </div>
                 </div>
-                <div class="user-profile" x-data="{ open: false }">
-                    <button @click="open = !open" class="user-profile-button">
+                <div class="user-profile" x-data="{ profileOpen: false }">
+                    <button @click="profileOpen = !profileOpen" class="user-profile-button">
                         <div class="user-avatar">{{ substr(auth()->user()->firstname, 0, 1) }}{{ substr(auth()->user()->lastname, 0, 1) }}</div>
                         <div class="user-info">
                             <span class="user-name">{{ auth()->user()->name }}</span>
@@ -167,7 +167,7 @@
                     </button>
                     
                     <!-- Dropdown Menu -->
-                    <div x-show="open" @click.away="open = false" x-transition class="user-dropdown">
+                    <div x-show="profileOpen" @click.away="profileOpen = false" x-transition class="user-dropdown">
                         <a href="{{ route('admin.profile') }}" class="dropdown-item">
                             <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>

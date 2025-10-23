@@ -1325,9 +1325,9 @@
 
     <!-- Active Trade Session Banner -->
     <div style="background: #1e40af; color: white; padding: 12px 16px; position: relative;">
-        <!-- Back to Dashboard Button - Upper Left Corner -->
+        <!-- Back to Ongoing Trades Button - Upper Left Corner -->
         <div style="position: absolute; top: 20px; left: 20px;">
-            <a href="{{ route('dashboard') }}" 
+            <a href="{{ route('trades.ongoing') }}" 
             style="color: white; 
                     font-size: 0.875rem; 
                     text-decoration: none; 
@@ -1341,9 +1341,9 @@
                     border: 1px solid rgba(255,255,255,0.5);" 
             onmouseover="this.style.backgroundColor='rgba(255,255,255,0.15)'; this.style.borderColor='rgba(255,255,255,0.8)'" 
             onmouseout="this.style.backgroundColor='transparent'; this.style.borderColor='rgba(255,255,255,0.5)'"
-            title="Back to Dashboard">
+            title="Back to Ongoing Trades">
                 <i class="fas fa-arrow-left"></i>
-                <span>Back to Dashboard</span>
+                <span>Back</span>
             </a>
         </div>
         
