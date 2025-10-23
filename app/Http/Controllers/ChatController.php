@@ -58,6 +58,7 @@ class ChatController extends Controller
             'trade_id' => $trade->id
         ]);
         
+        // Trade owner can always access chat, or user must have accepted request
         if (!$isTradeOwner && !$hasAcceptedRequest) {
             Log::warning('Unauthorized chat access attempt', [
                 'user_id' => $user->id,
@@ -72,14 +73,40 @@ class ChatController extends Controller
         // Get the other user (trade partner)
         if ($trade->user_id === $user->id) {
             $acceptedRequest = $trade->requests()->where('status', 'accepted')->first();
+            
+            Log::info('Looking for accepted request for trade owner', [
+                'trade_id' => $trade->id,
+                'user_id' => $user->id,
+                'accepted_request_found' => $acceptedRequest ? 'yes' : 'no',
+                'accepted_request_id' => $acceptedRequest ? $acceptedRequest->id : null,
+                'total_requests' => $trade->requests()->count(),
+                'accepted_requests_count' => $trade->requests()->where('status', 'accepted')->count()
+            ]);
+            
             if (!$acceptedRequest) {
                 Log::warning('No accepted request found for trade', [
                     'trade_id' => $trade->id,
-                    'user_id' => $user->id
+                    'user_id' => $user->id,
+                    'total_requests' => $trade->requests()->count(),
+                    'accepted_requests_count' => $trade->requests()->where('status', 'accepted')->count()
                 ]);
-                return redirect()->route('trades.ongoing')->with('error', 'No accepted request found for this trade.');
+                
+                // Try to find any request with different status values
+                $anyRequest = $trade->requests()->first();
+                if ($anyRequest) {
+                    Log::info('Found request with different status', [
+                        'request_id' => $anyRequest->id,
+                        'status' => $anyRequest->status,
+                        'requester_id' => $anyRequest->requester_id
+                    ]);
+                    // Use this request as fallback
+                    $partner = $anyRequest->requester;
+                } else {
+                    return redirect()->route('trades.ongoing')->with('error', 'No accepted request found for this trade.');
+                }
+            } else {
+                $partner = $acceptedRequest->requester;
             }
-            $partner = $acceptedRequest->requester;
         } else {
             $partner = $trade->user;
         }
