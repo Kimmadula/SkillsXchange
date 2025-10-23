@@ -106,6 +106,31 @@ class AdminController extends Controller
         return $notifications->sortByDesc('created_at');
     }
 
+    private function getUserReports()
+    {
+        // Get recent user reports (last 5 reports)
+        $recentReports = UserReport::with(['reporter', 'reported'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        // Get report statistics
+        $totalReports = UserReport::count();
+        $pendingReports = UserReport::where('status', 'pending')->count();
+        $resolvedReports = UserReport::where('status', 'resolved')->count();
+        $recentReportsCount = UserReport::where('created_at', '>=', now()->subDay())->count();
+
+        return [
+            'recent' => $recentReports,
+            'stats' => [
+                'total' => $totalReports,
+                'pending' => $pendingReports,
+                'resolved' => $resolvedReports,
+                'recent' => $recentReportsCount
+            ]
+        ];
+    }
+
     public function index()
     {
         // Get dashboard statistics
@@ -118,7 +143,10 @@ class AdminController extends Controller
         $recentActivity = $this->getRecentActivity();
         $notifications = $this->getNotifications();
         
-        return view('admin.dashboard', compact('stats', 'popularSkills', 'recentActivity', 'notifications'));
+        // Get user reports data
+        $userReports = $this->getUserReports();
+        
+        return view('admin.dashboard', compact('stats', 'popularSkills', 'recentActivity', 'notifications', 'userReports'));
     }
     
     private function getDashboardStats()
