@@ -1,7 +1,70 @@
-@extends('admin.dashboard')
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{{ config('app.name', 'Laravel') }} - Report Details</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="font-sans antialiased">
+<div class="admin-dashboard">
+    <!-- Sidebar -->
+    <div class="admin-sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-text">SkillsXchange Admin</span>
+            </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="{{ route('admin.dashboard') }}" class="nav-item">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3h18v18H3zM9 9h6v6H9z" />
+                </svg>
+                <span>Overview</span>
+            </a>
+            <a href="{{ route('admin.users.index') }}" class="nav-item">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                <span>Users</span>
+            </a>
+            <a href="{{ route('admin.user-reports.index') }}" class="nav-item active">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                    <line x1="4" y1="22" x2="4" y2="15"/>
+                </svg>
+                <span>User Reports</span>
+            </a>
+        </nav>
+    </div>
 
-@section('content')
-<div class="dashboard-content">
+    <!-- Main Content -->
+    <div class="admin-main">
+        <!-- Header -->
+        <div class="admin-header">
+            <div class="header-left">
+                <h1 class="page-title">Report Details</h1>
+                <p class="page-subtitle">Review and manage this user report</p>
+            </div>
+            <div class="header-right">
+                <div class="user-profile">
+                    <div class="user-avatar">{{ substr(auth()->user()->firstname, 0, 1) }}{{ substr(auth()->user()->lastname, 0, 1) }}</div>
+                    <div class="user-info">
+                        <span class="user-name">{{ auth()->user()->name }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="dashboard-content">
     <!-- Report Details Header -->
     <div class="metric-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
@@ -153,8 +216,11 @@
 			</div>
 		</form>
         </div>
-	</div>
+    </div>
 </div>
-@endsection
+
+@include('admin.dashboard-styles')
+</body>
+</html>
 
 
