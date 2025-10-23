@@ -103,8 +103,8 @@
                         <span class="notification-badge">3</span>
                     </div>
                 </div>
-                <div class="user-profile" x-data="{ open: false }">
-                    <button @click="open = !open" class="user-profile-button">
+                <div class="user-profile" x-data="{ profileOpen: false }">
+                    <button @click="profileOpen = !profileOpen" class="user-profile-button">
                         <div class="user-avatar">{{ substr(auth()->user()->firstname, 0, 1) }}{{ substr(auth()->user()->lastname, 0, 1) }}</div>
                         <div class="user-info">
                             <span class="user-name">{{ auth()->user()->name }}</span>
@@ -115,7 +115,7 @@
                     </button>
                     
                     <!-- Dropdown Menu -->
-                    <div x-show="open" @click.away="open = false" x-transition class="user-dropdown">
+                    <div x-show="profileOpen" @click.away="profileOpen = false" x-transition class="user-dropdown">
                         <a href="{{ route('admin.profile') }}" class="dropdown-item">
                             <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
