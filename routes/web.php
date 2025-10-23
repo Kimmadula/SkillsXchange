@@ -1,8 +1,4 @@
 use App\Http\Controllers\UserReportController;
-
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::post('/chat/{trade}/report', [UserReportController::class, 'store'])->name('chat.report-user');
-});
 <?php
 
 use App\Http\Controllers\ProfileController;
@@ -800,6 +796,9 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         Route::patch('/chat/task/{task}/verify', [\App\Http\Controllers\ChatController::class, 'verifyTask'])->name('chat.verify-task');
         Route::post('/chat/{trade}/complete-session', [\App\Http\Controllers\ChatController::class, 'completeSession'])->name('chat.complete-session');
         Route::get('/chat/{trade}/skill-learning-status', [\App\Http\Controllers\ChatController::class, 'getSkillLearningStatus'])->name('chat.skill-learning-status');
+        
+        // User Report route (moved here to avoid route conflicts)
+        Route::post('/chat/{trade}/report', [\App\Http\Controllers\UserReportController::class, 'store'])->name('chat.report-user');
     });
     
     // Session Rating routes (accessible to all authenticated users)
