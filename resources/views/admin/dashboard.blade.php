@@ -329,6 +329,67 @@
                 </div>
             </div>
 
+            <!-- User Reports -->
+            <div class="user-reports-card">
+                <div class="card-header">
+                    <h3 class="card-title">User Reports</h3>
+                    <div class="card-stats">
+                        <div class="stat-item">
+                            <span class="stat-value">{{ $userReports['stats']['total'] }}</span>
+                            <span class="stat-label">Total</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value pending">{{ $userReports['stats']['pending'] }}</span>
+                            <span class="stat-label">Pending</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value resolved">{{ $userReports['stats']['resolved'] }}</span>
+                            <span class="stat-label">Resolved</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="reports-list">
+                    @forelse($userReports['recent'] as $report)
+                    <div class="report-item">
+                        <div class="report-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                                <line x1="4" y1="22" x2="4" y2="15"/>
+                            </svg>
+                        </div>
+                        <div class="report-content">
+                            <div class="report-title">
+                                {{ $report->reporter->firstname }} {{ $report->reporter->lastname }} reported {{ $report->reported->firstname }} {{ $report->reported->lastname }}
+                            </div>
+                            <div class="report-meta">
+                                <span class="report-reason">{{ ucfirst($report->reason) }}</span>
+                                <span class="report-status status-{{ $report->status }}">{{ ucfirst(str_replace('_', ' ', $report->status)) }}</span>
+                                <span class="report-time">{{ $report->created_at->diffForHumans() }}</span>
+                            </div>
+                        </div>
+                        <div class="report-actions">
+                            <a href="{{ route('admin.user-reports.show', $report) }}" class="view-report-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                    @empty
+                    <div class="no-reports">No recent user reports</div>
+                    @endforelse
+                </div>
+                <div class="card-footer">
+                    <a href="{{ route('admin.user-reports.index') }}" class="view-all-btn">
+                        View All Reports
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9,18 15,12 9,6"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+
             <!-- Recent Activity -->
             <div class="recent-activity-card">
                 <h3 class="card-title">Recent Activity</h3>

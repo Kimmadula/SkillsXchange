@@ -138,66 +138,66 @@ use Illuminate\Support\Facades\Storage;
                                 <div class="detail-item">
                                     <label class="detail-label">Username</label>
                                     <div class="detail-value">{{ $user->username }}</div>
-                                </div>
-                                
+                </div>
+                
                                 <div class="detail-item">
                                     <label class="detail-label">Role</label>
                                     <div class="detail-value">
                                         <span class="status-badge status-{{ $user->role === 'admin' ? 'admin' : 'user' }}">
                                             {{ ucfirst($user->role) }}
-                                        </span>
-                                    </div>
-                                </div>
-                                
+                        </span>
+                    </div>
+                </div>
+                
                                 <div class="detail-item">
                                     <label class="detail-label">Status</label>
                                     <div class="detail-value">
                                         <span class="status-badge status-{{ $user->is_verified ? 'verified' : 'pending' }}">
                                             {{ $user->is_verified ? 'Verified' : 'Pending' }}
                                         </span>
-                                    </div>
-                                </div>
-                                
+            </div>
+        </div>
+
                                 <div class="detail-item">
                                     <label class="detail-label">Plan</label>
                                     <div class="detail-value">
                                         <span class="status-badge status-plan">{{ ucfirst($user->plan) }}</span>
-                                    </div>
-                                </div>
-                                
+                </div>
+            </div>
+
                                 <div class="detail-item">
                                     <label class="detail-label">Gender</label>
                                     <div class="detail-value">{{ $user->gender ? ucfirst($user->gender) : 'Not provided' }}</div>
-                                </div>
+                        </div>
                                 
                                 <div class="detail-item">
                                     <label class="detail-label">Birth Date</label>
                                     <div class="detail-value">{{ $user->bdate ? $user->bdate->format('F j, Y') : 'Not provided' }}</div>
-                                </div>
+                    </div>
                                 
                                 <div class="detail-item">
                                     <label class="detail-label">Age</label>
                                     <div class="detail-value">{{ $user->bdate ? $user->bdate->age . ' years old' : 'Not provided' }}</div>
-                                </div>
+                    </div>
                                 
                                 <div class="detail-item">
                                     <label class="detail-label">Member Since</label>
                                     <div class="detail-value">{{ $user->created_at->format('F j, Y') }}</div>
-                                </div>
+                    </div>
                                 
                                 <div class="detail-item full-width">
                                     <label class="detail-label">Address</label>
                                     <div class="detail-value">{{ $user->address ?: 'Not provided' }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Skills Section -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Skills Section -->
                         <div class="skills-section">
                             <h4 class="section-title">Skills & Expertise</h4>
                             @if($user->skills->count() > 0)
                                 <div class="skills-list">
-                                    @foreach($user->skills as $skill)
+                @foreach($user->skills as $skill)
                                         <span class="skill-tag {{ $skill->skill_id == $user->skill_id ? 'skill-tag-primary' : 'skill-tag-secondary' }}">
                                             {{ $skill->skill_name }}
                                             @if($skill->skill_id == $user->skill_id)
@@ -205,13 +205,13 @@ use Illuminate\Support\Facades\Storage;
                                                     <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
                                                 </svg>
                                             @endif
-                                        </span>
-                                    @endforeach
-                                </div>
+                </span>
+                @endforeach
+            </div>
                             @else
                                 <p class="no-skills">No skills assigned yet.</p>
                             @endif
-                        </div>
+        </div>
                         
                         <!-- Actions Section -->
                         <div class="actions-section">
@@ -240,16 +240,16 @@ use Illuminate\Support\Facades\Storage;
                                             Revoke Verification
                                         </button>
                                     </form>
-                                @endif
-                            </div>
-                        </div>
+        @endif
+                    </div>
+                </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+</div>
 
-    <style>
+<style>
     .user-details-card {
         background: white;
         border-radius: 12px;
@@ -297,7 +297,7 @@ use Illuminate\Support\Facades\Storage;
         height: 120px;
         border-radius: 50%;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
+    color: white;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -335,7 +335,7 @@ use Illuminate\Support\Facades\Storage;
     .detail-value {
         font-size: 16px;
         color: #111827;
-        font-weight: 500;
+    font-weight: 500;
     }
 
     .skills-section, .actions-section {

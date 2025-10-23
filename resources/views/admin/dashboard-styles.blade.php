@@ -594,6 +594,202 @@
     color: #6b7280;
 }
 
+/* User Reports Card */
+.user-reports-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.card-stats {
+    display: flex;
+    gap: 16px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    display: block;
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 2px;
+}
+
+.stat-value.pending {
+    color: #f59e0b;
+}
+
+.stat-value.resolved {
+    color: #059669;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.reports-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.report-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+
+.report-item:hover {
+    background: #f1f5f9;
+}
+
+.report-icon {
+    width: 32px;
+    height: 32px;
+    color: #ef4444;
+    flex-shrink: 0;
+}
+
+.report-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.report-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.report-title {
+    font-weight: 500;
+    color: #1a202c;
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+.report-meta {
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+    color: #64748b;
+    flex-wrap: wrap;
+}
+
+.report-reason {
+    background: #e0e7ff;
+    color: #3730a3;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: capitalize;
+}
+
+.report-status {
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: capitalize;
+}
+
+.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-under_review {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-resolved {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-dismissed {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.report-time {
+    color: #9ca3af;
+}
+
+.report-actions {
+    flex-shrink: 0;
+}
+
+.view-report-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #3b82f6;
+    color: white;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background-color 0.2s;
+}
+
+.view-report-btn:hover {
+    background: #2563eb;
+}
+
+.view-report-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.no-reports {
+    text-align: center;
+    color: #64748b;
+    font-style: italic;
+    padding: 20px;
+}
+
+.card-footer {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 16px;
+}
+
+.view-all-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+    transition: color 0.2s;
+}
+
+.view-all-btn:hover {
+    color: #2563eb;
+}
+
+.view-all-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
 /* Recent Activity Card */
 .recent-activity-card {
     background: white;

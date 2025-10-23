@@ -259,8 +259,8 @@ use Illuminate\Support\Facades\Storage;
                             <div class="stat-value">{{ $users->where('is_verified', false)->count() }}</div>
                             <div class="stat-label">Pending Approval</div>
                         </div>
+                        </div>
                     </div>
-                </div>
 
                 <div class="users-table-card">
                     <div class="table-header">
@@ -314,26 +314,26 @@ use Illuminate\Support\Facades\Storage;
                                                 <div class="user-avatar-fallback" style="display: none;">
                                                     {{ substr($user->firstname, 0, 1) }}{{ substr($user->lastname, 0, 1) }}
                                                 </div>
-                                            @else
+                                        @else
                                                 <div class="user-avatar-fallback">
                                                     {{ substr($user->firstname, 0, 1) }}{{ substr($user->lastname, 0, 1) }}
                                                 </div>
-                                            @endif
+                                        @endif
                                         </div>
                                     </td>
                                     <td>
                                         <div class="action-buttons">
                                             @if($user->role !== 'admin')
-                                                @if(!$user->is_verified)
-                                                    <button onclick="verifyUser({{ $user->id }}, true)" 
+                                            @if(!$user->is_verified)
+                                                <button onclick="verifyUser({{ $user->id }}, true)" 
                                                             class="btn btn-approve" 
                                                             id="approve-btn-{{ $user->id }}">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                             <polyline points="20,6 9,17 4,12"></polyline>
                                                         </svg>
                                                         Approve
-                                                    </button>
-                                                    <button onclick="verifyUser({{ $user->id }}, false)" 
+                                                </button>
+                                                <button onclick="verifyUser({{ $user->id }}, false)" 
                                                             class="btn btn-deny" 
                                                             id="deny-btn-{{ $user->id }}">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -341,8 +341,8 @@ use Illuminate\Support\Facades\Storage;
                                                             <line x1="6" y1="6" x2="18" y2="18"></line>
                                                         </svg>
                                                         Deny
-                                                    </button>
-                                                @else
+                                                </button>
+                                            @else
                                                     <button onclick="verifyUser({{ $user->id }}, false)" 
                                                             class="btn btn-revoke" 
                                                             id="revoke-btn-{{ $user->id }}">
@@ -352,8 +352,8 @@ use Illuminate\Support\Facades\Storage;
                                                             <line x1="9" y1="9" x2="15" y2="15"></line>
                                                         </svg>
                                                         Revoke
-                                                    </button>
-                                                @endif
+                                                </button>
+                                            @endif
                                             @endif
                                             <a href="{{ route('admin.user.show', $user->id) }}"
                                                 class="btn btn-view">
@@ -728,14 +728,14 @@ use Illuminate\Support\Facades\Storage;
             }
         }
         /* Success/Error Messages */
-        .alert {
+    .alert {
             padding: 12px 16px;
             border-radius: 8px;
             margin-bottom: 20px;
             font-weight: 500;
-            position: fixed;
-            top: 20px;
-            right: 20px;
+        position: fixed;
+        top: 20px;
+        right: 20px;
             z-index: 1000;
             min-width: 300px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -754,7 +754,7 @@ use Illuminate\Support\Facades\Storage;
             border: 1px solid #fecaca;
         }
 
-        @keyframes slideIn {
+    @keyframes slideIn {
             from {
                 transform: translateX(100%);
                 opacity: 0;
@@ -790,7 +790,7 @@ use Illuminate\Support\Facades\Storage;
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-        }
+    }
     </style>
 
     <!-- Loading Overlay -->
@@ -799,87 +799,87 @@ use Illuminate\Support\Facades\Storage;
     </div>
 
     <script>
-        // CSRF Token for AJAX requests
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    // CSRF Token for AJAX requests
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        // Show loading overlay
-        function showLoading() {
-            document.getElementById('loadingOverlay').style.display = 'flex';
-        }
+    // Show loading overlay
+    function showLoading() {
+        document.getElementById('loadingOverlay').style.display = 'flex';
+    }
 
-        // Hide loading overlay
-        function hideLoading() {
-            document.getElementById('loadingOverlay').style.display = 'none';
-        }
+    // Hide loading overlay
+    function hideLoading() {
+        document.getElementById('loadingOverlay').style.display = 'none';
+    }
 
-        // Show alert message
-        function showAlert(message, type = 'success') {
-            // Remove existing alerts
-            const existingAlerts = document.querySelectorAll('.alert');
-            existingAlerts.forEach(alert => alert.remove());
+    // Show alert message
+    function showAlert(message, type = 'success') {
+        // Remove existing alerts
+        const existingAlerts = document.querySelectorAll('.alert');
+        existingAlerts.forEach(alert => alert.remove());
 
-            // Create new alert
-            const alert = document.createElement('div');
-            alert.className = `alert alert-${type}`;
-            alert.textContent = message;
-            
-            document.body.appendChild(alert);
+        // Create new alert
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type}`;
+        alert.textContent = message;
+        
+        document.body.appendChild(alert);
 
-            // Auto-remove after 5 seconds
-            setTimeout(() => {
-                if (alert.parentNode) {
-                    alert.remove();
-                }
-            }, 5000);
-        }
-
-        // Verify/Deny user function
-        async function verifyUser(userId, isVerified) {
-            const action = isVerified ? 'approve' : 'deny';
-            const actionText = isVerified ? 'approve' : 'deny';
-            
-            if (!confirm(`Are you sure you want to ${actionText} this user?`)) {
-                return;
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
             }
+        }, 5000);
+    }
 
-            showLoading();
+    // Verify/Deny user function
+    async function verifyUser(userId, isVerified) {
+        const action = isVerified ? 'approve' : 'deny';
+        const actionText = isVerified ? 'approve' : 'deny';
+        
+        if (!confirm(`Are you sure you want to ${actionText} this user?`)) {
+            return;
+        }
 
-            try {
-                const response = await fetch(`/admin/users/${userId}/${action}`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        is_verified: isVerified
-                    })
-                });
+        showLoading();
 
-                const data = await response.json();
+        try {
+            const response = await fetch(`/admin/users/${userId}/${action}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    is_verified: isVerified
+                })
+            });
 
-                if (response.ok) {
-                    showAlert(data.message || `User ${actionText}d successfully!`, 'success');
-                    
-                    // Update the UI
-                    updateUserRow(userId, isVerified);
+            const data = await response.json();
+
+            if (response.ok) {
+                showAlert(data.message || `User ${actionText}d successfully!`, 'success');
+                
+                // Update the UI
+                updateUserRow(userId, isVerified);
                     updateStats();
-                } else {
-                    showAlert(data.message || `Failed to ${actionText} user`, 'error');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showAlert(`Network error occurred while trying to ${actionText} user`, 'error');
-            } finally {
-                hideLoading();
+            } else {
+                showAlert(data.message || `Failed to ${actionText} user`, 'error');
             }
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert(`Network error occurred while trying to ${actionText} user`, 'error');
+        } finally {
+            hideLoading();
         }
+    }
 
-        // Update user row in the table
-        function updateUserRow(userId, isVerified) {
+    // Update user row in the table
+    function updateUserRow(userId, isVerified) {
             const row = document.querySelector(`tr:has(button[id*="${userId}"])`);
-            if (!row) return;
+        if (!row) return;
 
             // Update status badge
             const statusBadge = row.querySelector('.status-badge');
@@ -894,8 +894,8 @@ use Illuminate\Support\Facades\Storage;
             
             // Clear existing buttons except view
             actionButtons.innerHTML = '';
-            
-            if (isVerified) {
+        
+        if (isVerified) {
                 // Add revoke button
                 const revokeBtn = document.createElement('button');
                 revokeBtn.onclick = () => verifyUser(userId, false);
@@ -959,8 +959,8 @@ use Illuminate\Support\Facades\Storage;
                 searchInput.addEventListener('input', function(e) {
                     const searchTerm = e.target.value.toLowerCase();
                     const rows = document.querySelectorAll('.users-table tbody tr');
-                    
-                    rows.forEach(row => {
+        
+        rows.forEach(row => {
                         const text = row.textContent.toLowerCase();
                         row.style.display = text.includes(searchTerm) ? '' : 'none';
                     });
