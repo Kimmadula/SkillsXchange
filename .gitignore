@@ -72,6 +72,8 @@ jspm_packages/
 .env.development.local
 .env.test.local
 .env.production.local
+render.env
+railway.env
 
 # Backend specific
 backend/vendor/
