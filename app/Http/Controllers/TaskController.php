@@ -685,10 +685,19 @@ class TaskController extends Controller
             $newTaskStatus = $status === 'pass' ? 'completed' : 'evaluated';
             $task->updateStatus($newTaskStatus);
 
+            // Auto-verify task if it passed evaluation (for skill learning)
+            if ($status === 'pass') {
+                $task->update([
+                    'verified' => true,
+                    'verified_at' => now(),
+                    'verified_by' => $user->id
+                ]);
+            }
+
             // Broadcast task updated event
             broadcast(new TaskUpdated($task, $task->trade_id));
 
-            $message = $status === 'pass' ? 'Task evaluated and marked as passed!' : 'Task evaluation completed.';
+            $message = $status === 'pass' ? 'Task evaluated, marked as passed, and verified for skill learning!' : 'Task evaluation completed.';
             
             // Check if this is an AJAX request
             if ($request->ajax() || $request->wantsJson()) {
