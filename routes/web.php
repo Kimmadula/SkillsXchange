@@ -880,6 +880,10 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
     // PayMongo Webhook (no auth required)
     Route::post('/webhooks/paymongo', [\App\Http\Controllers\TokenController::class, 'webhook'])->name('webhooks.paymongo');
 
+    // Check payment status (for debugging/testing)
+    Route::get('/tokens/check-payment/{paymentIntentId}', [\App\Http\Controllers\TokenController::class, 'checkPaymentStatus'])->name('tokens.check-payment');
+
+
     // Skill History Routes (moved inside auth middleware)
     Route::get('/my-skills/history', [\App\Http\Controllers\SkillHistoryController::class, 'index'])->name('skills.history');
     Route::get('/my-skills/history/{history}', [\App\Http\Controllers\SkillHistoryController::class, 'show'])->name('skills.history.show');

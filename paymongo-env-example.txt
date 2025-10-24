@@ -1,14 +1,38 @@
-# PayMongo Sandbox Configuration
+# PayMongo Configuration for SkillsXchange Token Purchase System
 # Add these to your .env file
 
-# PayMongo Sandbox Keys (for testing)
+# PayMongo API Configuration
 PAYMONGO_SECRET_KEY=sk_test_your_secret_key_here
 PAYMONGO_PUBLIC_KEY=pk_test_your_public_key_here
 PAYMONGO_WEBHOOK_SECRET=whsec_your_webhook_secret_here
 PAYMONGO_BASE_URL=https://api.paymongo.com
+PAYMONGO_TEST_MODE=true
+PAYMONGO_SANDBOX_URL=https://api.paymongo.com
 
-# Note:
-# 1. Get your sandbox keys from https://dashboard.paymongo.com/
-# 2. Set up webhook endpoint: https://yourdomain.com/webhooks/paymongo
-# 3. Make sure to use sandbox keys for testing
-# 4. For production, use live keys (sk_live_ and pk_live_)
+# Payment System Features:
+# - Token Purchase: 1 token = ₱5.00
+# - Multiple Payment Methods: GCash, PayMaya, Cards, etc.
+# - Real-time Payment Processing
+# - Automatic Token Addition via Webhooks
+# - Transaction History Tracking
+
+# Test Payment Numbers (Sandbox Mode):
+# GCash Success: 09123456789
+# GCash Failure: 09999999999
+# Cards: Use test card numbers from PayMongo docs
+
+# Webhook Configuration:
+# 1. Set webhook URL: https://yourdomain.com/webhooks/paymongo
+# 2. Enable these events: payment_intent.succeeded, payment_intent.payment_failed
+# 3. Webhook will automatically add tokens to user accounts
+
+# Production Setup:
+# 1. Get live keys from https://dashboard.paymongo.com/
+# 2. Set PAYMONGO_TEST_MODE=false
+# 3. Update webhook URL to production domain
+# 4. Test with real payment methods
+
+# Security Notes:
+# - Never commit real API keys to version control
+# - Use environment variables for all sensitive data
+# - Enable webhook signature verification in production

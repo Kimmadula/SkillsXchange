@@ -70,6 +70,12 @@
                         <i class="fas fa-coins me-1"></i>Buy Tokens
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('tokens.history') ? 'active' : '' }}"
+                       href="{{ route('tokens.history') }}">
+                        <i class="fas fa-history me-1"></i>Token History
+                    </a>
+                </li>
                 <li class="nav-item position-relative">
                     <a class="nav-link {{ request()->routeIs('trades.notifications') ? 'active' : '' }}"
                         href="{{ route('trades.notifications') }}">
@@ -143,6 +149,14 @@
             <form id="buyTokensForm" method="POST" action="{{ route('tokens.purchase') }}">
                 @csrf
                 <div class="modal-body">
+                    <!-- Test Mode Notice -->
+                    <div class="alert alert-warning d-flex align-items-center mb-3">
+                        <i class="fas fa-flask me-2"></i>
+                        <div>
+                            <strong>Test Mode:</strong> This is a sandbox environment. No real money will be charged.
+                        </div>
+                    </div>
+
                     <!-- Current Balance Display -->
                     <div class="alert alert-info d-flex align-items-center mb-3">
                         <i class="fas fa-wallet me-2"></i>
@@ -178,16 +192,6 @@
                         </div>
                     </div>
 
-                    <!-- Payment Method -->
-                    <div class="mb-3">
-                        <label class="form-label">Payment Method</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="payment_method" id="gcashPayment" value="gcash" checked>
-                            <label class="form-check-label" for="gcashPayment">
-                                <i class="fas fa-mobile-alt me-2"></i>GCash
-                            </label>
-                        </div>
-                    </div>
 
                     <!-- Terms and Conditions -->
                     <div class="mb-3">
@@ -202,7 +206,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary" id="purchaseBtn">
-                        <i class="fas fa-credit-card me-2"></i>Pay with GCash
+                        <i class="fas fa-credit-card me-2"></i>Pay now
                     </button>
                 </div>
             </form>

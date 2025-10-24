@@ -155,7 +155,9 @@ return [
     |
     */
 
-    'domain' => env('SESSION_DOMAIN', 'skillsxchange.site'),
+    'domain' => env('APP_ENV') === 'local'
+        ? null
+        : env('SESSION_DOMAIN', '.skillsxchange.site'),
 
     /*
     |--------------------------------------------------------------------------
@@ -168,7 +170,9 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    'secure' => env('APP_ENV') === 'local'
+        ? false
+        : env('SESSION_SECURE_COOKIE', true),
 
     /*
     |--------------------------------------------------------------------------

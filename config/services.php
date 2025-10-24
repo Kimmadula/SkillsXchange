@@ -48,6 +48,8 @@ return [
         'public_key' => env('PAYMONGO_PUBLIC_KEY'),
         'webhook_secret' => env('PAYMONGO_WEBHOOK_SECRET'),
         'base_url' => env('PAYMONGO_BASE_URL', 'https://api.paymongo.com'),
+        'test_mode' => env('PAYMONGO_TEST_MODE', true),
+        'sandbox_url' => env('PAYMONGO_SANDBOX_URL', 'https://api.paymongo.com'),
     ],
 
 ];
