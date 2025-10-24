@@ -34,7 +34,7 @@ Route::get('/test', function () {
 Route::get('/debug-chat/{tradeId}', function ($tradeId) {
     $user = Auth::user();
     $trade = \App\Models\Trade::find($tradeId);
-    
+
     return response()->json([
         'user_authenticated' => Auth::check(),
         'user_id' => $user->id ?? null,
@@ -67,7 +67,7 @@ Route::get('/test-auth', function () {
 Route::get('/test-chat/{tradeId}', function ($tradeId) {
     $user = Auth::user();
     $trade = \App\Models\Trade::find($tradeId);
-    
+
     $result = [
         'step' => 'initial',
         'user_authenticated' => Auth::check(),
@@ -78,34 +78,34 @@ Route::get('/test-chat/{tradeId}', function ($tradeId) {
         'trade_user_id' => $trade->user_id ?? null,
         'trade_status' => $trade->status ?? null,
     ];
-    
+
     // Check if user is authenticated
     if (!$user || !Auth::check()) {
         $result['step'] = 'auth_failed';
         $result['redirect_reason'] = 'User not authenticated';
         return response()->json($result);
     }
-    
+
     // Check if user is admin
     if ($user->role === 'admin') {
         $result['step'] = 'admin_blocked';
         $result['redirect_reason'] = 'Admin users cannot access chat';
         return response()->json($result);
     }
-    
+
     // Check authorization
     $isTradeOwner = $trade->user_id === $user->id;
     $hasAcceptedRequest = $trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists();
-    
+
     $result['is_trade_owner'] = $isTradeOwner;
     $result['has_accepted_request'] = $hasAcceptedRequest;
-    
+
     if (!$isTradeOwner && !$hasAcceptedRequest) {
         $result['step'] = 'unauthorized';
         $result['redirect_reason'] = 'User not authorized for this trade';
         return response()->json($result);
     }
-    
+
     $result['step'] = 'success';
     $result['redirect_reason'] = 'Should work - no redirect expected';
     return response()->json($result);
@@ -115,14 +115,14 @@ Route::get('/test-chat/{tradeId}', function ($tradeId) {
 Route::get('/domain-migration', function (Request $request) {
     // Clear any old session data
     session()->flush();
-    
+
     // Regenerate session
     session()->regenerate();
-    
+
     // Add migration flag
     session()->put('domain_migrated', true);
     session()->put('migration_time', time());
-    
+
     return response()->json([
         'status' => 'success',
         'message' => 'Domain migration completed. Please try logging in again.',
@@ -253,7 +253,7 @@ Route::get('/health-detailed', function () {
     } catch (\Exception $e) {
         $dbStatus = 'failed: ' . $e->getMessage();
     }
-    
+
     return response()->json([
         'status' => 'ok',
         'timestamp' => now()->toISOString(),
@@ -269,11 +269,11 @@ Route::get('/test-db', function () {
         // Test database connection
         $connection = DB::connection()->getPdo();
         $dbName = DB::connection()->getDatabaseName();
-        
+
         // Test if we can query users table
         $userCount = \App\Models\User::count();
         $testUser = \App\Models\User::where('email', 'test@example.com')->first();
-        
+
         $result = [
             'status' => 'success',
             'message' => 'Database connection successful!',
@@ -289,9 +289,9 @@ Route::get('/test-db', function () {
             ] : null,
             'timestamp' => now()
         ];
-        
+
         return response()->json($result, 200);
-        
+
     } catch (\Exception $e) {
         return response()->json([
             'status' => 'error',
@@ -305,7 +305,7 @@ Route::get('/test-db', function () {
 Route::get('/test-assets', function () {
     $buildPath = public_path('build');
     $manifestPath = $buildPath . '/manifest.json';
-    
+
     $result = [
         'build_directory_exists' => is_dir($buildPath) ? 'YES' : 'NO',
         'manifest_exists' => file_exists($manifestPath) ? 'YES' : 'NO',
@@ -315,7 +315,7 @@ Route::get('/test-assets', function () {
         'app_debug' => config('app.debug'),
         'vite_assets' => app()->environment('production') ? 'Production mode - using built assets' : 'Development mode - using Vite dev server'
     ];
-    
+
     return response()->json($result, 200);
 });
 
@@ -332,7 +332,7 @@ Route::get('/debug-users', function () {
     $output = '<h2>All Users in Database:</h2>';
     $output .= '<table border="1" style="border-collapse: collapse; width: 100%;">';
     $output .= '<tr><th>ID</th><th>Name</th><th>Email</th><th>Username</th><th>Role</th><th>Verified</th><th>Created</th></tr>';
-    
+
     foreach ($users as $user) {
         $output .= '<tr>';
         $output .= '<td>' . $user->id . '</td>';
@@ -344,15 +344,15 @@ Route::get('/debug-users', function () {
         $output .= '<td>' . $user->created_at . '</td>';
         $output .= '</tr>';
     }
-    
+
     $output .= '</table>';
-    
+
     $output .= '<h3>Summary:</h3>';
     $output .= '<p>Total Users: ' . $users->count() . '</p>';
     $output .= '<p>Verified Users: ' . $users->where('is_verified', true)->count() . '</p>';
     $output .= '<p>Pending Users: ' . $users->where('is_verified', false)->count() . '</p>';
     $output .= '<p>Admin Users: ' . $users->where('role', 'admin')->count() . '</p>';
-    
+
     return $output;
 });
 
@@ -443,7 +443,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/user/active-sessions', [App\Http\Controllers\SessionController::class, 'getActiveSessions'])->name('session.active');
     Route::delete('/user/sessions/{sessionId}', [App\Http\Controllers\SessionController::class, 'invalidateSession'])->name('session.invalidate');
     Route::post('/user/logout-all', [App\Http\Controllers\SessionController::class, 'forceLogoutAll'])->name('session.logout-all');
-    
+
     // Admin session management
     Route::middleware('admin')->group(function () {
         Route::get('/admin/session-stats', [App\Http\Controllers\SessionController::class, 'getStats'])->name('admin.session.stats');
@@ -459,7 +459,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.photo.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-    
+
     // Test route to verify form submission
     Route::post('/profile/test', function(Request $request) {
         Log::info('Test profile route hit', [
@@ -522,13 +522,13 @@ Route::middleware('auth')->group(function () {
     // Test route to check ratings API
     Route::get('/test-ratings-api', function () {
         $user = Auth::user();
-        
+
         // Test the ratings API directly
         $ratings = \App\Models\SessionRating::where('rated_user_id', $user->id)
             ->with(['rater:id,firstname,lastname,username'])
             ->orderBy('created_at', 'desc')
             ->get();
-            
+
         return response()->json([
             'user_id' => $user->id,
             'ratings_count' => $ratings->count(),
@@ -540,12 +540,12 @@ Route::middleware('auth')->group(function () {
     // Clean up skill acquisition history (remove manual registrations)
     Route::get('/cleanup-skill-acquisition', function () {
         $user = Auth::user();
-        
+
         // Remove acquisitions that are not from trade completion
         $removed = \App\Models\SkillAcquisitionHistory::where('user_id', $user->id)
             ->where('acquisition_method', '!=', 'trade_completion')
             ->delete();
-            
+
         return response()->json([
             'user_id' => $user->id,
             'removed_count' => $removed,
@@ -558,27 +558,27 @@ Route::middleware('auth')->group(function () {
         try {
             // Check if table exists
             $tableExists = \Schema::hasTable('session_ratings');
-            
+
             if (!$tableExists) {
                 return response()->json([
                     'error' => 'session_ratings table does not exist',
                     'table_exists' => false
                 ]);
             }
-            
+
             // Check table structure
             $columns = \Schema::getColumnListing('session_ratings');
-            
+
             // Try to query the table
             $ratings = \App\Models\SessionRating::count();
-            
+
             return response()->json([
                 'table_exists' => true,
                 'columns' => $columns,
                 'total_ratings' => $ratings,
                 'message' => 'Table exists and is accessible'
             ]);
-            
+
         } catch (\Exception $e) {
             return response()->json([
                 'error' => $e->getMessage(),
@@ -590,18 +590,18 @@ Route::middleware('auth')->group(function () {
     // Debug route to check skill acquisition history
     Route::get('/debug-skill-acquisition', function () {
         $user = Auth::user();
-        
+
         // Get all skill acquisitions
         $acquisitions = \App\Models\SkillAcquisitionHistory::where('user_id', $user->id)
             ->with(['skill', 'trade'])
             ->get();
-            
+
         // Get all user skills
         $allSkills = $user->skills;
-        
+
         // Get acquired skills using the method
         $acquiredSkills = $user->getAcquiredSkills();
-        
+
         return response()->json([
             'user_id' => $user->id,
             'all_skills' => $allSkills->pluck('name')->toArray(),
@@ -623,7 +623,7 @@ Route::middleware('auth')->group(function () {
     // Debug route to check completed session skill learning
     Route::get('/debug-skill-learning', function () {
         $user = Auth::user();
-        
+
         // Get user's completed trades
         $completedTrades = \App\Models\Trade::where('status', 'closed')
             ->where(function($query) use ($user) {
@@ -636,11 +636,11 @@ Route::middleware('auth')->group(function () {
             ->get();
 
         $debugInfo = [];
-        
+
         foreach ($completedTrades as $trade) {
             $skillLearningService = new \App\Services\SkillLearningService();
             $summary = $skillLearningService->getSkillLearningSummary($trade);
-            
+
             $debugInfo[] = [
                 'trade_id' => $trade->id,
                 'trade_title' => $trade->lookingSkill->name . ' ↔ ' . $trade->offeringSkill->name,
@@ -671,24 +671,24 @@ Route::middleware('auth')->group(function () {
     Route::middleware('user.only')->group(function () {
         Route::get('/trades/create', [\App\Http\Controllers\TradeController::class, 'create'])->name('trades.create');
         Route::post('/trades', [\App\Http\Controllers\TradeController::class, 'store'])->name('trades.store');
-        
+
         // Specific routes must come before parameterized routes
         Route::get('/trades/matches', [\App\Http\Controllers\TradeController::class, 'matches'])->name('trades.matches');
         Route::get('/trades/requests', [\App\Http\Controllers\TradeController::class, 'requests'])->name('trades.requests');
         Route::get('/trades/ongoing', [\App\Http\Controllers\TradeController::class, 'ongoing'])->name('trades.ongoing');
         Route::get('/trades/notifications', [\App\Http\Controllers\TradeController::class, 'notify'])->name('trades.notifications');
-        
+
         // Parameterized route must come last
         Route::get('/trades/{trade}', [\App\Http\Controllers\TradeController::class, 'show'])->name('trades.show');
-        
+
         // Trade request actions
         Route::post('/trades/{trade}/request', [\App\Http\Controllers\TradeController::class, 'requestTrade'])->name('trades.request');
         Route::post('/trade-requests/{tradeRequest}/respond', [\App\Http\Controllers\TradeController::class, 'respondToRequest'])->name('trades.respond');
-        
+
         // Notification actions
         Route::post('/notifications/{id}/mark-read', [\App\Http\Controllers\TradeController::class, 'markNotificationAsRead'])->name('trades.mark-read');
-        
-        
+
+
         // Task management routes
         Route::get('/tasks', [\App\Http\Controllers\TaskController::class, 'index'])->name('tasks.index');
         Route::get('/tasks/create', [\App\Http\Controllers\TaskController::class, 'create'])->name('tasks.create');
@@ -698,8 +698,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/tasks/{task}', [\App\Http\Controllers\TaskController::class, 'update'])->name('tasks.update');
         Route::delete('/tasks/{task}', [\App\Http\Controllers\TaskController::class, 'destroy'])->name('tasks.destroy');
         Route::patch('/tasks/{task}/toggle', [\App\Http\Controllers\TaskController::class, 'toggle'])->name('tasks.toggle');
-        
-        
+
+
 // Task submission file downloads
 Route::get('/submissions/{submission}/files/{fileIndex}', [\App\Http\Controllers\TaskController::class, 'downloadSubmissionFile'])->name('submissions.download');
 
@@ -717,25 +717,25 @@ Route::get('/skills', [\App\Http\Controllers\SkillController::class, 'index'])->
 Route::get('/skills/{skill}', [\App\Http\Controllers\SkillController::class, 'show'])->name('skills.show');
 Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 'getSkills'])->name('api.skills.search');
 
-        
+
         // API routes for task management
         Route::get('/api/trades/{trade}/participants', function(\App\Models\Trade $trade) {
             $user = auth()->user();
-            
+
             // Check if user is part of this trade
-            if ($trade->user_id !== $user->id && 
+            if ($trade->user_id !== $user->id &&
                 !$trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists()) {
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
-            
+
             $participants = collect();
-            
+
             // Add trade owner
             $participants->push([
                 'id' => $trade->user_id,
                 'name' => $trade->user->firstname . ' ' . $trade->user->lastname
             ]);
-            
+
             // Add accepted requester
             $acceptedRequest = $trade->requests()->where('status', 'accepted')->first();
             if ($acceptedRequest) {
@@ -744,17 +744,17 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
                     'name' => $acceptedRequest->requester->firstname . ' ' . $acceptedRequest->requester->lastname
                 ]);
             }
-            
+
             return response()->json([
                 'success' => true,
                 'participants' => $participants
             ]);
         });
-        
+
         // Video call routes (Firebase-based - no server endpoints needed)
         // All video call signaling is now handled by Firebase Realtime Database
         // The VideoCallController is kept for backward compatibility but not used
-        
+
         // Legacy video call routes for backward compatibility
         Route::post('/chat/{trade}/video-call/offer', [\App\Http\Controllers\VideoCallController::class, 'sendOffer'])->name('video-call.offer');
         Route::post('/chat/{trade}/video-call/answer', [\App\Http\Controllers\VideoCallController::class, 'sendAnswer'])->name('video-call.answer');
@@ -762,17 +762,17 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         Route::post('/chat/{trade}/video-call/end', [\App\Http\Controllers\VideoCallController::class, 'endCall'])->name('video-call.end');
         Route::get('/chat/{trade}/video-call/messages', [\App\Http\Controllers\VideoCallController::class, 'pollMessages'])->name('video-call.messages');
     });
-    
+
     // Debug route for chat access
     Route::get('/debug-chat-access/{trade}', function (\App\Models\Trade $trade) {
         $user = auth()->user();
         if (!$user) {
             return response()->json(['error' => 'Not authenticated'], 401);
         }
-        
+
         $isTradeOwner = $trade->user_id === $user->id;
         $hasAcceptedRequest = $trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists();
-        
+
         return response()->json([
             'user_id' => $user->id,
             'trade_id' => $trade->id,
@@ -796,27 +796,27 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         Route::patch('/chat/task/{task}/verify', [\App\Http\Controllers\ChatController::class, 'verifyTask'])->name('chat.verify-task');
         Route::post('/chat/{trade}/complete-session', [\App\Http\Controllers\ChatController::class, 'completeSession'])->name('chat.complete-session');
         Route::get('/chat/{trade}/skill-learning-status', [\App\Http\Controllers\ChatController::class, 'getSkillLearningStatus'])->name('chat.skill-learning-status');
-        
+
         // User Report route (moved here to avoid route conflicts)
         Route::post('/chat/{trade}/report', [\App\Http\Controllers\UserReportController::class, 'store'])->name('chat.report-user');
     });
-    
+
     // Session Rating routes (accessible to all authenticated users)
     Route::middleware('auth')->group(function () {
         Route::post('/session/rating', [\App\Http\Controllers\SessionRatingController::class, 'store'])->name('session.rating.store');
         Route::get('/user/{user}/ratings', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatings'])->name('user.ratings');
         Route::get('/user/{user}/rating-stats', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatingStats'])->name('user.rating-stats');
-        
+
         // API routes for AJAX calls
         Route::get('/api/user-ratings/{userId}', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatings'])->name('api.user-ratings.get');
-        
+
         // Fallback API route for testing
         Route::get('/api/test-ratings/{userId}', function($userId) {
             $user = Auth::user();
             if (!$user || $user->id != $userId) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
-            
+
             // Check if session_ratings table exists
             try {
                 $ratings = \App\Models\SessionRating::where('rated_user_id', $userId)->get();
@@ -835,7 +835,7 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
             }
         });
     });
-    
+
     // Admin functionality (moved from /admin to main dashboard) - Restricted to admin users only
     Route::middleware('admin')->group(function () {
         // Main dashboard
@@ -844,7 +844,7 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         Route::get('/admin/user-reports', [\App\Http\Controllers\Admin\UserReportAdminController::class, 'index'])->name('admin.user-reports.index');
         Route::get('/admin/user-reports/{report}', [\App\Http\Controllers\Admin\UserReportAdminController::class, 'show'])->name('admin.user-reports.show');
         Route::patch('/admin/user-reports/{report}', [\App\Http\Controllers\Admin\UserReportAdminController::class, 'updateStatus'])->name('admin.user-reports.update');
-        
+
         // Admin tabs
         Route::get('/admin/users', [AdminController::class, 'usersIndex'])->name('admin.users.index');
         Route::get('/admin/skills', [AdminController::class, 'skillsIndex'])->name('admin.skills.index');
@@ -852,16 +852,16 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         Route::get('/admin/reports', [AdminController::class, 'reportsIndex'])->name('admin.reports.index');
         Route::get('/admin/messages', [AdminController::class, 'messagesIndex'])->name('admin.messages.index');
         Route::get('/admin/settings', [AdminController::class, 'settingsIndex'])->name('admin.settings.index');
-        
+
         // Skills management - DISABLED (skills are now static)
         // Route::get('/admin/skills/create', [AdminController::class, 'createSkill'])->name('admin.skill.create');
         // Route::post('/admin/skills', [AdminController::class, 'storeSkill'])->name('admin.skill.store');
         // Route::delete('/admin/skills/{skill}', [AdminController::class, 'deleteSkill'])->name('admin.skill.delete');
-        
+
         // User management
         Route::patch('/admin/approve/{user}', [AdminController::class, 'approve'])->name('admin.approve');
         Route::patch('/admin/reject/{user}', [AdminController::class, 'reject'])->name('admin.reject');
-        
+
         // Enhanced user verification routes
         Route::patch('/admin/users/{user}/approve', [AdminController::class, 'approveUser'])->name('admin.users.approve');
         Route::patch('/admin/users/{user}/deny', [AdminController::class, 'denyUser'])->name('admin.users.deny');
@@ -871,7 +871,15 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         Route::get('/admin/profile', [AdminController::class, 'profile'])->name('admin.profile');
         Route::put('/admin/profile', [AdminController::class, 'updateProfile'])->name('admin.profile.update');
     });
-    
+
+    // Token Purchase Routes
+    Route::post('/tokens/purchase', [\App\Http\Controllers\TokenController::class, 'purchase'])->name('tokens.purchase');
+    Route::get('/tokens/history', [\App\Http\Controllers\TokenController::class, 'history'])->name('tokens.history');
+    Route::get('/api/tokens/balance', [\App\Http\Controllers\TokenController::class, 'getBalance'])->name('api.tokens.balance');
+
+    // PayMongo Webhook (no auth required)
+    Route::post('/webhooks/paymongo', [\App\Http\Controllers\TokenController::class, 'webhook'])->name('webhooks.paymongo');
+
     // Skill History Routes (moved inside auth middleware)
     Route::get('/my-skills/history', [\App\Http\Controllers\SkillHistoryController::class, 'index'])->name('skills.history');
     Route::get('/my-skills/history/{history}', [\App\Http\Controllers\SkillHistoryController::class, 'show'])->name('skills.history.show');
