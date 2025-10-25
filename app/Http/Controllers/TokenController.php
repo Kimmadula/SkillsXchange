@@ -119,13 +119,35 @@ class TokenController extends Controller
             return response()->json(['error' => 'Invalid signature'], 400);
         }
 
-        // Extract link data (PayMongo Links use different structure)
-        $linkId = $payload['data']['id'] ?? null;
-        $status = $payload['data']['attributes']['status'] ?? null;
-        $eventType = $payload['type'] ?? null;
+        // Extract event data based on event type
+        $eventType = $payload['data']['attributes']['type'] ?? null;
+        $linkId = null;
+        $status = null;
+
+        // Handle different PayMongo event types
+        if ($eventType === 'link.payment.paid' || $eventType === 'link.payment.unpaid' || $eventType === 'link.payment.canceled') {
+            // Link events
+            $linkId = $payload['data']['data']['id'] ?? null;
+            $status = $payload['data']['data']['attributes']['status'] ?? null;
+        } elseif ($eventType === 'payment.paid' || $eventType === 'payment.failed') {
+            // Payment events - we need to find the associated link
+            $paymentId = $payload['data']['data']['id'] ?? null;
+            if ($paymentId) {
+                // For payment events, we need to find the link ID from the payment
+                // This is more complex and may require additional API calls
+                Log::info('Received payment event, skipping for now', [
+                    'event_type' => $eventType,
+                    'payment_id' => $paymentId
+                ]);
+                return response()->json(['status' => 'success']);
+            }
+        }
 
         if (!$linkId || !$status) {
-            Log::error('Invalid webhook payload', ['payload' => $payload]);
+            Log::error('Invalid webhook payload', [
+                'event_type' => $eventType,
+                'payload' => $payload
+            ]);
             return response()->json(['error' => 'Invalid payload'], 400);
         }
 
