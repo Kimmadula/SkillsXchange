@@ -16,18 +16,23 @@ class TokenController extends Controller
     public function purchase(Request $request)
     {
         $request->validate([
-            'quantity' => 'required|integer|min:1|max:100',
-            'total_amount' => 'required|numeric|min:5'
+            'quantity' => 'required|integer|min:20|max:100', // Minimum 20 tokens = ₱100
+            'total_amount' => 'required|numeric|min:100' // PayMongo Links require minimum ₱100
         ]);
 
         $user = Auth::user();
         $quantity = $request->quantity;
         $amount = $request->total_amount;
 
-        // Verify amount calculation
+        // Verify amount calculation (₱5 per token)
         $expectedAmount = $quantity * 5.00;
         if (abs($amount - $expectedAmount) > 0.01) {
             return redirect()->back()->withErrors(['amount' => 'Amount calculation mismatch']);
+        }
+
+        // Ensure minimum amount for PayMongo Links (₱100 minimum)
+        if ($amount < 100) {
+            return redirect()->back()->withErrors(['amount' => 'Minimum purchase amount is ₱100.00 (20 tokens) for PayMongo payments']);
         }
 
         try {

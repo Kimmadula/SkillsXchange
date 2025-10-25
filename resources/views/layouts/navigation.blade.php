@@ -170,10 +170,10 @@
                         <label for="tokenQuantity" class="form-label">Number of Tokens</label>
                         <div class="input-group">
                             <button type="button" class="btn btn-outline-secondary" id="decreaseQuantity">-</button>
-                            <input type="number" class="form-control text-center" id="tokenQuantity" name="quantity" value="1" min="1" max="100" required>
+                            <input type="number" class="form-control text-center" id="tokenQuantity" name="quantity" value="20" min="20" max="100" required>
                             <button type="button" class="btn btn-outline-secondary" id="increaseQuantity">+</button>
                         </div>
-                        <div class="form-text">Minimum: 1 token, Maximum: 100 tokens</div>
+                        <div class="form-text">Minimum: 20 tokens (₱100), Maximum: 100 tokens</div>
                     </div>
 
                     <!-- Price Display -->
@@ -268,8 +268,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateQuantity(change) {
-        const currentValue = parseInt(quantityInput.value) || 1;
-        const newValue = Math.max(1, Math.min(100, currentValue + change));
+        const currentValue = parseInt(quantityInput.value) || 20;
+        const newValue = Math.max(20, Math.min(100, currentValue + change));
         quantityInput.value = newValue;
         updateDisplay();
     }
@@ -284,9 +284,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const quantity = parseInt(quantityInput.value);
         const total = quantity * TOKEN_PRICE;
 
-        if (quantity < 1 || quantity > 100) {
+        if (quantity < 20 || quantity > 100) {
             e.preventDefault();
-            alert('Please enter a valid quantity (1-100 tokens)');
+            alert('Please enter a valid quantity (20-100 tokens). Minimum purchase is ₱100.00');
             return;
         }
 

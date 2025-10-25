@@ -877,9 +877,6 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
     Route::get('/tokens/history', [\App\Http\Controllers\TokenController::class, 'history'])->name('tokens.history');
     Route::get('/api/tokens/balance', [\App\Http\Controllers\TokenController::class, 'getBalance'])->name('api.tokens.balance');
 
-    // PayMongo Webhook (no auth required)
-    Route::post('/webhooks/paymongo', [\App\Http\Controllers\TokenController::class, 'webhook'])->name('webhooks.paymongo');
-
     // Check payment status (for debugging/testing)
     Route::get('/tokens/check-payment/{paymentIntentId}', [\App\Http\Controllers\TokenController::class, 'checkPaymentStatus'])->name('tokens.check-payment');
 
@@ -890,6 +887,9 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
     Route::get('/my-skills/history-export', [\App\Http\Controllers\SkillHistoryController::class, 'export'])->name('skills.history.export');
     Route::get('/api/skills/analytics', [\App\Http\Controllers\SkillHistoryController::class, 'getAnalytics'])->name('api.skills.analytics');
 });
+
+// PayMongo Webhook (no auth required - must be outside auth middleware)
+Route::post('/webhooks/paymongo', [\App\Http\Controllers\TokenController::class, 'webhook'])->name('webhooks.paymongo');
 
 // Admin routes available at /admin
 
