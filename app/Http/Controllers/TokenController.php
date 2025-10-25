@@ -154,6 +154,7 @@ class TokenController extends Controller
             // Find the transaction by reference_number (stored as payment_intent_id in our system)
             $transaction = DB::table('token_transactions')
                 ->where('payment_intent_id', $referenceNumber)
+                ->lockForUpdate() // Lock the row to prevent race conditions
                 ->first();
 
             if (!$transaction) {
@@ -162,6 +163,16 @@ class TokenController extends Controller
                 ]);
                 DB::rollback();
                 return response()->json(['error' => 'Transaction not found'], 404);
+            }
+
+            // ⭐ IDEMPOTENCY CHECK - Prevent duplicate processing
+            if ($transaction->status === 'completed') {
+                Log::info('Transaction already processed (idempotency check)', [
+                    'reference_number' => $referenceNumber,
+                    'status' => $transaction->status
+                ]);
+                DB::commit();
+                return response()->json(['status' => 'success', 'message' => 'Already processed']);
             }
 
             // Handle different payment statuses for PayMongo Links
