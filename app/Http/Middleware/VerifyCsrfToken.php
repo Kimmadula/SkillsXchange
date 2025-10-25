@@ -15,9 +15,9 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        //
+        'webhooks/paymongo',
     ];
-    
+
     /**
      * Handle an incoming request.
      *
@@ -40,21 +40,21 @@ class VerifyCsrfToken extends Middleware
                     'user_agent' => $request->userAgent(),
                     'referer' => $request->header('referer')
                 ]);
-                
+
                 // Clear session and regenerate token
                 Session::flush();
                 Session::regenerate();
-                
+
                 // Redirect to login with a message
                 return redirect()->route('login')
                     ->with('error', 'Your session has expired due to domain change. Please log in again.');
             }
-            
+
             // Re-throw the exception for other cases
             throw $e;
         }
     }
-    
+
     /**
      * Check if this is a domain migration issue
      */
@@ -63,14 +63,14 @@ class VerifyCsrfToken extends Middleware
         // Check if user is on the new domain
         $currentDomain = $request->getHost();
         $newDomain = 'skillsxchange.site';
-        
+
         // Check if referer contains old domain
         $referer = $request->header('referer');
         $hasOldDomainReferer = $referer && str_contains($referer, 'skillsxchange-crus.onrender.com');
-        
+
         // Check if this is a login attempt
         $isLoginAttempt = $request->is('login') || $request->is('*/login');
-        
+
         return $currentDomain === $newDomain && ($hasOldDomainReferer || $isLoginAttempt);
     }
 }
