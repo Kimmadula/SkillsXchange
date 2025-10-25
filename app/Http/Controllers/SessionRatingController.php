@@ -215,6 +215,14 @@ class SessionRatingController extends Controller
     }
 
     /**
+     * Get ratings for a specific user (AUTHENTICATED ROUTE - expects User model)
+     */
+    public function getUserRatingsForUser(User $user)
+    {
+        return $this->getUserRatings($user->id);
+    }
+
+    /**
      * Get rating statistics for a user
      */
     public function getUserRatingStats($userId)

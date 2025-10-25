@@ -804,7 +804,7 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
     // Session Rating routes (accessible to all authenticated users)
     Route::middleware('auth')->group(function () {
         Route::post('/session/rating', [\App\Http\Controllers\SessionRatingController::class, 'store'])->name('session.rating.store');
-        Route::get('/user/{user}/ratings', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatings'])->name('user.ratings');
+        Route::get('/user/{user}/ratings', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatingsForUser'])->name('user.ratings');
         Route::get('/user/{user}/rating-stats', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatingStats'])->name('user.rating-stats');
 
         // API routes for AJAX calls (moved outside auth middleware for public access)
