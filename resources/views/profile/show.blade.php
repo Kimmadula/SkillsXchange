@@ -1102,7 +1102,18 @@ async function loadUserFeedback() {
         console.log('Response status:', response.status);
         
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            // Handle different HTTP status codes
+            if (response.status === 401) {
+                console.log('User not authenticated, showing login message');
+                displayLoginRequired();
+                return;
+            } else if (response.status === 403) {
+                console.log('Access forbidden - viewing other user profile, hiding ratings section');
+                hideRatingsSection();
+                return;
+            } else {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
         }
 
         const data = await response.json();
@@ -1219,6 +1230,30 @@ function displayNoFeedback() {
             <small class="text-muted">Complete skill exchange sessions to receive feedback from other users!</small>
         </div>
     `;
+}
+
+function displayLoginRequired() {
+    const container = document.getElementById('user-feedback-section');
+    container.innerHTML = `
+        <div class="text-center py-4">
+            <i class="fas fa-lock fa-3x text-muted mb-3"></i>
+            <p class="text-muted mb-0">Please log in to view your ratings</p>
+            <small class="text-muted">Sign in to see your feedback and ratings from skill exchange sessions!</small>
+        </div>
+    `;
+}
+
+function hideRatingsSection() {
+    const container = document.getElementById('user-feedback-section');
+    if (container) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-eye-slash fa-3x text-muted mb-3"></i>
+                <p class="text-muted mb-0">Ratings are private</p>
+                <small class="text-muted">Only the user can view their own ratings and feedback.</small>
+            </div>
+        `;
+    }
 }
 
 function generateStars(rating) {
