@@ -188,21 +188,8 @@ class SessionRatingController extends Controller
     public function getUserRatings($userId)
     {
         try {
+            // Allow public access to ratings (no authentication required)
             $user = Auth::user();
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not authenticated'
-                ], 401);
-            }
-
-            // Only allow users to view their own ratings or admin access
-            if ($user->id != $userId && $user->role !== 'admin') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized access'
-                ], 403);
-            }
 
             $ratings = SessionRating::where('rated_user_id', $userId)
                 ->with(['rater:id,firstname,lastname,username'])

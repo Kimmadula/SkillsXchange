@@ -807,8 +807,7 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         Route::get('/user/{user}/ratings', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatings'])->name('user.ratings');
         Route::get('/user/{user}/rating-stats', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatingStats'])->name('user.rating-stats');
 
-        // API routes for AJAX calls
-        Route::get('/api/user-ratings/{userId}', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatings'])->name('api.user-ratings.get');
+        // API routes for AJAX calls (moved outside auth middleware for public access)
 
         // Fallback API route for testing
         Route::get('/api/test-ratings/{userId}', function($userId) {
@@ -835,6 +834,9 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
             }
         });
     });
+
+    // Public API routes (no authentication required)
+    Route::get('/api/user-ratings/{userId}', [\App\Http\Controllers\SessionRatingController::class, 'getUserRatings'])->name('api.user-ratings.get');
 
     // Admin functionality (moved from /admin to main dashboard) - Restricted to admin users only
     Route::middleware('admin')->group(function () {
