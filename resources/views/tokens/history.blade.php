@@ -11,6 +11,15 @@
             <p class="text-muted">View your token purchase and usage history.</p>
         </div>
 
+        <!-- Payment Status Messages -->
+        @if(isset($message) && isset($messageType))
+        <div class="alert alert-{{ $messageType === 'success' ? 'success' : 'danger' }} alert-dismissible fade show mb-4" role="alert">
+            <i class="fas fa-{{ $messageType === 'success' ? 'check-circle' : 'exclamation-triangle' }} me-2"></i>
+            {{ $message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        @endif
+
         <!-- Current Balance Card -->
         <div class="dashboard-card dashboard-card--stats slide-up mb-4">
             <div class="d-flex align-items-center justify-content-between">

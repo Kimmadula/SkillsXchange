@@ -33,23 +33,23 @@ class TokenController extends Controller
         try {
             DB::beginTransaction();
 
-            // Create PayMongo payment intent
-            $paymentIntent = $this->createPayMongoPaymentIntent($amount, $user);
+            // Create PayMongo payment link
+            $paymentLink = $this->createPayMongoPaymentIntent($amount, $user);
 
-            if (!$paymentIntent) {
+            if (!$paymentLink) {
                 DB::rollback();
-                return redirect()->back()->withErrors(['payment' => 'Failed to create payment intent. Please try again.']);
+                return redirect()->back()->withErrors(['payment' => 'Failed to create payment link. Please try again.']);
             }
 
-            // Create transaction record with real payment intent ID
+            // Create transaction record with real payment link ID
             $transactionId = DB::table('token_transactions')->insertGetId([
                 'user_id' => $user->id,
                 'quantity' => $quantity,
                 'amount' => $amount,
                 'payment_method' => 'paymongo', // Default to PayMongo since user chooses method on their platform
-                'payment_intent_id' => $paymentIntent['id'],
+                'payment_intent_id' => $paymentLink['id'], // Store link ID in payment_intent_id field
                 'status' => 'pending',
-                'notes' => 'Payment intent created',
+                'notes' => 'Payment link created',
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
@@ -57,13 +57,24 @@ class TokenController extends Controller
             DB::commit();
 
             // Redirect to PayMongo checkout
-            if (isset($paymentIntent['checkout_url'])) {
-                return redirect($paymentIntent['checkout_url'])
+            if (isset($paymentLink['checkout_url']) && !empty($paymentLink['checkout_url'])) {
+                Log::info('Redirecting to PayMongo checkout', [
+                    'checkout_url' => $paymentLink['checkout_url'],
+                    'link_id' => $paymentLink['id']
+                ]);
+                return redirect($paymentLink['checkout_url'])
                     ->with('success', 'Redirecting to payment...');
             } else {
-                // If no checkout URL, show success message with payment intent ID
+                // Log the issue for debugging
+                Log::error('No checkout URL received from PayMongo', [
+                    'link_id' => $paymentLink['id'] ?? 'unknown',
+                    'payment_link' => $paymentLink,
+                    'user_id' => $user->id
+                ]);
+
+                // If no checkout URL, show error message
                 return redirect()->route('tokens.history')
-                    ->with('success', 'Payment intent created. Payment Intent ID: ' . $paymentIntent['id']);
+                    ->withErrors(['payment' => 'Unable to create payment checkout. Please try again or contact support.']);
             }
 
         } catch (\Exception $e) {
@@ -103,67 +114,67 @@ class TokenController extends Controller
             return response()->json(['error' => 'Invalid signature'], 400);
         }
 
-        // Extract payment intent data
-        $paymentIntentId = $payload['data']['id'] ?? null;
+        // Extract link data (PayMongo Links use different structure)
+        $linkId = $payload['data']['id'] ?? null;
         $status = $payload['data']['attributes']['status'] ?? null;
         $eventType = $payload['type'] ?? null;
 
-        if (!$paymentIntentId || !$status) {
+        if (!$linkId || !$status) {
             Log::error('Invalid webhook payload', ['payload' => $payload]);
             return response()->json(['error' => 'Invalid payload'], 400);
         }
 
         Log::info('Processing webhook', [
             'event_type' => $eventType,
-            'payment_intent_id' => $paymentIntentId,
+            'link_id' => $linkId,
             'status' => $status
         ]);
 
         try {
             DB::beginTransaction();
 
-            // Find the transaction
+            // Find the transaction by link ID (stored as payment_intent_id in our system)
             $transaction = DB::table('token_transactions')
-                ->where('payment_intent_id', $paymentIntentId)
+                ->where('payment_intent_id', $linkId)
                 ->first();
 
             if (!$transaction) {
-                Log::warning('Transaction not found for payment intent', [
-                    'payment_intent_id' => $paymentIntentId
+                Log::warning('Transaction not found for link', [
+                    'link_id' => $linkId
                 ]);
                 throw new \Exception('Transaction not found');
             }
 
-            // Handle different payment statuses
+            // Handle different payment statuses for PayMongo Links
             switch ($status) {
-                case 'succeeded':
-                    $this->handlePaymentSuccess($transaction, $paymentIntentId, $isTestMode);
+                case 'paid':
+                    $this->handlePaymentSuccess($transaction, $linkId, $isTestMode);
                     break;
-                case 'payment_failed':
+                case 'unpaid':
                 case 'failed':
-                    $this->handlePaymentFailure($transaction, $paymentIntentId);
+                    $this->handlePaymentFailure($transaction, $linkId);
                     break;
                 case 'canceled':
                 case 'cancelled':
-                    $this->handlePaymentCancellation($transaction, $paymentIntentId);
+                    $this->handlePaymentCancellation($transaction, $linkId);
                     break;
                 default:
                     Log::info('Unhandled payment status', [
                         'status' => $status,
-                        'payment_intent_id' => $paymentIntentId
+                        'link_id' => $linkId
                     ]);
             }
 
             DB::commit();
             Log::info('Webhook processed successfully', [
-                'payment_intent_id' => $paymentIntentId,
+                'link_id' => $linkId,
                 'status' => $status
             ]);
 
         } catch (\Exception $e) {
             DB::rollback();
             Log::error('Webhook processing failed', [
-                'payment_intent_id' => $paymentIntentId,
+                'link_id' => $linkId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -241,8 +252,8 @@ class TokenController extends Controller
     }
 
     /**
-     * Create PayMongo payment intent
-     * Based on official PayMongo API documentation
+     * Create PayMongo Link for redirect-based payment
+     * This is the correct approach for PayMongo redirect payments
      */
     private function createPayMongoPaymentIntent($amount, $user)
     {
@@ -250,34 +261,29 @@ class TokenController extends Controller
         $baseUrl = config('services.paymongo.base_url', 'https://api.paymongo.com');
         $isTestMode = config('services.paymongo.test_mode', true);
 
-        // PayMongo API payload structure (exactly as per their documentation)
+        // Use PayMongo Link API for redirect-based payments
+        $appUrl = config('app.url', 'https://skillsxchange.site');
+
         $payload = [
             'data' => [
                 'attributes' => [
-                    'amount' => (int)($amount * 100), // Convert to centavos (₱5.00 = 500)
+                    'amount' => (int)($amount * 100), // Convert to centavos
                     'currency' => 'PHP',
-                    'payment_method_allowed' => [
-                        'qrph', 'card', 'dob', 'paymaya', 'billease', 'gcash', 'grab_pay'
-                    ],
-                    'payment_method_options' => [
-                        'card' => [
-                            'request_three_d_secure' => 'any'
-                        ]
-                    ],
-                    'capture_type' => 'automatic',
                     'description' => 'Token Purchase - SkillsXchange',
-                    'statement_descriptor' => 'SkillsXchange Tokens',
-                    'metadata' => [
-                        'user_id' => (string)$user->id,
-                        'user_email' => $user->email,
-                        'purchase_type' => 'tokens',
-                        'test_mode' => $isTestMode ? 'true' : 'false'
+                    'remarks' => 'SkillsXchange Token Purchase',
+                    'redirect' => [
+                        'success' => $appUrl . '/tokens/history?payment=success',
+                        'failed' => $appUrl . '/tokens/history?payment=failed'
+                    ],
+                    'billing' => [
+                        'name' => $user->firstname . ' ' . $user->lastname,
+                        'email' => $user->email
                     ]
                 ]
             ]
         ];
 
-        // PayMongo API headers (exactly as per their documentation)
+        // PayMongo API headers
         $headers = [
             'accept' => 'application/json',
             'authorization' => 'Basic ' . base64_encode($paymongoSecretKey . ':'),
@@ -290,25 +296,26 @@ class TokenController extends Controller
                     'verify' => false, // Disable SSL verification for local development
                     'timeout' => 30
                 ])
-                ->post($baseUrl . '/v1/payment_intents', $payload);
+                ->post($baseUrl . '/v1/links', $payload);
 
             if ($response->successful()) {
                 $data = $response->json();
 
-                Log::info('PayMongo payment intent created successfully', [
-                    'payment_intent_id' => $data['data']['id'],
+                Log::info('PayMongo Link created successfully', [
+                    'link_id' => $data['data']['id'],
                     'amount' => $data['data']['attributes']['amount'],
-                    'status' => $data['data']['attributes']['status'],
-                    'test_mode' => $isTestMode
+                    'checkout_url' => $data['data']['attributes']['checkout_url'],
+                    'test_mode' => $isTestMode,
+                    'full_response' => $data
                 ]);
 
                 return [
                     'id' => $data['data']['id'],
-                    'checkout_url' => $data['data']['attributes']['next_action']['redirect']['url'] ?? null,
-                    'client_key' => $data['data']['attributes']['client_key'] ?? null
+                    'checkout_url' => $data['data']['attributes']['checkout_url'],
+                    'status' => $data['data']['attributes']['status'] ?? null
                 ];
             } else {
-                Log::error('PayMongo payment intent creation failed', [
+                Log::error('PayMongo Link creation failed', [
                     'response' => $response->body(),
                     'status' => $response->status(),
                     'test_mode' => $isTestMode
@@ -553,7 +560,7 @@ class TokenController extends Controller
     /**
      * Show token purchase history
      */
-    public function history()
+    public function history(Request $request)
     {
         $user = Auth::user();
         $transactions = DB::table('token_transactions')
@@ -561,6 +568,19 @@ class TokenController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return view('tokens.history', compact('transactions'));
+        // Handle payment redirect parameters
+        $paymentStatus = $request->get('payment');
+        $message = null;
+        $messageType = null;
+
+        if ($paymentStatus === 'success') {
+            $message = 'Payment completed successfully! Your tokens have been added to your account.';
+            $messageType = 'success';
+        } elseif ($paymentStatus === 'failed') {
+            $message = 'Payment failed. Please try again or contact support if the issue persists.';
+            $messageType = 'error';
+        }
+
+        return view('tokens.history', compact('transactions', 'message', 'messageType'));
     }
 }
