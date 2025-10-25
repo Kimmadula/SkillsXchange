@@ -1087,7 +1087,8 @@ document.addEventListener('DOMContentLoaded', function() {
     loadUserFeedback();
 });
 
-async function loadUserFeedback() {
+// Make function globally accessible
+window.loadUserFeedback = async function loadUserFeedback() {
     try {
         console.log('Loading user feedback for user ID: {{ $user->id }}');
         
@@ -1149,9 +1150,9 @@ async function loadUserFeedback() {
             displayError('Failed to load feedback. Please refresh the page. Error: ' + error.message);
         }
     }
-}
+};
 
-function displayUserFeedback(ratings) {
+window.displayUserFeedback = function displayUserFeedback(ratings) {
     const container = document.getElementById('user-feedback-section');
     
     if (!ratings || ratings.length === 0) {
@@ -1273,7 +1274,7 @@ function displayUserFeedback(ratings) {
     `;
 }
 
-function displayNoFeedback() {
+window.displayNoFeedback = function displayNoFeedback() {
     const container = document.getElementById('user-feedback-section');
     container.innerHTML = `
         <div class="text-center py-4">
@@ -1284,7 +1285,7 @@ function displayNoFeedback() {
     `;
 }
 
-function displayError(message) {
+window.displayError = function displayError(message) {
     const container = document.getElementById('user-feedback-section');
     container.innerHTML = `
         <div class="alert alert-warning text-center" role="alert">
@@ -1318,7 +1319,7 @@ function hideRatingsSection() {
     }
 }
 
-function generateStars(rating) {
+window.generateStars = function generateStars(rating) {
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
     const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
@@ -1337,13 +1338,13 @@ function generateStars(rating) {
     return stars;
 }
 
-function escapeHtml(text) {
+window.escapeHtml = function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-function formatSessionType(type) {
+window.formatSessionType = function formatSessionType(type) {
     const types = {
         'chat_session': 'Chat Session',
         'trade_session': 'Trade Session',
