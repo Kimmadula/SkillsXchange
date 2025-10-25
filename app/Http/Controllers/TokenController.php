@@ -46,13 +46,13 @@ class TokenController extends Controller
                 return redirect()->back()->withErrors(['payment' => 'Failed to create payment link. Please try again.']);
             }
 
-            // Create transaction record with real payment link ID
+            // Create transaction record with reference number
             $transactionId = DB::table('token_transactions')->insertGetId([
                 'user_id' => $user->id,
                 'quantity' => $quantity,
                 'amount' => $amount,
                 'payment_method' => 'paymongo', // Default to PayMongo since user chooses method on their platform
-                'payment_intent_id' => $paymentLink['id'], // Store link ID in payment_intent_id field
+                'payment_intent_id' => $paymentLink['reference_number'], // Store reference number in payment_intent_id field
                 'status' => 'pending',
                 'notes' => 'Payment link created',
                 'created_at' => now(),
@@ -121,29 +121,20 @@ class TokenController extends Controller
 
         // Extract event data based on event type
         $eventType = $payload['data']['attributes']['type'] ?? null;
-        $linkId = null;
+        $referenceNumber = null;
         $status = null;
 
-        // Handle different PayMongo event types
         if ($eventType === 'link.payment.paid' || $eventType === 'link.payment.unpaid' || $eventType === 'link.payment.canceled') {
-            // Link events - extract from the nested data structure
-            $linkId = $payload['data']['attributes']['data']['id'] ?? null;
+            // Extract reference_number from link events
+            $referenceNumber = $payload['data']['attributes']['data']['attributes']['reference_number'] ?? null;
             $status = $payload['data']['attributes']['data']['attributes']['status'] ?? null;
         } elseif ($eventType === 'payment.paid' || $eventType === 'payment.failed') {
-            // Payment events - we need to find the associated link
-            $paymentId = $payload['data']['attributes']['data']['id'] ?? null;
-            if ($paymentId) {
-                // For payment events, we need to find the link ID from the payment
-                // This is more complex and may require additional API calls
-                Log::info('Received payment event, skipping for now', [
-                    'event_type' => $eventType,
-                    'payment_id' => $paymentId
-                ]);
-                return response()->json(['status' => 'success']);
-            }
+            // Extract reference_number from payment events
+            $referenceNumber = $payload['data']['attributes']['data']['attributes']['external_reference_number'] ?? null;
+            $status = $payload['data']['attributes']['data']['attributes']['status'] ?? null;
         }
 
-        if (!$linkId || !$status) {
+        if (!$referenceNumber || !$status) {
             Log::error('Invalid webhook payload', [
                 'event_type' => $eventType,
                 'payload' => $payload
@@ -153,55 +144,56 @@ class TokenController extends Controller
 
         Log::info('Processing webhook', [
             'event_type' => $eventType,
-            'link_id' => $linkId,
+            'reference_number' => $referenceNumber,
             'status' => $status
         ]);
 
         try {
             DB::beginTransaction();
 
-            // Find the transaction by link ID (stored as payment_intent_id in our system)
+            // Find the transaction by reference_number (stored as payment_intent_id in our system)
             $transaction = DB::table('token_transactions')
-                ->where('payment_intent_id', $linkId)
+                ->where('payment_intent_id', $referenceNumber)
                 ->first();
 
             if (!$transaction) {
-                Log::warning('Transaction not found for link', [
-                    'link_id' => $linkId
+                Log::warning('Transaction not found', [
+                    'reference_number' => $referenceNumber
                 ]);
-                throw new \Exception('Transaction not found');
+                DB::rollback();
+                return response()->json(['error' => 'Transaction not found'], 404);
             }
 
             // Handle different payment statuses for PayMongo Links
             switch ($status) {
                 case 'paid':
-                    $this->handlePaymentSuccess($transaction, $linkId, $isTestMode);
+                    $this->handlePaymentSuccess($transaction, $referenceNumber, $isTestMode);
                     break;
                 case 'unpaid':
                 case 'failed':
-                    $this->handlePaymentFailure($transaction, $linkId);
+                    $this->handlePaymentFailure($transaction, $referenceNumber);
                     break;
                 case 'canceled':
                 case 'cancelled':
-                    $this->handlePaymentCancellation($transaction, $linkId);
+                    $this->handlePaymentCancellation($transaction, $referenceNumber);
                     break;
                 default:
                     Log::info('Unhandled payment status', [
                         'status' => $status,
-                        'link_id' => $linkId
+                        'reference_number' => $referenceNumber
                     ]);
             }
 
             DB::commit();
             Log::info('Webhook processed successfully', [
-                'link_id' => $linkId,
+                'reference_number' => $referenceNumber,
                 'status' => $status
             ]);
 
         } catch (\Exception $e) {
             DB::rollback();
             Log::error('Webhook processing failed', [
-                'link_id' => $linkId,
+                'reference_number' => $referenceNumber,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -338,6 +330,7 @@ class TokenController extends Controller
 
                 return [
                     'id' => $data['data']['id'],
+                    'reference_number' => $data['data']['attributes']['reference_number'],
                     'checkout_url' => $data['data']['attributes']['checkout_url'],
                     'status' => $data['data']['attributes']['status'] ?? null
                 ];
