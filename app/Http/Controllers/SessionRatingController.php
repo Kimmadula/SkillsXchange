@@ -183,33 +183,63 @@ class SessionRatingController extends Controller
     }
 
     /**
-     * Get ratings for a specific user
+     * Get ratings for a specific user (PUBLIC ACCESS)
+     * This allows anyone to view ratings to make informed decisions about trades
      */
     public function getUserRatings($userId)
     {
         try {
-            // Allow public access to ratings (no authentication required)
-            $user = Auth::user();
+            // Verify the user exists
+            $targetUser = User::find($userId);
+            if (!$targetUser) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found'
+                ], 404);
+            }
 
+            // Get all ratings for this user with rater information
             $ratings = SessionRating::where('rated_user_id', $userId)
                 ->with(['rater:id,firstname,lastname,username'])
                 ->orderBy('created_at', 'desc')
-                ->get();
+                ->get()
+                ->map(function($rating) {
+                    return [
+                        'id' => $rating->id,
+                        'overall_rating' => $rating->overall_rating,
+                        'communication_rating' => $rating->communication_rating,
+                        'helpfulness_rating' => $rating->helpfulness_rating,
+                        'knowledge_rating' => $rating->knowledge_rating,
+                        'written_feedback' => $rating->written_feedback,
+                        'session_type' => $rating->session_type,
+                        'session_duration' => $rating->session_duration,
+                        'skills_discussed' => $rating->skills_discussed,
+                        'created_at' => $rating->created_at->toISOString(),
+                        'rater' => $rating->rater ? [
+                            'id' => $rating->rater->id,
+                            'name' => $rating->rater->firstname . ' ' . $rating->rater->lastname,
+                            'username' => $rating->rater->username
+                        ] : null
+                    ];
+                });
 
             return response()->json([
                 'success' => true,
-                'ratings' => $ratings
+                'ratings' => $ratings,
+                'total_count' => $ratings->count()
             ]);
 
         } catch (\Exception $e) {
             Log::error('Failed to get user ratings', [
                 'error' => $e->getMessage(),
-                'user_id' => $userId
+                'user_id' => $userId,
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to retrieve ratings'
+                'message' => 'Failed to retrieve ratings',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -228,20 +258,13 @@ class SessionRatingController extends Controller
     public function getUserRatingStats($userId)
     {
         try {
-            $user = Auth::user();
-            if (!$user) {
+            // Verify the user exists
+            $targetUser = User::find($userId);
+            if (!$targetUser) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'User not authenticated'
-                ], 401);
-            }
-
-            // Only allow users to view their own stats or admin access
-            if ($user->id != $userId && $user->role !== 'admin') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized access'
-                ], 403);
+                    'message' => 'User not found'
+                ], 404);
             }
 
             $ratings = SessionRating::where('rated_user_id', $userId)->get();
