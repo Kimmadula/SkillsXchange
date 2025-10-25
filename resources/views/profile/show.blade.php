@@ -260,6 +260,10 @@
                             <button onclick="loadUserFeedback()" class="btn btn-sm btn-outline-secondary mt-2">
                                 <i class="fas fa-refresh"></i> Retry Loading
                             </button>
+                            <br>
+                            <button onclick="testFunction()" class="btn btn-sm btn-outline-info mt-1">
+                                <i class="fas fa-bug"></i> Test Function
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -616,7 +620,284 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Make uploadPhoto function globally available
     window.uploadPhoto = uploadPhoto;
+    
+    // Load user feedback and ratings
+    console.log('DOM loaded, starting feedback load for user ID: {{ $user->id }}');
+    console.log('loadUserFeedback function available:', typeof window.loadUserFeedback);
+    loadUserFeedback();
 });
+
+// Test function to verify JavaScript is working
+window.testFunction = function testFunction() {
+    console.log('Test function called!');
+    alert('JavaScript is working! Function: ' + typeof window.loadUserFeedback);
+};
+
+// Make function globally accessible
+window.loadUserFeedback = async function loadUserFeedback() {
+    try {
+        console.log('Loading user feedback for user ID: {{ $user->id }}');
+        
+        // Test if the container exists
+        const container = document.getElementById('user-feedback-section');
+        if (!container) {
+            console.error('Container user-feedback-section not found!');
+            return;
+        }
+        console.log('Container found:', container);
+        
+        // Add timeout to prevent infinite loading
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
+        const response = await fetch(`/api/user-ratings/{{ $user->id }}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Response error:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Response data:', data);
+        console.log('Ratings array:', data.ratings);
+        console.log('Total count:', data.total_count);
+        
+        if (data.success) {
+            if (data.ratings && data.ratings.length > 0) {
+                console.log('First rating sample:', data.ratings[0]);
+                displayUserFeedback(data.ratings);
+            } else {
+                console.log('No ratings found');
+                displayNoFeedback();
+            }
+        } else {
+            console.log('API returned success: false, message:', data.message);
+            displayNoFeedback();
+        }
+    } catch (error) {
+        console.error('Error loading user feedback:', error);
+        if (error.name === 'AbortError') {
+            console.error('Request timed out');
+            displayError('Request timed out. Please try again.');
+        } else {
+            console.error('Full error details:', error);
+            displayError('Failed to load feedback. Please refresh the page. Error: ' + error.message);
+        }
+    }
+};
+
+window.displayUserFeedback = function displayUserFeedback(ratings) {
+    const container = document.getElementById('user-feedback-section');
+    
+    if (!ratings || ratings.length === 0) {
+        displayNoFeedback();
+        return;
+    }
+
+    console.log('Displaying feedback for', ratings.length, 'ratings');
+
+    // Calculate average ratings
+    const avgOverall = ratings.reduce((sum, r) => sum + (r.overall_rating || 0), 0) / ratings.length;
+    const avgCommunication = ratings.reduce((sum, r) => sum + (r.communication_rating || 0), 0) / ratings.length;
+    const avgHelpfulness = ratings.reduce((sum, r) => sum + (r.helpfulness_rating || 0), 0) / ratings.length;
+    const avgKnowledge = ratings.reduce((sum, r) => sum + (r.knowledge_rating || 0), 0) / ratings.length;
+
+    container.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <div class="rating-summary mb-4">
+                    <h6 class="text-muted mb-3">Average Ratings</h6>
+                    <div class="rating-item mb-2">
+                        <span class="rating-label">Overall Experience:</span>
+                        <div class="stars">${generateStars(avgOverall)}</div>
+                        <span class="rating-value">${avgOverall.toFixed(1)}/5</span>
+                    </div>
+                    <div class="rating-item mb-2">
+                        <span class="rating-label">Communication:</span>
+                        <div class="stars">${generateStars(avgCommunication)}</div>
+                        <span class="rating-value">${avgCommunication.toFixed(1)}/5</span>
+                    </div>
+                    <div class="rating-item mb-2">
+                        <span class="rating-label">Helpfulness:</span>
+                        <div class="stars">${generateStars(avgHelpfulness)}</div>
+                        <span class="rating-value">${avgHelpfulness.toFixed(1)}/5</span>
+                    </div>
+                    <div class="rating-item mb-2">
+                        <span class="rating-label">Knowledge:</span>
+                        <div class="stars">${generateStars(avgKnowledge)}</div>
+                        <span class="rating-value">${avgKnowledge.toFixed(1)}/5</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="feedback-stats">
+                    <h6 class="text-muted mb-3">Feedback Summary</h6>
+                    <div class="stat-item">
+                        <i class="fas fa-star text-warning"></i>
+                        <span>Total Ratings: ${ratings.length}</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-comments text-info"></i>
+                        <span>Written Feedback: ${ratings.filter(r => r.written_feedback).length}</span>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-clock text-secondary"></i>
+                        <span>Most Recent: ${new Date(ratings[0].created_at).toLocaleDateString()}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="feedback-list mt-4">
+            <h6 class="text-muted mb-3">Recent Feedback</h6>
+            ${ratings.slice(0, 5).map(rating => {
+                // Check if rater exists
+                if (!rating.rater) {
+                    console.warn('Rating missing rater:', rating);
+                }
+                
+                const raterName = rating.rater ? rating.rater.name : 'Anonymous User';
+                const raterUsername = rating.rater ? `@${rating.rater.username}` : '';
+                
+                return `
+                    <div class="feedback-item border rounded p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <strong>${raterName}</strong>
+                                ${raterUsername ? `<span class="text-muted ms-1">${raterUsername}</span>` : ''}
+                                <small class="text-muted d-block">${new Date(rating.created_at).toLocaleDateString()}</small>
+                            </div>
+                            <div class="rating-display">
+                                <div class="stars">${generateStars(rating.overall_rating)}</div>
+                                <small class="text-muted">${rating.overall_rating}/5</small>
+                            </div>
+                        </div>
+                        ${rating.written_feedback ? `
+                            <div class="feedback-text mt-2 p-2 bg-light rounded">
+                                <p class="mb-0">"${escapeHtml(rating.written_feedback)}"</p>
+                            </div>
+                        ` : ''}
+                        <div class="rating-breakdown mt-2">
+                            <small class="text-muted">
+                                <span class="me-2">
+                                    <i class="fas fa-comments text-primary"></i> Communication: ${generateStars(rating.communication_rating)} ${rating.communication_rating}/5
+                                </span>
+                                <span class="me-2">
+                                    <i class="fas fa-hands-helping text-success"></i> Helpfulness: ${generateStars(rating.helpfulness_rating)} ${rating.helpfulness_rating}/5
+                                </span>
+                                <span>
+                                    <i class="fas fa-brain text-info"></i> Knowledge: ${generateStars(rating.knowledge_rating)} ${rating.knowledge_rating}/5
+                                </span>
+                            </small>
+                        </div>
+                        ${rating.session_type ? `
+                            <div class="mt-2">
+                                <span class="badge bg-secondary">${formatSessionType(rating.session_type)}</span>
+                                ${rating.session_duration ? `<span class="badge bg-info ms-1">${rating.session_duration} minutes</span>` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('')}
+            ${ratings.length > 5 ? `
+                <div class="text-center mt-3">
+                    <small class="text-muted">Showing 5 of ${ratings.length} total ratings</small>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+window.displayNoFeedback = function displayNoFeedback() {
+    const container = document.getElementById('user-feedback-section');
+    container.innerHTML = `
+        <div class="text-center py-4">
+            <i class="fas fa-star fa-3x text-muted mb-3"></i>
+            <p class="text-muted mb-0">No feedback or ratings yet</p>
+            <small class="text-muted">Complete skill exchange sessions to receive feedback from other users!</small>
+        </div>
+    `;
+}
+
+window.displayError = function displayError(message) {
+    const container = document.getElementById('user-feedback-section');
+    container.innerHTML = `
+        <div class="alert alert-warning text-center" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${message}
+        </div>
+    `;
+}
+
+function displayLoginRequired() {
+    const container = document.getElementById('user-feedback-section');
+    container.innerHTML = `
+        <div class="text-center py-4">
+            <i class="fas fa-lock fa-3x text-muted mb-3"></i>
+            <p class="text-muted mb-0">Please log in to view your ratings</p>
+            <small class="text-muted">Sign in to see your feedback and ratings from skill exchange sessions!</small>
+        </div>
+    `;
+}
+
+function hideRatingsSection() {
+    const container = document.getElementById('user-feedback-section');
+    if (container) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-eye-slash fa-3x text-muted mb-3"></i>
+                <p class="text-muted mb-0">Ratings are private</p>
+                <small class="text-muted">Only the user can view their own ratings and feedback.</small>
+            </div>
+        `;
+    }
+}
+
+window.generateStars = function generateStars(rating) {
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+    
+    let stars = '';
+    for (let i = 0; i < fullStars; i++) {
+        stars += '<i class="fas fa-star"></i>';
+    }
+    if (hasHalfStar) {
+        stars += '<i class="fas fa-star-half-alt"></i>';
+    }
+    for (let i = 0; i < emptyStars; i++) {
+        stars += '<i class="far fa-star"></i>';
+    }
+    
+    return stars;
+}
+
+window.escapeHtml = function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+window.formatSessionType = function formatSessionType(type) {
+    const types = {
+        'chat_session': 'Chat Session',
+        'trade_session': 'Trade Session',
+        'skill_sharing': 'Skill Sharing'
+    };
+    return types[type] || type;
+}
 </script>
 @endpush
 
@@ -1080,279 +1361,6 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 </style>
 
-<script>
-// Load user feedback and ratings
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, starting feedback load for user ID: {{ $user->id }}');
-    loadUserFeedback();
-});
-
-// Make function globally accessible
-window.loadUserFeedback = async function loadUserFeedback() {
-    try {
-        console.log('Loading user feedback for user ID: {{ $user->id }}');
-        
-        // Test if the container exists
-        const container = document.getElementById('user-feedback-section');
-        if (!container) {
-            console.error('Container user-feedback-section not found!');
-            return;
-        }
-        console.log('Container found:', container);
-        
-        // Add timeout to prevent infinite loading
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-        
-        const response = await fetch(`/api/user-ratings/{{ $user->id }}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Response error:', errorText);
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('Response data:', data);
-        console.log('Ratings array:', data.ratings);
-        console.log('Total count:', data.total_count);
-        
-        if (data.success) {
-            if (data.ratings && data.ratings.length > 0) {
-                console.log('First rating sample:', data.ratings[0]);
-                displayUserFeedback(data.ratings);
-            } else {
-                console.log('No ratings found');
-                displayNoFeedback();
-            }
-        } else {
-            console.log('API returned success: false, message:', data.message);
-            displayNoFeedback();
-        }
-    } catch (error) {
-        console.error('Error loading user feedback:', error);
-        if (error.name === 'AbortError') {
-            console.error('Request timed out');
-            displayError('Request timed out. Please try again.');
-        } else {
-            console.error('Full error details:', error);
-            displayError('Failed to load feedback. Please refresh the page. Error: ' + error.message);
-        }
-    }
-};
-
-window.displayUserFeedback = function displayUserFeedback(ratings) {
-    const container = document.getElementById('user-feedback-section');
-    
-    if (!ratings || ratings.length === 0) {
-        displayNoFeedback();
-        return;
-    }
-
-    console.log('Displaying feedback for', ratings.length, 'ratings');
-
-    // Calculate average ratings
-    const avgOverall = ratings.reduce((sum, r) => sum + (r.overall_rating || 0), 0) / ratings.length;
-    const avgCommunication = ratings.reduce((sum, r) => sum + (r.communication_rating || 0), 0) / ratings.length;
-    const avgHelpfulness = ratings.reduce((sum, r) => sum + (r.helpfulness_rating || 0), 0) / ratings.length;
-    const avgKnowledge = ratings.reduce((sum, r) => sum + (r.knowledge_rating || 0), 0) / ratings.length;
-
-    container.innerHTML = `
-        <div class="row">
-            <div class="col-md-6">
-                <div class="rating-summary mb-4">
-                    <h6 class="text-muted mb-3">Average Ratings</h6>
-                    <div class="rating-item mb-2">
-                        <span class="rating-label">Overall Experience:</span>
-                        <div class="stars">${generateStars(avgOverall)}</div>
-                        <span class="rating-value">${avgOverall.toFixed(1)}/5</span>
-                    </div>
-                    <div class="rating-item mb-2">
-                        <span class="rating-label">Communication:</span>
-                        <div class="stars">${generateStars(avgCommunication)}</div>
-                        <span class="rating-value">${avgCommunication.toFixed(1)}/5</span>
-                    </div>
-                    <div class="rating-item mb-2">
-                        <span class="rating-label">Helpfulness:</span>
-                        <div class="stars">${generateStars(avgHelpfulness)}</div>
-                        <span class="rating-value">${avgHelpfulness.toFixed(1)}/5</span>
-                    </div>
-                    <div class="rating-item mb-2">
-                        <span class="rating-label">Knowledge:</span>
-                        <div class="stars">${generateStars(avgKnowledge)}</div>
-                        <span class="rating-value">${avgKnowledge.toFixed(1)}/5</span>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="feedback-stats">
-                    <h6 class="text-muted mb-3">Feedback Summary</h6>
-                    <div class="stat-item">
-                        <i class="fas fa-star text-warning"></i>
-                        <span>Total Ratings: ${ratings.length}</span>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fas fa-comments text-info"></i>
-                        <span>Written Feedback: ${ratings.filter(r => r.written_feedback).length}</span>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fas fa-clock text-secondary"></i>
-                        <span>Most Recent: ${new Date(ratings[0].created_at).toLocaleDateString()}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="feedback-list mt-4">
-            <h6 class="text-muted mb-3">Recent Feedback</h6>
-            ${ratings.slice(0, 5).map(rating => {
-                // Check if rater exists
-                if (!rating.rater) {
-                    console.warn('Rating missing rater:', rating);
-                }
-                
-                const raterName = rating.rater ? rating.rater.name : 'Anonymous User';
-                const raterUsername = rating.rater ? `@${rating.rater.username}` : '';
-                
-                return `
-                    <div class="feedback-item border rounded p-3 mb-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <strong>${raterName}</strong>
-                                ${raterUsername ? `<span class="text-muted ms-1">${raterUsername}</span>` : ''}
-                                <small class="text-muted d-block">${new Date(rating.created_at).toLocaleDateString()}</small>
-                            </div>
-                            <div class="rating-display">
-                                <div class="stars">${generateStars(rating.overall_rating)}</div>
-                                <small class="text-muted">${rating.overall_rating}/5</small>
-                            </div>
-                        </div>
-                        ${rating.written_feedback ? `
-                            <div class="feedback-text mt-2 p-2 bg-light rounded">
-                                <p class="mb-0">"${escapeHtml(rating.written_feedback)}"</p>
-                            </div>
-                        ` : ''}
-                        <div class="rating-breakdown mt-2">
-                            <small class="text-muted">
-                                <span class="me-2">
-                                    <i class="fas fa-comments text-primary"></i> Communication: ${generateStars(rating.communication_rating)} ${rating.communication_rating}/5
-                                </span>
-                                <span class="me-2">
-                                    <i class="fas fa-hands-helping text-success"></i> Helpfulness: ${generateStars(rating.helpfulness_rating)} ${rating.helpfulness_rating}/5
-                                </span>
-                                <span>
-                                    <i class="fas fa-brain text-info"></i> Knowledge: ${generateStars(rating.knowledge_rating)} ${rating.knowledge_rating}/5
-                                </span>
-                            </small>
-                        </div>
-                        ${rating.session_type ? `
-                            <div class="mt-2">
-                                <span class="badge bg-secondary">${formatSessionType(rating.session_type)}</span>
-                                ${rating.session_duration ? `<span class="badge bg-info ms-1">${rating.session_duration} minutes</span>` : ''}
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            }).join('')}
-            ${ratings.length > 5 ? `
-                <div class="text-center mt-3">
-                    <small class="text-muted">Showing 5 of ${ratings.length} total ratings</small>
-                </div>
-            ` : ''}
-        </div>
-    `;
-}
-
-window.displayNoFeedback = function displayNoFeedback() {
-    const container = document.getElementById('user-feedback-section');
-    container.innerHTML = `
-        <div class="text-center py-4">
-            <i class="fas fa-star fa-3x text-muted mb-3"></i>
-            <p class="text-muted mb-0">No feedback or ratings yet</p>
-            <small class="text-muted">Complete skill exchange sessions to receive feedback from other users!</small>
-        </div>
-    `;
-}
-
-window.displayError = function displayError(message) {
-    const container = document.getElementById('user-feedback-section');
-    container.innerHTML = `
-        <div class="alert alert-warning text-center" role="alert">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            ${message}
-        </div>
-    `;
-}
-
-function displayLoginRequired() {
-    const container = document.getElementById('user-feedback-section');
-    container.innerHTML = `
-        <div class="text-center py-4">
-            <i class="fas fa-lock fa-3x text-muted mb-3"></i>
-            <p class="text-muted mb-0">Please log in to view your ratings</p>
-            <small class="text-muted">Sign in to see your feedback and ratings from skill exchange sessions!</small>
-        </div>
-    `;
-}
-
-function hideRatingsSection() {
-    const container = document.getElementById('user-feedback-section');
-    if (container) {
-        container.innerHTML = `
-            <div class="text-center py-4">
-                <i class="fas fa-eye-slash fa-3x text-muted mb-3"></i>
-                <p class="text-muted mb-0">Ratings are private</p>
-                <small class="text-muted">Only the user can view their own ratings and feedback.</small>
-            </div>
-        `;
-    }
-}
-
-window.generateStars = function generateStars(rating) {
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
-    
-    let stars = '';
-    for (let i = 0; i < fullStars; i++) {
-        stars += '<i class="fas fa-star"></i>';
-    }
-    if (hasHalfStar) {
-        stars += '<i class="fas fa-star-half-alt"></i>';
-    }
-    for (let i = 0; i < emptyStars; i++) {
-        stars += '<i class="far fa-star"></i>';
-    }
-    
-    return stars;
-}
-
-window.escapeHtml = function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-window.formatSessionType = function formatSessionType(type) {
-    const types = {
-        'chat_session': 'Chat Session',
-        'trade_session': 'Trade Session',
-        'skill_sharing': 'Skill Sharing'
-    };
-    return types[type] || type;
-}
-</script>
 
 <style>
 .rating-item {
