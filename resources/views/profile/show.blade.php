@@ -255,6 +255,11 @@
                                 <span class="visually-hidden">Loading feedback...</span>
                             </div>
                             <p class="text-muted mt-2">Loading your feedback...</p>
+                            <small class="text-muted">User ID: {{ $user->id }}</small>
+                            <br>
+                            <button onclick="loadUserFeedback()" class="btn btn-sm btn-outline-secondary mt-2">
+                                <i class="fas fa-refresh"></i> Retry Loading
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1078,12 +1083,21 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 // Load user feedback and ratings
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, starting feedback load for user ID: {{ $user->id }}');
     loadUserFeedback();
 });
 
 async function loadUserFeedback() {
     try {
         console.log('Loading user feedback for user ID: {{ $user->id }}');
+        
+        // Test if the container exists
+        const container = document.getElementById('user-feedback-section');
+        if (!container) {
+            console.error('Container user-feedback-section not found!');
+            return;
+        }
+        console.log('Container found:', container);
         
         // Add timeout to prevent infinite loading
         const controller = new AbortController();
@@ -1131,7 +1145,8 @@ async function loadUserFeedback() {
             console.error('Request timed out');
             displayError('Request timed out. Please try again.');
         } else {
-            displayError('Failed to load feedback. Please refresh the page.');
+            console.error('Full error details:', error);
+            displayError('Failed to load feedback. Please refresh the page. Error: ' + error.message);
         }
     }
 }
