@@ -599,8 +599,8 @@ Route::middleware('auth')->group(function () {
         // Get all user skills
         $allSkills = $user->skills;
 
-        // Get acquired skills using the method
-        $acquiredSkills = $user->getAcquiredSkills();
+        // Get acquired skills from user_skills table
+        $acquiredSkills = $user->skills;
 
         return response()->json([
             'user_id' => $user->id,

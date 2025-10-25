@@ -1100,27 +1100,27 @@ async function loadUserFeedback() {
 
         clearTimeout(timeoutId);
         console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
         
         if (!response.ok) {
-            // Handle different HTTP status codes
-            if (response.status === 401) {
-                console.log('User not authenticated, showing login message');
-                displayLoginRequired();
-                return;
-            } else if (response.status === 403) {
-                console.log('Access forbidden - viewing other user profile, hiding ratings section');
-                hideRatingsSection();
-                return;
-            } else {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            const errorText = await response.text();
+            console.error('Response error:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const data = await response.json();
         console.log('Response data:', data);
+        console.log('Ratings array:', data.ratings);
+        console.log('Total count:', data.total_count);
         
         if (data.success) {
-            displayUserFeedback(data.ratings);
+            if (data.ratings && data.ratings.length > 0) {
+                console.log('First rating sample:', data.ratings[0]);
+                displayUserFeedback(data.ratings);
+            } else {
+                console.log('No ratings found');
+                displayNoFeedback();
+            }
         } else {
             console.log('API returned success: false, message:', data.message);
             displayNoFeedback();
@@ -1129,18 +1129,22 @@ async function loadUserFeedback() {
         console.error('Error loading user feedback:', error);
         if (error.name === 'AbortError') {
             console.error('Request timed out');
+            displayError('Request timed out. Please try again.');
+        } else {
+            displayError('Failed to load feedback. Please refresh the page.');
         }
-        displayNoFeedback();
     }
 }
 
 function displayUserFeedback(ratings) {
     const container = document.getElementById('user-feedback-section');
     
-    if (ratings.length === 0) {
+    if (!ratings || ratings.length === 0) {
         displayNoFeedback();
         return;
     }
+
+    console.log('Displaying feedback for', ratings.length, 'ratings');
 
     // Calculate average ratings
     const avgOverall = ratings.reduce((sum, r) => sum + (r.overall_rating || 0), 0) / ratings.length;
@@ -1186,37 +1190,70 @@ function displayUserFeedback(ratings) {
                         <i class="fas fa-comments text-info"></i>
                         <span>Written Feedback: ${ratings.filter(r => r.written_feedback).length}</span>
                     </div>
+                    <div class="stat-item">
+                        <i class="fas fa-clock text-secondary"></i>
+                        <span>Most Recent: ${new Date(ratings[0].created_at).toLocaleDateString()}</span>
+                    </div>
                 </div>
             </div>
         </div>
         
         <div class="feedback-list mt-4">
             <h6 class="text-muted mb-3">Recent Feedback</h6>
-            ${ratings.slice(0, 5).map(rating => `
-                <div class="feedback-item border rounded p-3 mb-3">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div>
-                            <strong>${rating.rater.firstname} ${rating.rater.lastname}</strong>
-                            <small class="text-muted d-block">${new Date(rating.created_at).toLocaleDateString()}</small>
+            ${ratings.slice(0, 5).map(rating => {
+                // Check if rater exists
+                if (!rating.rater) {
+                    console.warn('Rating missing rater:', rating);
+                }
+                
+                const raterName = rating.rater ? rating.rater.name : 'Anonymous User';
+                const raterUsername = rating.rater ? `@${rating.rater.username}` : '';
+                
+                return `
+                    <div class="feedback-item border rounded p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <strong>${raterName}</strong>
+                                ${raterUsername ? `<span class="text-muted ms-1">${raterUsername}</span>` : ''}
+                                <small class="text-muted d-block">${new Date(rating.created_at).toLocaleDateString()}</small>
+                            </div>
+                            <div class="rating-display">
+                                <div class="stars">${generateStars(rating.overall_rating)}</div>
+                                <small class="text-muted">${rating.overall_rating}/5</small>
+                            </div>
                         </div>
-                        <div class="rating-display">
-                            <div class="stars">${generateStars(rating.overall_rating)}</div>
+                        ${rating.written_feedback ? `
+                            <div class="feedback-text mt-2 p-2 bg-light rounded">
+                                <p class="mb-0">"${escapeHtml(rating.written_feedback)}"</p>
+                            </div>
+                        ` : ''}
+                        <div class="rating-breakdown mt-2">
+                            <small class="text-muted">
+                                <span class="me-2">
+                                    <i class="fas fa-comments text-primary"></i> Communication: ${generateStars(rating.communication_rating)} ${rating.communication_rating}/5
+                                </span>
+                                <span class="me-2">
+                                    <i class="fas fa-hands-helping text-success"></i> Helpfulness: ${generateStars(rating.helpfulness_rating)} ${rating.helpfulness_rating}/5
+                                </span>
+                                <span>
+                                    <i class="fas fa-brain text-info"></i> Knowledge: ${generateStars(rating.knowledge_rating)} ${rating.knowledge_rating}/5
+                                </span>
+                            </small>
                         </div>
+                        ${rating.session_type ? `
+                            <div class="mt-2">
+                                <span class="badge bg-secondary">${formatSessionType(rating.session_type)}</span>
+                                ${rating.session_duration ? `<span class="badge bg-info ms-1">${rating.session_duration} minutes</span>` : ''}
+                            </div>
+                        ` : ''}
                     </div>
-                    ${rating.written_feedback ? `
-                        <div class="feedback-text mt-2">
-                            <p class="mb-0">"${rating.written_feedback}"</p>
-                        </div>
-                    ` : ''}
-                    <div class="rating-breakdown mt-2">
-                        <small class="text-muted">
-                            Communication: ${generateStars(rating.communication_rating)} | 
-                            Helpfulness: ${generateStars(rating.helpfulness_rating)} | 
-                            Knowledge: ${generateStars(rating.knowledge_rating)}
-                        </small>
-                    </div>
+                `;
+            }).join('')}
+            ${ratings.length > 5 ? `
+                <div class="text-center mt-3">
+                    <small class="text-muted">Showing 5 of ${ratings.length} total ratings</small>
                 </div>
-            `).join('')}
+            ` : ''}
         </div>
     `;
 }
@@ -1226,8 +1263,18 @@ function displayNoFeedback() {
     container.innerHTML = `
         <div class="text-center py-4">
             <i class="fas fa-star fa-3x text-muted mb-3"></i>
-            <p class="text-muted mb-0">No feedback or ratings found</p>
+            <p class="text-muted mb-0">No feedback or ratings yet</p>
             <small class="text-muted">Complete skill exchange sessions to receive feedback from other users!</small>
+        </div>
+    `;
+}
+
+function displayError(message) {
+    const container = document.getElementById('user-feedback-section');
+    container.innerHTML = `
+        <div class="alert alert-warning text-center" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            ${message}
         </div>
     `;
 }
@@ -1261,9 +1308,33 @@ function generateStars(rating) {
     const hasHalfStar = rating % 1 >= 0.5;
     const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
     
-    return '★'.repeat(fullStars) + 
-           (hasHalfStar ? '☆' : '') + 
-           '☆'.repeat(emptyStars);
+    let stars = '';
+    for (let i = 0; i < fullStars; i++) {
+        stars += '<i class="fas fa-star"></i>';
+    }
+    if (hasHalfStar) {
+        stars += '<i class="fas fa-star-half-alt"></i>';
+    }
+    for (let i = 0; i < emptyStars; i++) {
+        stars += '<i class="far fa-star"></i>';
+    }
+    
+    return stars;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatSessionType(type) {
+    const types = {
+        'chat_session': 'Chat Session',
+        'trade_session': 'Trade Session',
+        'skill_sharing': 'Skill Sharing'
+    };
+    return types[type] || type;
 }
 </script>
 
