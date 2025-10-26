@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Skill;
 use App\Models\Trade;
+use App\Models\Announcement;
 use App\Models\TradeRequest;
 use App\Models\TradeTask;
 use Illuminate\Http\Request;
@@ -91,6 +92,12 @@ class DashboardController extends Controller
 
             Log::info('UserDashboard: Loading for user ' . $user->id . ' with stats: ' . json_encode($userStats));
 
+            // Get active announcements
+            $announcements = Announcement::active()
+                ->orderBy('priority', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
             return view('dashboard', compact(
                 'completedSessions',
                 'ongoingSessions',
@@ -98,7 +105,8 @@ class DashboardController extends Controller
                 'pendingRequests',
                 'declinedRequests',
                 'pendingRequestsToMe',
-                'userStats'
+                'userStats',
+                'announcements'
             ));
         } catch (\Exception $e) {
             Log::error('UserDashboard error: ' . $e->getMessage());
@@ -117,7 +125,8 @@ class DashboardController extends Controller
                 'ongoingSessions' => collect(),
                 'pendingRequests' => collect(),
                 'declinedRequests' => collect(),
-                'pendingRequestsToMe' => collect()
+                'pendingRequestsToMe' => collect(),
+                'announcements' => collect()
             ]);
         }
     }

@@ -82,10 +82,12 @@
                         <i class="fas fa-bell me-1"></i>Notifications
                         @php
                         $unreadCount = App\Http\Controllers\TradeController::getUnreadNotificationCount(Auth::id());
+                        $announcementCount = App\Http\Controllers\AdminController::getUnreadAnnouncementCount(Auth::id());
+                        $totalUnread = $unreadCount + $announcementCount;
                         @endphp
-                        @if($unreadCount > 0)
+                        @if($totalUnread > 0)
                         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                            {{ $unreadCount > 99 ? '99+' : $unreadCount }}
+                            {{ $totalUnread > 99 ? '99+' : $totalUnread }}
                         </span>
                         @endif
                     </a>

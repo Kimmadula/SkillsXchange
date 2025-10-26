@@ -21,6 +21,38 @@
     @endif
 
     <div style="display:grid; gap:12px;">
+        <!-- System Announcements -->
+        @if(isset($announcements) && $announcements->count() > 0)
+            @foreach($announcements as $announcement)
+                @if(!$announcement->isReadBy(auth()->user()))
+                <div style="background:#fff; border:1px solid #3b82f6; border-radius:8px; padding:16px; border-left:4px solid #3b82f6;">
+                    <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
+                        <div style="flex:1;">
+                            <div style="font-weight:600; color:#1f2937; margin-bottom:4px;">
+                                📢 {{ $announcement->title }}
+                            </div>
+                            <div style="color:#6b7280; font-size:0.9rem; margin-bottom:8px;">
+                                {{ $announcement->message }}
+                            </div>
+                            <div style="font-size:0.75rem; color:#9ca3af;">
+                                Posted {{ $announcement->created_at->diffForHumans() }}
+                                @if($announcement->creator)
+                                    by {{ $announcement->creator->name }}
+                                @endif
+                                • {{ ucfirst($announcement->priority) }} Priority
+                            </div>
+                        </div>
+                        <button onclick="markAnnouncementAsRead({{ $announcement->id }})" 
+                                style="padding:4px 8px; background:#3b82f6; color:#fff; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer;">
+                            Mark Read
+                        </button>
+                    </div>
+                </div>
+                @endif
+            @endforeach
+        @endif
+
+        <!-- Trade Notifications -->
         @forelse($notifications as $n)
             <div style="background:#fff; border:1px solid {{ $n->read ? '#e5e7eb' : '#ef4444' }}; border-radius:8px; padding:16px; {{ $n->read ? '' : 'border-left:4px solid #ef4444;' }}">
                 <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
@@ -124,6 +156,39 @@
         @endforelse
     </div>
 </main>
+
+<script>
+function markAnnouncementAsRead(announcementId) {
+    fetch(`/announcements/${announcementId}/mark-read`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove the announcement from the page
+            const announcementElement = document.querySelector(`[data-announcement-id="${announcementId}"]`);
+            if (announcementElement) {
+                announcementElement.remove();
+            }
+            
+            // Update notification count in navigation
+            updateNotificationCount();
+        }
+    })
+    .catch(error => {
+        console.error('Error marking announcement as read:', error);
+    });
+}
+
+function updateNotificationCount() {
+    // Reload the page to update notification counts
+    window.location.reload();
+}
+</script>
 @endsection
 
 

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Skill;
 use App\Models\Trade;
 use App\Models\TradeRequest;
+use App\Models\Announcement;
 use App\Models\TradeFeeSetting;
 use App\Models\FeeTransaction;
 
@@ -378,7 +379,14 @@ class TradeController extends Controller
                 $notification->data = is_string($notification->data) ? json_decode($notification->data, true) : $notification->data;
                 return $notification;
             });
-        return view('trades.notifications', compact('notifications'));
+
+        // Get active announcements
+        $announcements = Announcement::active()
+            ->orderBy('priority', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return view('trades.notifications', compact('notifications', 'announcements'));
     }
 
     public static function getUnreadNotificationCount($userId)

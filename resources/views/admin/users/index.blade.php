@@ -1002,25 +1002,52 @@ use Illuminate\Support\Facades\Storage;
         function submitSuspension() {
             const form = document.getElementById('suspendForm');
             const formData = new FormData(form);
-            const userId = formData.get('user_id');
+            const userId = document.getElementById('suspendUserId').value; // FIXED: Correct userId retrieval
+
+            // Added client-side validation
+            const violationType = document.getElementById('violation_type').value;
+            const reason = document.getElementById('reason').value;
+            
+            if (!violationType) {
+                alert('Please select an action type.');
+                return;
+            }
+            if (!reason) {
+                alert('Please select a reason.');
+                return;
+            }
+            if (violationType === 'suspension') {
+                const duration = document.getElementById('suspension_duration').value;
+                if (!duration) {
+                    alert('Please select a suspension duration.');
+                    return;
+                }
+            }
 
             fetch(`/admin/users/${userId}/suspend`, {
-                method: 'POST',
+                method: 'PATCH', // FIXED: Correct HTTP method
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                    'Accept': 'application/json' // Added Accept header
                 },
                 body: JSON.stringify({
-                    violation_type: formData.get('violation_type'),
-                    suspension_duration: formData.get('suspension_duration'),
-                    reason: formData.get('reason'),
-                    admin_notes: formData.get('admin_notes')
+                    violation_type: violationType,
+                    suspension_duration: document.getElementById('suspension_duration').value,
+                    reason: reason,
+                    admin_notes: document.getElementById('admin_notes').value
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) { // Improved error handling
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
                     alert(data.message);
+                    closeSuspendModal();
                     location.reload();
                 } else {
                     alert('Error: ' + data.message);
@@ -1028,20 +1055,26 @@ use Illuminate\Support\Facades\Storage;
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('An error occurred while suspending the user.');
+                alert('An error occurred while suspending the user. Please try again.');
             });
         }
 
         function liftSuspension(userId) {
             if (confirm('Are you sure you want to lift the suspension for this user?')) {
                 fetch(`/admin/users/${userId}/lift-suspension`, {
-                    method: 'POST',
+                    method: 'PATCH', // FIXED: Correct HTTP method
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json' // Added Accept header
                     }
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) { // Improved error handling
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
                         alert(data.message);
@@ -1052,7 +1085,7 @@ use Illuminate\Support\Facades\Storage;
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('An error occurred while lifting the suspension.');
+                    alert('An error occurred while lifting the suspension. Please try again.');
                 });
             }
         }
@@ -1241,3 +1274,5 @@ use Illuminate\Support\Facades\Storage;
 </body>
 
 </html>
+
+

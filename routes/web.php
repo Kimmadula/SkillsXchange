@@ -681,6 +681,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/trades/requests', [\App\Http\Controllers\TradeController::class, 'requests'])->name('trades.requests');
         Route::get('/trades/ongoing', [\App\Http\Controllers\TradeController::class, 'ongoing'])->name('trades.ongoing');
         Route::get('/trades/notifications', [\App\Http\Controllers\TradeController::class, 'notify'])->name('trades.notifications');
+        
+        // Announcement routes (user-facing)
+        Route::post('/announcements/{announcement}/mark-read', [AdminController::class, 'markAnnouncementAsRead'])->name('announcements.mark-read');
 
         // Parameterized route must come last
         Route::get('/trades/{trade}', [\App\Http\Controllers\TradeController::class, 'show'])->name('trades.show');
@@ -873,6 +876,15 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         Route::patch('/admin/users/{user}/deny', [AdminController::class, 'denyUser'])->name('admin.users.deny');
         Route::patch('/admin/users/{user}/suspend', [AdminController::class, 'suspendUser'])->name('admin.users.suspend');
         Route::patch('/admin/users/{user}/lift-suspension', [AdminController::class, 'liftSuspension'])->name('admin.users.lift-suspension');
+        
+        // Announcements management
+        Route::get('/admin/announcements', [AdminController::class, 'announcementsIndex'])->name('admin.announcements.index');
+        Route::get('/admin/announcements/create', [AdminController::class, 'announcementsCreate'])->name('admin.announcements.create');
+        Route::post('/admin/announcements', [AdminController::class, 'announcementsStore'])->name('admin.announcements.store');
+        Route::get('/admin/announcements/{announcement}/edit', [AdminController::class, 'announcementsEdit'])->name('admin.announcements.edit');
+        Route::put('/admin/announcements/{announcement}', [AdminController::class, 'announcementsUpdate'])->name('admin.announcements.update');
+        Route::delete('/admin/announcements/{announcement}', [AdminController::class, 'announcementsDestroy'])->name('admin.announcements.destroy');
+        Route::patch('/admin/announcements/{announcement}/toggle', [AdminController::class, 'announcementsToggle'])->name('admin.announcements.toggle');
         Route::get('/admin/users/{user}/violations', [AdminController::class, 'getUserViolations'])->name('admin.users.violations');
         Route::get('/admin/user/{user}', [AdminController::class, 'show'])->name('admin.user.show');
 
