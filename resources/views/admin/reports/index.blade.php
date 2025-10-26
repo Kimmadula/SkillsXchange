@@ -16,13 +16,13 @@
     <div class="admin-sidebar">
         <div class="sidebar-header">
             <div class="logo">
-                <!-- LOGO IS HERE 
+                <!-- LOGO IS HERE
                 <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="admin-logo">
                 -->
                 <span class="logo-text">SkillsXchange Admin</span>
             </div>
         </div>
-        
+
         <nav class="sidebar-nav">
             <a href="{{ route('admin.dashboard') }}" class="nav-item">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -53,6 +53,13 @@
                     <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
                 <span>Exchanges</span>
+            </a>
+            <a href="{{ route('admin.fee-settings.index') }}" class="nav-item">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                </svg>
+                <span>Token Management</span>
             </a>
             <a href="{{ route('admin.reports.index') }}" class="nav-item active">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -113,7 +120,7 @@
                             </svg>
                         </div>
                     </button>
-                    
+
                     <!-- Dropdown Menu -->
                     <div x-show="profileOpen" @click.away="profileOpen = false" x-transition class="user-dropdown">
                         <a href="{{ route('admin.profile') }}" class="dropdown-item">
@@ -209,6 +216,65 @@
                 </div>
             </div>
 
+            <!-- Token Metrics Row -->
+            <div class="metrics-row">
+                <div class="metric-card">
+                    <div class="metric-icon tokens">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                        </svg>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">{{ number_format($tokenMetrics['totalTokensInCirculation']) }}</div>
+                        <div class="metric-label">Tokens in Circulation</div>
+                        <div class="metric-status">Across all users</div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon revenue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">₱{{ number_format($tokenMetrics['totalRevenue']) }}</div>
+                        <div class="metric-label">Total Revenue</div>
+                        <div class="metric-change">₱{{ number_format($tokenMetrics['monthlyRevenue']) }} this month</div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon purchases">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                        </svg>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">{{ $tokenMetrics['completedPurchases'] }}</div>
+                        <div class="metric-label">Token Purchases</div>
+                        <div class="metric-status">{{ $tokenMetrics['totalTokenTransactions'] }} total transactions</div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon fees">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">{{ $tokenMetrics['totalFeeTransactions'] }}</div>
+                        <div class="metric-label">Fee Transactions</div>
+                        <div class="metric-status">{{ $tokenMetrics['totalFeesCollected'] }} tokens collected</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Trend Charts -->
             <div class="charts-row">
                 <div class="chart-card">
@@ -242,6 +308,76 @@
                 </div>
             </div>
 
+            <!-- Token Analytics Charts -->
+            <div class="charts-row">
+                <div class="chart-card">
+                    <h3 class="chart-title">Token Purchase Trends (Last 7 Days)</h3>
+                    <div class="chart-container">
+                        <div class="bar-chart">
+                            @foreach($tokenTrends as $date => $count)
+                            <div class="chart-bar">
+                                <div class="bar tokens" style="--bar-height: {{ $count > 0 ? round($count / max($tokenTrends) * 100, 1) : 5 }}%; height: var(--bar-height);"></div>
+                                <div class="bar-label">{{ $date }}</div>
+                                <div class="bar-value">{{ $count }}</div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h3 class="chart-title">Revenue Trends (Last 7 Days)</h3>
+                    <div class="chart-container">
+                        <div class="bar-chart">
+                            @foreach($revenueTrends as $date => $amount)
+                            <div class="chart-bar">
+                                <div class="bar revenue" style="--bar-height: {{ $amount > 0 ? round($amount / max($revenueTrends) * 100, 1) : 5 }}%; height: var(--bar-height);"></div>
+                                <div class="bar-label">{{ $date }}</div>
+                                <div class="bar-value">₱{{ number_format($amount) }}</div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fee Collection Chart -->
+            <div class="charts-row">
+                <div class="chart-card">
+                    <h3 class="chart-title">Fee Collection Trends (Last 7 Days)</h3>
+                    <div class="chart-container">
+                        <div class="bar-chart">
+                            @foreach($feeTrends as $date => $count)
+                            <div class="chart-bar">
+                                <div class="bar fees" style="--bar-height: {{ $count > 0 ? round($count / max($feeTrends) * 100, 1) : 5 }}%; height: var(--bar-height);"></div>
+                                <div class="bar-label">{{ $date }}</div>
+                                <div class="bar-value">{{ $count }}</div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h3 class="chart-title">Fee Transaction Summary</h3>
+                    <div class="chart-container">
+                        <div class="fee-summary">
+                            @forelse($feeTransactionSummary as $fee)
+                            <div class="fee-item">
+                                <div class="fee-type">{{ ucfirst(str_replace('_', ' ', $fee->fee_type)) }}</div>
+                                <div class="fee-stats">
+                                    <span class="fee-count">{{ $fee->count }} transactions</span>
+                                    <span class="fee-amount">{{ $fee->total_amount }} tokens</span>
+                                </div>
+                            </div>
+                            @empty
+                            <div class="no-data">No fee transactions yet</div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Top Skills Table -->
             <div class="skills-table-card">
                 <div class="table-header">
@@ -259,7 +395,7 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="table-container">
                     <table class="skills-table">
                         <thead>
@@ -296,6 +432,83 @@
                 </div>
             </div>
 
+            <!-- Token Analytics Tables -->
+            <div class="charts-row">
+                <!-- Top Token Purchasers -->
+                <div class="chart-card">
+                    <div class="table-header">
+                        <h3 class="chart-title">Top Token Purchasers</h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="token-table">
+                            <thead>
+                                <tr>
+                                    <th>USER</th>
+                                    <th>EMAIL</th>
+                                    <th>TOKENS PURCHASED</th>
+                                    <th>TOTAL SPENT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($topTokenPurchasers as $user)
+                                <tr>
+                                    <td>
+                                        <div class="user-name">{{ $user->firstname }} {{ $user->lastname }}</div>
+                                    </td>
+                                    <td>{{ $user->email }}</td>
+                                    <td>{{ number_format($user->total_purchased) }}</td>
+                                    <td>₱{{ number_format($user->total_spent) }}</td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="4" class="no-data">No token purchases yet</td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Recent Token Transactions -->
+                <div class="chart-card">
+                    <div class="table-header">
+                        <h3 class="chart-title">Recent Token Transactions</h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="token-table">
+                            <thead>
+                                <tr>
+                                    <th>USER</th>
+                                    <th>QUANTITY</th>
+                                    <th>AMOUNT</th>
+                                    <th>STATUS</th>
+                                    <th>DATE</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($recentTokenTransactions as $transaction)
+                                <tr>
+                                    <td>
+                                        <div class="user-name">{{ $transaction->user->name }}</div>
+                                    </td>
+                                    <td>{{ $transaction->quantity > 0 ? '+' : '' }}{{ $transaction->quantity }}</td>
+                                    <td>₱{{ number_format($transaction->amount) }}</td>
+                                    <td>
+                                        <span class="status-badge {{ $transaction->status }}">{{ ucfirst($transaction->status) }}</span>
+                                    </td>
+                                    <td>{{ $transaction->created_at->format('M d, Y') }}</td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="5" class="no-data">No token transactions yet</td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- Export Reports Section -->
             <div class="export-section">
                 <h3 class="section-title">Export Reports</h3>
@@ -321,6 +534,33 @@
                     <div class="export-card">
                         <h4 class="export-title">Activity Reports</h4>
                         <p class="export-description">Export message and activity data</p>
+                        <div class="export-buttons">
+                            <button class="btn btn-csv">CSV</button>
+                            <button class="btn btn-pdf">PDF</button>
+                        </div>
+                    </div>
+
+                    <div class="export-card">
+                        <h4 class="export-title">Token Analytics</h4>
+                        <p class="export-description">Export token purchases and revenue data</p>
+                        <div class="export-buttons">
+                            <button class="btn btn-csv">CSV</button>
+                            <button class="btn btn-pdf">PDF</button>
+                        </div>
+                    </div>
+
+                    <div class="export-card">
+                        <h4 class="export-title">Fee Reports</h4>
+                        <p class="export-description">Export fee collection and transaction data</p>
+                        <div class="export-buttons">
+                            <button class="btn btn-csv">CSV</button>
+                            <button class="btn btn-pdf">PDF</button>
+                        </div>
+                    </div>
+
+                    <div class="export-card">
+                        <h4 class="export-title">Financial Summary</h4>
+                        <p class="export-description">Export comprehensive financial reports</p>
                         <div class="export-buttons">
                             <button class="btn btn-csv">CSV</button>
                             <button class="btn btn-pdf">PDF</button>
@@ -376,6 +616,26 @@
 .metric-icon.messages {
     background: #e9d5ff;
     color: #7c3aed;
+}
+
+.metric-icon.tokens {
+    background: #fef3c7;
+    color: #f59e0b;
+}
+
+.metric-icon.revenue {
+    background: #d1fae5;
+    color: #059669;
+}
+
+.metric-icon.purchases {
+    background: #dbeafe;
+    color: #3b82f6;
+}
+
+.metric-icon.fees {
+    background: #fce7f3;
+    color: #ec4899;
 }
 
 .metric-icon svg {
@@ -506,6 +766,18 @@
 
 .bar.trades {
     background: #10b981;
+}
+
+.bar.tokens {
+    background: #f59e0b;
+}
+
+.bar.revenue {
+    background: #059669;
+}
+
+.bar.fees {
+    background: #ec4899;
 }
 
 .bar-label {
@@ -703,18 +975,111 @@
     padding: 40px;
 }
 
+/* Token Tables */
+.token-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.token-table th {
+    text-align: left;
+    padding: 12px 8px;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.token-table td {
+    padding: 12px 8px;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 13px;
+}
+
+.user-name {
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.status-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.status-badge.completed {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-badge.failed {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Fee Summary */
+.fee-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.fee-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.fee-type {
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.fee-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+.fee-count {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.fee-amount {
+    font-size: 14px;
+    font-weight: 600;
+    color: #059669;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .metrics-row {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .charts-row {
         grid-template-columns: 1fr;
     }
-    
+
     .export-cards {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
@@ -722,13 +1087,13 @@
     .metrics-row {
         grid-template-columns: 1fr;
     }
-    
+
     .table-header {
         flex-direction: column;
         gap: 16px;
         align-items: flex-start;
     }
-    
+
     .table-container {
         overflow-x: auto;
     }

@@ -8,6 +8,9 @@ use App\Models\Trade;
 use App\Models\UserSkill;
 use App\Models\UserReport;
 use App\Models\Violation;
+use App\Models\TradeFeeSetting;
+use App\Models\TokenTransaction;
+use App\Models\FeeTransaction;
 use App\Http\Requests\StoreSkillRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -93,6 +96,34 @@ class AdminController extends Controller
             ]);
         }
 
+        // Token management notifications
+        $inactiveFeeSettings = TradeFeeSetting::where('is_active', false)->count();
+        if ($inactiveFeeSettings > 0) {
+            $notifications->push([
+                'id' => 'inactive_fee_settings',
+                'type' => 'warning',
+                'title' => 'Inactive Fee Settings',
+                'message' => "{$inactiveFeeSettings} fee settings are currently inactive",
+                'icon' => 'settings',
+                'url' => route('admin.fee-settings.index'),
+                'created_at' => now()
+            ]);
+        }
+
+        // Recent token transactions (last 24 hours)
+        $recentTokenTransactions = TokenTransaction::where('created_at', '>=', now()->subDay())->count();
+        if ($recentTokenTransactions > 0) {
+            $notifications->push([
+                'id' => 'recent_token_transactions',
+                'type' => 'info',
+                'title' => 'Recent Token Activity',
+                'message' => "{$recentTokenTransactions} token transactions in the last 24 hours",
+                'icon' => 'coins',
+                'url' => route('admin.fee-settings.index'),
+                'created_at' => now()
+            ]);
+        }
+
         // System maintenance reminder (example)
         $notifications->push([
             'id' => 'maintenance_reminder',
@@ -136,51 +167,116 @@ class AdminController extends Controller
     {
         // Get dashboard statistics
         $stats = $this->getDashboardStats();
-        
+
         // Get popular skills with user counts
         $popularSkills = $this->getPopularSkills();
-        
+
         // Get recent activity
         $recentActivity = $this->getRecentActivity();
         $notifications = $this->getNotifications();
-        
+
         // Get user reports data
         $userReports = $this->getUserReports();
-        
+
         return view('admin.dashboard', compact('stats', 'popularSkills', 'recentActivity', 'notifications', 'userReports'));
     }
-    
+
     private function getDashboardStats()
     {
         $now = Carbon::now();
         $lastWeek = $now->copy()->subWeek();
         $lastMonth = $now->copy()->subMonth();
-        
+
         // Total users
         $totalUsers = User::count();
         $totalUsersLastWeek = User::where('created_at', '<=', $lastWeek)->count();
         $totalUsersChange = $totalUsersLastWeek > 0 ? round((($totalUsers - $totalUsersLastWeek) / $totalUsersLastWeek) * 100) : 0;
-        
+
         // Active users (users who have logged in within last 7 days)
         $activeUsers = User::where('updated_at', '>=', $lastWeek)->count();
         $activeUsersLastWeek = User::where('updated_at', '>=', $lastWeek->copy()->subWeek())
                                   ->where('updated_at', '<', $lastWeek)->count();
         $activeUsersChange = $activeUsersLastWeek > 0 ? round((($activeUsers - $activeUsersLastWeek) / $activeUsersLastWeek) * 100) : 0;
-        
+
         // Total skills (skills table doesn't have timestamps)
         $totalSkills = Skill::count();
         $totalSkillsLastWeek = $totalSkills; // Since skills don't have timestamps, we'll use current count
         $totalSkillsChange = 0; // No change tracking for skills without timestamps
-        
+
         // Skill exchanges (trades)
         $skillExchanges = Trade::count();
         $skillExchangesLastWeek = Trade::where('created_at', '<=', $lastWeek)->count();
         $skillExchangesChange = $skillExchangesLastWeek > 0 ? round((($skillExchanges - $skillExchangesLastWeek) / $skillExchangesLastWeek) * 100) : 0;
-        
-        // Monthly revenue (placeholder - you can implement actual revenue tracking)
-        $monthlyRevenue = 0; // This would come from a revenue/payment system
-        $monthlyRevenueChange = 0;
-        
+
+        // Calculate actual revenue from token purchases
+        $tokenPurchaseTransactions = TokenTransaction::where('status', 'completed')
+            ->where('quantity', '>', 0) // Only positive quantities (purchases)
+            ->get();
+
+        $totalTokensPurchased = $tokenPurchaseTransactions->sum('quantity');
+        $monthlyRevenue = $tokenPurchaseTransactions->sum('amount'); // Use actual payment amount
+
+        // Calculate monthly revenue change
+        $lastMonthTokensPurchased = TokenTransaction::where('status', 'completed')
+            ->where('quantity', '>', 0)
+            ->where('created_at', '>=', $lastMonth)
+            ->sum('quantity');
+
+        $lastMonthRevenue = TokenTransaction::where('status', 'completed')
+            ->where('quantity', '>', 0)
+            ->where('created_at', '>=', $lastMonth)
+            ->sum('amount');
+
+        $previousMonthTokensPurchased = TokenTransaction::where('status', 'completed')
+            ->where('quantity', '>', 0)
+            ->where('created_at', '>=', $lastMonth->copy()->subMonth())
+            ->where('created_at', '<', $lastMonth)
+            ->sum('quantity');
+
+        $previousMonthRevenue = TokenTransaction::where('status', 'completed')
+            ->where('quantity', '>', 0)
+            ->where('created_at', '>=', $lastMonth->copy()->subMonth())
+            ->where('created_at', '<', $lastMonth)
+            ->sum('amount');
+
+        // Additional revenue statistics
+        $totalRevenue = $tokenPurchaseTransactions->sum('amount'); // Use actual payment amounts
+        $todayTokensPurchased = TokenTransaction::where('status', 'completed')
+            ->where('quantity', '>', 0)
+            ->whereDate('created_at', today())
+            ->sum('quantity');
+        $todayRevenue = TokenTransaction::where('status', 'completed')
+            ->where('quantity', '>', 0)
+            ->whereDate('created_at', today())
+            ->sum('amount');
+
+        // Weekly revenue
+        $weeklyTokensPurchased = TokenTransaction::where('status', 'completed')
+            ->where('quantity', '>', 0)
+            ->where('created_at', '>=', $lastWeek)
+            ->sum('quantity');
+        $weeklyRevenue = TokenTransaction::where('status', 'completed')
+            ->where('quantity', '>', 0)
+            ->where('created_at', '>=', $lastWeek)
+            ->sum('amount');
+
+        $monthlyRevenueChange = $previousMonthRevenue > 0 ?
+            round((($lastMonthRevenue - $previousMonthRevenue) / $previousMonthRevenue) * 100) : 0;
+
+        // Token statistics
+        $totalTokensInCirculation = User::sum('token_balance');
+        $totalTokensLastWeek = User::where('updated_at', '<=', $lastWeek)->sum('token_balance');
+        $totalTokensChange = $totalTokensLastWeek > 0 ? round((($totalTokensInCirculation - $totalTokensLastWeek) / $totalTokensLastWeek) * 100) : 0;
+
+        // Token transactions (recent activity)
+        $tokenTransactions = TokenTransaction::count();
+        $tokenTransactionsLastWeek = TokenTransaction::where('created_at', '<=', $lastWeek)->count();
+        $tokenTransactionsChange = $tokenTransactionsLastWeek > 0 ? round((($tokenTransactions - $tokenTransactionsLastWeek) / $tokenTransactionsLastWeek) * 100) : 0;
+
+        // Fee settings statistics
+        $activeFeeSettings = TradeFeeSetting::where('is_active', true)->count();
+        $totalFeeSettings = TradeFeeSetting::count();
+
         return [
             'totalUsers' => [
                 'value' => $totalUsers,
@@ -206,10 +302,45 @@ class AdminController extends Controller
                 'value' => $monthlyRevenue,
                 'change' => $monthlyRevenueChange,
                 'changeType' => $monthlyRevenueChange >= 0 ? 'positive' : 'negative'
+            ],
+            'totalRevenue' => [
+                'value' => $totalRevenue,
+                'change' => 0, // Total revenue doesn't have change tracking
+                'changeType' => 'neutral'
+            ],
+            'todayRevenue' => [
+                'value' => $todayRevenue,
+                'change' => 0, // Daily revenue doesn't have change tracking
+                'changeType' => 'neutral'
+            ],
+            'weeklyRevenue' => [
+                'value' => $weeklyRevenue,
+                'change' => 0, // Weekly revenue doesn't have change tracking
+                'changeType' => 'neutral'
+            ],
+            'totalTokensInCirculation' => [
+                'value' => $totalTokensInCirculation,
+                'change' => $totalTokensChange,
+                'changeType' => $totalTokensChange >= 0 ? 'positive' : 'negative'
+            ],
+            'tokenTransactions' => [
+                'value' => $tokenTransactions,
+                'change' => $tokenTransactionsChange,
+                'changeType' => $tokenTransactionsChange >= 0 ? 'positive' : 'negative'
+            ],
+            'activeFeeSettings' => [
+                'value' => $activeFeeSettings,
+                'change' => 0, // No change tracking for settings
+                'changeType' => 'neutral'
+            ],
+            'totalFeeSettings' => [
+                'value' => $totalFeeSettings,
+                'change' => 0, // No change tracking for settings
+                'changeType' => 'neutral'
             ]
         ];
     }
-    
+
     private function getPopularSkills()
     {
         return UserSkill::select('skills.name', 'skills.category', DB::raw('COUNT(user_skills.user_id) as user_count'))
@@ -225,11 +356,11 @@ class AdminController extends Controller
                 return $skill;
             });
     }
-    
+
     private function getRecentActivity()
     {
         $activities = collect();
-        
+
         // Get recent user verifications
         $recentVerifications = User::where('is_verified', true)
             ->where('updated_at', '>=', Carbon::now()->subDays(7))
@@ -245,7 +376,7 @@ class AdminController extends Controller
                     'icon' => 'user-check'
                 ];
             });
-        
+
         // Get recent user registrations
         $recentRegistrations = User::where('created_at', '>=', Carbon::now()->subDays(7))
             ->orderBy('created_at', 'desc')
@@ -260,7 +391,7 @@ class AdminController extends Controller
                     'icon' => 'user-plus'
                 ];
             });
-        
+
         // Get recent trades
         $recentTrades = Trade::with(['offeringSkill', 'lookingSkill', 'user'])
             ->where('created_at', '>=', Carbon::now()->subDays(7))
@@ -276,7 +407,7 @@ class AdminController extends Controller
                     'icon' => 'exchange'
                 ];
             });
-        
+
         // Combine and sort by time
         $activities = $activities->merge($recentVerifications)
             ->merge($recentRegistrations)
@@ -285,7 +416,7 @@ class AdminController extends Controller
                 return $activity['time'];
             })
             ->take(3);
-        
+
         return $activities->values();
     }
 
@@ -295,7 +426,7 @@ class AdminController extends Controller
         $user->save();
         return redirect()->route('admin.dashboard')->with('success', 'User approved!');
     }
-    
+
     public function reject(User $user)
     {
         $user->is_verified = false;
@@ -324,7 +455,7 @@ class AdminController extends Controller
         $notifications = $this->getNotifications();
         return view('admin.skills.index', compact('skills', 'notifications'));
     }
-    
+
     public function exchangesIndex()
     {
         $trades = Trade::with(['user', 'offeringSkill', 'lookingSkill'])
@@ -334,7 +465,7 @@ class AdminController extends Controller
         $notifications = $this->getNotifications();
         return view('admin.exchanges.index', compact('trades', 'notifications'));
     }
-    
+
     public function reportsIndex()
     {
         // Key Metrics
@@ -347,6 +478,19 @@ class AdminController extends Controller
             'ongoingTrades' => Trade::where('status', 'ongoing')->count(),
             'totalMessages' => 40, // Placeholder - would need messages table
             'pendingRequests' => 1, // Placeholder - would need requests table
+        ];
+
+        // Token-related metrics
+        $tokenMetrics = [
+            'totalTokensInCirculation' => User::sum('token_balance'),
+            'totalTokenTransactions' => TokenTransaction::count(),
+            'completedPurchases' => TokenTransaction::where('status', 'completed')->where('quantity', '>', 0)->count(),
+            'totalRevenue' => TokenTransaction::where('status', 'completed')->where('quantity', '>', 0)->sum('amount'),
+            'monthlyRevenue' => TokenTransaction::where('status', 'completed')->where('quantity', '>', 0)->whereMonth('created_at', now()->month)->sum('amount'),
+            'weeklyRevenue' => TokenTransaction::where('status', 'completed')->where('quantity', '>', 0)->where('created_at', '>=', now()->subWeek())->sum('amount'),
+            'totalFeeTransactions' => FeeTransaction::count(),
+            'totalFeesCollected' => abs(FeeTransaction::where('status', 'completed')->sum('amount')),
+            'activeFeeSettings' => TradeFeeSetting::where('is_active', true)->count(),
         ];
 
         // User Registration Trends (Last 7 Days)
@@ -365,6 +509,38 @@ class AdminController extends Controller
             $tradeTrends[$date] = $count;
         }
 
+        // Token Purchase Trends (Last 7 Days)
+        $tokenTrends = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i)->format('M d');
+            $count = TokenTransaction::where('status', 'completed')
+                ->where('quantity', '>', 0)
+                ->whereDate('created_at', now()->subDays($i))
+                ->count();
+            $tokenTrends[$date] = $count;
+        }
+
+        // Revenue Trends (Last 7 Days)
+        $revenueTrends = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i)->format('M d');
+            $amount = TokenTransaction::where('status', 'completed')
+                ->where('quantity', '>', 0)
+                ->whereDate('created_at', now()->subDays($i))
+                ->sum('amount');
+            $revenueTrends[$date] = $amount;
+        }
+
+        // Fee Collection Trends (Last 7 Days)
+        $feeTrends = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i)->format('M d');
+            $count = FeeTransaction::where('status', 'completed')
+                ->whereDate('created_at', now()->subDays($i))
+                ->count();
+            $feeTrends[$date] = $count;
+        }
+
         // Top Skills by Usage
         $topSkills = Skill::withCount('users')
             ->get()
@@ -379,10 +555,46 @@ class AdminController extends Controller
             ->sortByDesc('total_usage')
             ->take(10);
 
+        // Top Token Purchasers
+        $topTokenPurchasers = User::select('users.id', 'users.firstname', 'users.lastname', 'users.email', DB::raw('SUM(token_transactions.quantity) as total_purchased'), DB::raw('SUM(token_transactions.amount) as total_spent'))
+            ->join('token_transactions', 'users.id', '=', 'token_transactions.user_id')
+            ->where('token_transactions.status', 'completed')
+            ->where('token_transactions.quantity', '>', 0)
+            ->groupBy('users.id', 'users.firstname', 'users.lastname', 'users.email')
+            ->orderByDesc('total_purchased')
+            ->limit(10)
+            ->get();
+
+        // Recent Token Transactions
+        $recentTokenTransactions = TokenTransaction::with('user')
+            ->where('status', 'completed')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Fee Transaction Summary
+        $feeTransactionSummary = FeeTransaction::select('fee_type', DB::raw('COUNT(*) as count'), DB::raw('SUM(ABS(amount)) as total_amount'))
+            ->where('status', 'completed')
+            ->groupBy('fee_type')
+            ->get();
+
         $notifications = $this->getNotifications();
-        return view('admin.reports.index', compact('metrics', 'userTrends', 'tradeTrends', 'topSkills', 'notifications'));
+        return view('admin.reports.index', compact(
+            'metrics',
+            'tokenMetrics',
+            'userTrends',
+            'tradeTrends',
+            'tokenTrends',
+            'revenueTrends',
+            'feeTrends',
+            'topSkills',
+            'topTokenPurchasers',
+            'recentTokenTransactions',
+            'feeTransactionSummary',
+            'notifications'
+        ));
     }
-    
+
     public function messagesIndex()
     {
         // This would integrate with your messaging system
@@ -390,7 +602,7 @@ class AdminController extends Controller
         $notifications = $this->getNotifications();
         return view('admin.messages.index', compact('messages', 'notifications'));
     }
-    
+
     public function settingsIndex()
     {
         $notifications = $this->getNotifications();
@@ -408,7 +620,7 @@ class AdminController extends Controller
     {
         /** @var User $user */
         $user = auth()->user();
-        
+
         $request->validate([
             'firstname' => 'required|string|max:255',
             'lastname' => 'required|string|max:255',
@@ -426,7 +638,7 @@ class AdminController extends Controller
             if ($user->photo && file_exists(storage_path('app/public/' . $user->photo))) {
                 unlink(storage_path('app/public/' . $user->photo));
             }
-            
+
             $photo = $request->file('photo');
             $filename = time() . '_' . uniqid() . '.' . $photo->getClientOriginalExtension();
             $photo->storeAs('public/photos', $filename);
@@ -437,7 +649,7 @@ class AdminController extends Controller
 
         return redirect()->route('admin.profile')->with('success', 'Profile updated successfully!');
     }
-    
+
     private function getUserGrowthReport()
     {
         $last30Days = Carbon::now()->subDays(30);
@@ -446,10 +658,10 @@ class AdminController extends Controller
             ->groupBy('date')
             ->orderBy('date')
             ->get();
-        
+
         return $userGrowth;
     }
-    
+
     private function getSkillPopularityReport()
     {
         return UserSkill::select('skills.name', 'skills.category', DB::raw('COUNT(user_skills.user_id) as user_count'))
@@ -458,7 +670,7 @@ class AdminController extends Controller
             ->orderBy('user_count', 'desc')
             ->get();
     }
-    
+
     private function getTradeActivityReport()
     {
         $last30Days = Carbon::now()->subDays(30);
@@ -467,7 +679,7 @@ class AdminController extends Controller
             ->groupBy('date')
             ->orderBy('date')
             ->get();
-        
+
         return $tradeActivity;
     }
 
@@ -490,7 +702,7 @@ class AdminController extends Controller
             // Simple duplicate check
             $normalizedName = $this->normalizeSkillName($validated['name']);
             $existingSkill = Skill::whereRaw('LOWER(name) = ?', [strtolower($normalizedName)])->first();
-            
+
             if ($existingSkill) {
                 Log::warning('Duplicate skill creation attempt', ['name' => $normalizedName]);
                 return redirect()->back()
@@ -499,27 +711,27 @@ class AdminController extends Controller
             }
 
             $skill = Skill::create($validated);
-            
+
             Log::info('Skill created successfully', ['skill_id' => $skill->skill_id, 'name' => $skill->name]);
 
             return redirect()->route('admin.skills.index')->with('success', 'Skill "' . $skill->name . '" added successfully.');
         } catch (\Illuminate\Database\QueryException $e) {
             Log::error('Database error creating skill', ['error' => $e->getMessage(), 'code' => $e->getCode()]);
-            
+
             // Handle database unique constraint violations
             if ($e->getCode() == 23000) {
                 return redirect()->back()
                     ->withInput()
                     ->withErrors(['name' => 'A skill with this name already exists. Please choose a different name.']);
             }
-            
+
             // Handle other database errors
             return redirect()->back()
                 ->withInput()
                 ->withErrors(['database' => 'Database error: ' . $e->getMessage()]);
         } catch (\Exception $e) {
             Log::error('Unexpected error creating skill', ['error' => $e->getMessage()]);
-            
+
             // Handle any other unexpected errors
             return redirect()->back()
                 ->withInput()
@@ -537,13 +749,13 @@ class AdminController extends Controller
     {
         // Trim whitespace
         $name = trim($name);
-        
+
         // Replace multiple spaces with single space
         $name = preg_replace('/\s+/', ' ', $name);
-        
+
         // Convert to proper case (Title Case)
         $name = ucwords(strtolower($name));
-        
+
         return $name;
     }
 
@@ -805,5 +1017,159 @@ class AdminController extends Controller
             'success' => true,
             'violations' => $violations
         ]);
+    }
+
+    /**
+     * Show fee settings management page
+     */
+    public function feeSettingsIndex()
+    {
+        $feeSettings = TradeFeeSetting::orderBy('fee_type')->get();
+        $notifications = $this->getNotifications();
+
+        return view('admin.fee-settings.index', compact('feeSettings', 'notifications'));
+    }
+
+    /**
+     * Update fee setting
+     */
+    public function updateFeeSetting(Request $request, TradeFeeSetting $feeSetting)
+    {
+        try {
+            // Log the incoming request data for debugging
+            Log::info('Fee setting update request', [
+                'fee_setting_id' => $feeSetting->id,
+                'request_data' => $request->all(),
+                'content_type' => $request->header('Content-Type'),
+                'admin_user' => auth()->user()->email
+            ]);
+
+            $request->validate([
+                'fee_amount' => 'required|integer|min:0|max:1000',
+                'is_active' => 'required|boolean',
+                'description' => 'nullable|string|max:500'
+            ]);
+
+            $feeSetting->update([
+                'fee_amount' => $request->fee_amount,
+                'is_active' => $request->is_active,
+                'description' => $request->description
+            ]);
+
+            Log::info('Fee setting updated by admin', [
+                'admin_user' => auth()->user()->email,
+                'fee_type' => $feeSetting->fee_type,
+                'new_amount' => $request->fee_amount,
+                'is_active' => $request->is_active
+            ]);
+
+            // Handle both JSON and form requests
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Fee setting for {$feeSetting->fee_type} updated successfully.",
+                    'fee_setting' => $feeSetting->fresh()
+                ]);
+            } else {
+                return redirect()->route('admin.fee-settings.index')
+                    ->with('success', "Fee setting for {$feeSetting->fee_type} updated successfully.");
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error updating fee setting', [
+                'error' => $e->getMessage(),
+                'fee_setting_id' => $feeSetting->id,
+                'admin_user' => auth()->user()->email
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An error occurred while updating the fee setting.'
+                ], 500);
+            } else {
+                return redirect()->route('admin.fee-settings.index')
+                    ->with('error', 'An error occurred while updating the fee setting.');
+            }
+        }
+    }
+
+    /**
+     * Create new fee setting
+     */
+    public function createFeeSetting(Request $request)
+    {
+        try {
+            $request->validate([
+                'fee_type' => 'required|string|max:100|unique:trade_fee_settings,fee_type',
+                'fee_amount' => 'required|integer|min:0|max:1000',
+                'is_active' => 'required|boolean',
+                'description' => 'nullable|string|max:500'
+            ]);
+
+            $feeSetting = TradeFeeSetting::create([
+                'fee_type' => $request->fee_type,
+                'fee_amount' => $request->fee_amount,
+                'is_active' => $request->is_active,
+                'description' => $request->description
+            ]);
+
+            Log::info('New fee setting created by admin', [
+                'admin_user' => auth()->user()->email,
+                'fee_type' => $request->fee_type,
+                'fee_amount' => $request->fee_amount,
+                'is_active' => $request->is_active
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "New fee setting '{$request->fee_type}' created successfully.",
+                'fee_setting' => $feeSetting
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error creating fee setting', [
+                'error' => $e->getMessage(),
+                'admin_user' => auth()->user()->email
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while creating the fee setting.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete fee setting
+     */
+    public function deleteFeeSetting(TradeFeeSetting $feeSetting)
+    {
+        try {
+            $feeType = $feeSetting->fee_type;
+            $feeSetting->delete();
+
+            Log::info('Fee setting deleted by admin', [
+                'admin_user' => auth()->user()->email,
+                'fee_type' => $feeType
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Fee setting '{$feeType}' deleted successfully."
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error deleting fee setting', [
+                'error' => $e->getMessage(),
+                'fee_setting_id' => $feeSetting->id,
+                'admin_user' => auth()->user()->email
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while deleting the fee setting.'
+            ], 500);
+        }
     }
 }

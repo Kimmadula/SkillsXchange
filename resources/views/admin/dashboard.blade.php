@@ -16,13 +16,13 @@
     <div class="admin-sidebar">
         <div class="sidebar-header">
             <div class="logo">
-                <!-- LOGO IS HERE 
+                <!-- LOGO IS HERE
                 <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="admin-logo">
                 -->
                 <span class="logo-text">SkillsXchange Admin</span>
             </div>
         </div>
-        
+
         <nav class="sidebar-nav">
             <a href="{{ route('admin.dashboard') }}" class="nav-item active">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -53,6 +53,13 @@
                     <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
                 <span>Exchanges</span>
+            </a>
+            <a href="{{ route('admin.fee-settings.index') }}" class="nav-item">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                </svg>
+                <span>Token Management</span>
             </a>
             <a href="{{ route('admin.reports.index') }}" class="nav-item">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -102,7 +109,7 @@
                         </svg>
                         <span class="notification-badge">{{ $notifications->count() }}</span>
                     </div>
-                    
+
                     <!-- Notification Dropdown -->
                     <div x-show="notificationsOpen" @click.away="notificationsOpen = false" x-transition class="notification-dropdown">
                         <div class="notification-header">
@@ -150,6 +157,11 @@
                                             <line x1="12" y1="9" x2="12" y2="13"/>
                                             <line x1="12" y1="17" x2="12.01" y2="17"/>
                                         </svg>
+                                    @elseif($notification['icon'] === 'coins')
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="3"/>
+                                            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                                        </svg>
                                     @endif
                                 </div>
                                 <div class="notification-content">
@@ -183,7 +195,7 @@
                             </svg>
                         </div>
                     </button>
-                    
+
                     <!-- Dropdown Menu -->
                     <div x-show="profileOpen" @click.away="profileOpen = false" x-transition class="user-dropdown">
                         <a href="{{ route('admin.profile') }}" class="dropdown-item">
@@ -262,6 +274,115 @@
                 </div>
             </div>
 
+            <!-- Token Management Row -->
+            <div class="metrics-row">
+                <div class="metric-card">
+                    <div class="metric-content">
+                        <div class="metric-value">{{ number_format($stats['totalTokensInCirculation']['value']) }}</div>
+                        <div class="metric-label">Tokens in Circulation</div>
+                        <div class="metric-change {{ $stats['totalTokensInCirculation']['changeType'] }}">
+                            {{ $stats['totalTokensInCirculation']['change'] >= 0 ? '+' : '' }}{{ $stats['totalTokensInCirculation']['change'] }}% vs last week
+                        </div>
+                    </div>
+                    <div class="metric-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-content">
+                        <div class="metric-value">{{ number_format($stats['tokenTransactions']['value']) }}</div>
+                        <div class="metric-label">Token Transactions</div>
+                        <div class="metric-change {{ $stats['tokenTransactions']['changeType'] }}">
+                            {{ $stats['tokenTransactions']['change'] >= 0 ? '+' : '' }}{{ $stats['tokenTransactions']['change'] }}% vs last week
+                        </div>
+                    </div>
+                    <div class="metric-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14,2 14,8 20,8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10,9 9,9 8,9"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-content">
+                        <div class="metric-value">{{ $stats['activeFeeSettings']['value'] }}</div>
+                        <div class="metric-label">Active Fee Settings</div>
+                        <div class="metric-change {{ $stats['activeFeeSettings']['changeType'] }}">
+                            {{ $stats['totalFeeSettings']['value'] }} total settings
+                        </div>
+                    </div>
+                    <div class="metric-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Revenue Metrics Row -->
+            <div class="metrics-row">
+                <div class="metric-card">
+                    <div class="metric-content">
+                        <div class="metric-value">₱{{ number_format($stats['totalRevenue']['value']) }}</div>
+                        <div class="metric-label">Total Revenue</div>
+                        <div class="metric-change {{ $stats['totalRevenue']['changeType'] }}">
+                            All time revenue from token purchases
+                        </div>
+                    </div>
+                    <div class="metric-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-content">
+                        <div class="metric-value">₱{{ number_format($stats['todayRevenue']['value']) }}</div>
+                        <div class="metric-label">Today's Revenue</div>
+                        <div class="metric-change {{ $stats['todayRevenue']['changeType'] }}">
+                            Revenue from today's token purchases
+                        </div>
+                    </div>
+                    <div class="metric-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-content">
+                        <div class="metric-value">₱{{ number_format($stats['weeklyRevenue']['value']) }}</div>
+                        <div class="metric-label">Weekly Revenue</div>
+                        <div class="metric-change {{ $stats['weeklyRevenue']['changeType'] }}">
+                            Revenue from this week's token purchases
+                        </div>
+                    </div>
+                    <div class="metric-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 2v4"/>
+                            <path d="M16 2v4"/>
+                            <rect x="3" y="4" width="18" height="18" rx="2"/>
+                            <path d="M3 10h18"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
             <!-- Additional Metrics and Popular Skills Row -->
             <div class="content-row">
                 <div class="left-column">
@@ -285,7 +406,7 @@
 
                     <div class="metric-card">
                         <div class="metric-content">
-                            <div class="metric-value">${{ number_format($stats['monthlyRevenue']['value']) }}</div>
+                            <div class="metric-value">₱{{ number_format($stats['monthlyRevenue']['value']) }}</div>
                             <div class="metric-label">Monthly Revenue</div>
                             <div class="metric-change {{ $stats['monthlyRevenue']['changeType'] }}">
                                 {{ $stats['monthlyRevenue']['change'] >= 0 ? '+' : '' }}{{ $stats['monthlyRevenue']['change'] }}% vs last month
@@ -387,6 +508,91 @@
                             <polyline points="9,18 15,12 9,6"/>
                         </svg>
                     </a>
+                </div>
+            </div>
+
+            <!-- Token Management Quick Actions -->
+            <div class="token-management-card">
+                <div class="card-header">
+                    <h3 class="card-title">Token Management</h3>
+                    <div class="card-actions">
+                        <a href="{{ route('admin.fee-settings.index') }}" class="btn-primary">
+                            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                            </svg>
+                            Manage Fees
+                        </a>
+                    </div>
+                </div>
+                <div class="token-stats-grid">
+                    <div class="token-stat-item">
+                        <div class="token-stat-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                            </svg>
+                        </div>
+                        <div class="token-stat-content">
+                            <div class="token-stat-value">{{ number_format($stats['totalTokensInCirculation']['value']) }}</div>
+                            <div class="token-stat-label">Total Tokens</div>
+                        </div>
+                    </div>
+                    <div class="token-stat-item">
+                        <div class="token-stat-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14,2 14,8 20,8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10,9 9,9 8,9"/>
+                            </svg>
+                        </div>
+                        <div class="token-stat-content">
+                            <div class="token-stat-value">{{ number_format($stats['tokenTransactions']['value']) }}</div>
+                            <div class="token-stat-label">Transactions</div>
+                        </div>
+                    </div>
+                    <div class="token-stat-item">
+                        <div class="token-stat-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                            </svg>
+                        </div>
+                        <div class="token-stat-content">
+                            <div class="token-stat-value">{{ $stats['activeFeeSettings']['value'] }}</div>
+                            <div class="token-stat-label">Active Fees</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="token-actions">
+                    <div class="action-group">
+                        <h4>Quick Actions</h4>
+                        <div class="action-buttons">
+                            <a href="{{ route('admin.fee-settings.index') }}" class="action-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"/>
+                                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                                </svg>
+                                <span>Fee Settings</span>
+                            </a>
+                            <a href="{{ route('admin.users.index') }}" class="action-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                                <span>User Balances</span>
+                            </a>
+                            <a href="{{ route('admin.reports.index') }}" class="action-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M18 20V10M12 20V4M6 20v-6"/>
+                                </svg>
+                                <span>Token Analytics</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
 
