@@ -213,26 +213,6 @@
                             </div>
                         @endif
                         
-                        <div class="mt-3">
-                            <small class="text-muted">
-                                <i class="fas fa-info-circle me-1"></i>
-                                Total skills: {{ $acquiredSkills->count() }} | 
-                                <span class="text-primary">Registered: {{ $registeredSkills->count() }}</span> | 
-                                <span class="text-success">Acquired: {{ $acquiredSkillsList->count() }}</span>
-                            </small>
-                            <br>
-                            <small class="text-muted">
-                                Debug: All skills: {{ $allUserSkills->pluck('name')->join(', ') }}
-                            </small>
-                            <br>
-                            <small class="text-muted">
-                                Debug: Acquired skills: {{ $acquiredSkillsList->pluck('name')->join(', ') ?: 'None' }}
-                            </small>
-                            <br>
-                            <small class="text-muted">
-                                Debug: Registered skills: {{ $registeredSkills->pluck('name')->join(', ') ?: 'None' }}
-                            </small>
-                        </div>
                     @else
                         <div class="text-muted mb-3">
                             <p>No skills added yet.</p>

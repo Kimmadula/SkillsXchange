@@ -92,6 +92,9 @@
     @auth
     <script src="{{ asset('js/session-monitor-enhanced.js') }}"></script>
     @endauth
+
+    <!-- Page-specific scripts -->
+    @stack('scripts')
 </head>
 
 <body class="bg-light">
