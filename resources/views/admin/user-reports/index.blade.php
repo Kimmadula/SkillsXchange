@@ -19,7 +19,7 @@
                 <span class="logo-text">SkillsXchange Admin</span>
             </div>
         </div>
-        
+
         <nav class="sidebar-nav">
             <a href="{{ route('admin.dashboard') }}" class="nav-item">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -35,12 +35,56 @@
                 </svg>
                 <span>Users</span>
             </a>
+            <a href="{{ route('admin.skills.index') }}" class="nav-item">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                </svg>
+                <span>Skills</span>
+            </a>
+            <a href="{{ route('admin.exchanges.index') }}" class="nav-item">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                <span>Exchanges</span>
+            </a>
+            <a href="{{ route('admin.fee-settings.index') }}" class="nav-item">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                </svg>
+                <span>Token Management</span>
+            </a>
+            <a href="{{ route('admin.reports.index') }}" class="nav-item">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                    <line x1="12" y1="9" x2="12" y2="13" />
+                    <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                <span>Reports</span>
+            </a>
+            <a href="{{ route('admin.messages.index') }}" class="nav-item">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                <span>Messages</span>
+            </a>
             <a href="{{ route('admin.user-reports.index') }}" class="nav-item active">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
                     <line x1="4" y1="22" x2="4" y2="15"/>
                 </svg>
                 <span>User Reports</span>
+            </a>
+            <a href="{{ route('admin.settings.index') }}" class="nav-item">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+                <span>Settings</span>
             </a>
         </nav>
     </div>
@@ -85,11 +129,11 @@
         <!-- Search and Filters -->
         <div style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;">
             <div style="flex: 1; min-width: 300px;">
-                <input type="text" id="reportSearch" placeholder="Search reports by reporter, reported user, or reason..." 
+                <input type="text" id="reportSearch" placeholder="Search reports by reporter, reported user, or reason..."
                        style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
                        onkeyup="filterReports()">
             </div>
-            <select id="statusFilter" onchange="filterReports()" 
+            <select id="statusFilter" onchange="filterReports()"
                     style="padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
                 <option value="">All Status</option>
                 <option value="pending">Pending</option>
@@ -97,7 +141,7 @@
                 <option value="resolved">Resolved</option>
                 <option value="dismissed">Dismissed</option>
             </select>
-            <select id="reasonFilter" onchange="filterReports()" 
+            <select id="reasonFilter" onchange="filterReports()"
                     style="padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
                 <option value="">All Reasons</option>
                 <option value="harassment">Harassment</option>
@@ -179,7 +223,7 @@
                             {{ $report->created_at->format('M d, Y H:i') }}
                         </td>
                         <td style="padding: 16px; border-bottom: 1px solid #f3f4f6;">
-                            <a href="{{ route('admin.user-reports.show', $report) }}" 
+                            <a href="{{ route('admin.user-reports.show', $report) }}"
                                style="background: #3b82f6; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 500;">
                                 👁 View
                             </a>
@@ -203,18 +247,18 @@ function filterReports() {
     const searchTerm = document.getElementById('reportSearch').value.toLowerCase();
     const statusFilter = document.getElementById('statusFilter').value;
     const reasonFilter = document.getElementById('reasonFilter').value;
-    
+
     const rows = document.querySelectorAll('.report-row');
-    
+
     rows.forEach(row => {
         const reportText = row.textContent.toLowerCase();
         const reportStatus = row.getAttribute('data-status');
         const reportReason = row.getAttribute('data-reason');
-        
+
         const matchesSearch = reportText.includes(searchTerm);
         const matchesStatus = !statusFilter || reportStatus === statusFilter;
         const matchesReason = !reasonFilter || reportReason === reasonFilter;
-        
+
         if (matchesSearch && matchesStatus && matchesReason) {
             row.style.display = '';
         } else {

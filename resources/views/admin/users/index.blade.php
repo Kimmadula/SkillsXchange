@@ -22,9 +22,9 @@ use Illuminate\Support\Facades\Storage;
         <div class="admin-sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                <!-- LOGO IS HERE 
+                <!-- LOGO IS HERE
                 <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="admin-logo">
-                -->                    
+                -->
                 <span class="logo-text">SkillsXchange Admin</span>
                 </div>
             </div>
@@ -59,6 +59,13 @@ use Illuminate\Support\Facades\Storage;
                         <line x1="3" y1="10" x2="21" y2="10" />
                     </svg>
                     <span>Exchanges</span>
+                </a>
+                <a href="{{ route('admin.fee-settings.index') }}" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                    </svg>
+                    <span>Token Management</span>
                 </a>
                 <a href="{{ route('admin.reports.index') }}" class="nav-item">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -307,8 +314,8 @@ use Illuminate\Support\Facades\Storage;
                                     <td>
                                         <div class="user-photo-container">
                                             @if($user->photo && Storage::disk('public')->exists($user->photo))
-                                                <img src="{{ Storage::disk('public')->url($user->photo) }}" 
-                                                     alt="User Photo" 
+                                                <img src="{{ Storage::disk('public')->url($user->photo) }}"
+                                                     alt="User Photo"
                                                      class="user-photo"
                                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                                 <div class="user-avatar-fallback" style="display: none;">
@@ -325,16 +332,16 @@ use Illuminate\Support\Facades\Storage;
                                         <div class="action-buttons">
                                             @if($user->role !== 'admin')
                                             @if(!$user->is_verified)
-                                                <button onclick="verifyUser({{ $user->id }}, true)" 
-                                                            class="btn btn-approve" 
+                                                <button onclick="verifyUser({{ $user->id }}, true)"
+                                                            class="btn btn-approve"
                                                             id="approve-btn-{{ $user->id }}">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                             <polyline points="20,6 9,17 4,12"></polyline>
                                                         </svg>
                                                         Approve
                                                 </button>
-                                                <button onclick="verifyUser({{ $user->id }}, false)" 
-                                                            class="btn btn-deny" 
+                                                <button onclick="verifyUser({{ $user->id }}, false)"
+                                                            class="btn btn-deny"
                                                             id="deny-btn-{{ $user->id }}">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -344,8 +351,8 @@ use Illuminate\Support\Facades\Storage;
                                                 </button>
                                             @else
                                                 @if($user->isAccountRestricted())
-                                                    <button onclick="liftSuspension({{ $user->id }})" 
-                                                            class="btn btn-success" 
+                                                    <button onclick="liftSuspension({{ $user->id }})"
+                                                            class="btn btn-success"
                                                             id="lift-btn-{{ $user->id }}">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                             <path d="M9 12l2 2 4-4"></path>
@@ -354,8 +361,8 @@ use Illuminate\Support\Facades\Storage;
                                                         Lift Suspension
                                                     </button>
                                                 @else
-                                                    <button onclick="openSuspendModal({{ $user->id }}, '{{ $user->name }}')" 
-                                                            class="btn btn-warning" 
+                                                    <button onclick="openSuspendModal({{ $user->id }}, '{{ $user->name }}')"
+                                                            class="btn btn-warning"
                                                             id="suspend-btn-{{ $user->id }}">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                             <circle cx="12" cy="12" r="10"></circle>
@@ -834,7 +841,7 @@ use Illuminate\Support\Facades\Storage;
         const alert = document.createElement('div');
         alert.className = `alert alert-${type}`;
         alert.textContent = message;
-        
+
         document.body.appendChild(alert);
 
         // Auto-remove after 5 seconds
@@ -849,7 +856,7 @@ use Illuminate\Support\Facades\Storage;
     async function verifyUser(userId, isVerified) {
         const action = isVerified ? 'approve' : 'deny';
         const actionText = isVerified ? 'approve' : 'deny';
-        
+
         if (!confirm(`Are you sure you want to ${actionText} this user?`)) {
             return;
         }
@@ -873,7 +880,7 @@ use Illuminate\Support\Facades\Storage;
 
             if (response.ok) {
                 showAlert(data.message || `User ${actionText}d successfully!`, 'success');
-                
+
                 // Update the UI
                 updateUserRow(userId, isVerified);
                     updateStats();
@@ -903,10 +910,10 @@ use Illuminate\Support\Facades\Storage;
             // Update action buttons
             const actionButtons = row.querySelector('.action-buttons');
             const viewButton = actionButtons.querySelector('.btn-view');
-            
+
             // Clear existing buttons except view
             actionButtons.innerHTML = '';
-        
+
         if (isVerified) {
                 // Add revoke button
                 const revokeBtn = document.createElement('button');
@@ -934,7 +941,7 @@ use Illuminate\Support\Facades\Storage;
                     </svg>
                     Approve
                 `;
-                
+
                 const denyBtn = document.createElement('button');
                 denyBtn.onclick = () => verifyUser(userId, false);
                 denyBtn.className = 'btn btn-deny';
@@ -946,11 +953,11 @@ use Illuminate\Support\Facades\Storage;
                     </svg>
                     Deny
                 `;
-                
+
                 actionButtons.appendChild(approveBtn);
                 actionButtons.appendChild(denyBtn);
             }
-            
+
             // Re-add view button
             actionButtons.appendChild(viewButton);
         }
@@ -971,7 +978,7 @@ use Illuminate\Support\Facades\Storage;
                 searchInput.addEventListener('input', function(e) {
                     const searchTerm = e.target.value.toLowerCase();
                     const rows = document.querySelectorAll('.users-table tbody tr');
-        
+
         rows.forEach(row => {
                         const text = row.textContent.toLowerCase();
                         row.style.display = text.includes(searchTerm) ? '' : 'none';
@@ -1061,11 +1068,11 @@ use Illuminate\Support\Facades\Storage;
             <div class="modal-body">
                 <form id="suspendForm">
                     <input type="hidden" id="suspendUserId" name="user_id">
-                    
+
                     <div class="form-group">
                         <label>User: <span id="suspendUserName"></span></label>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="violation_type">Action Type:</label>
                         <select id="violation_type" name="violation_type" required onchange="toggleDuration()">
@@ -1074,7 +1081,7 @@ use Illuminate\Support\Facades\Storage;
                             <option value="permanent_ban">Permanent Ban</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group" id="durationGroup" style="display: none;">
                         <label for="suspension_duration">Suspension Duration:</label>
                         <select id="suspension_duration" name="suspension_duration">
@@ -1083,7 +1090,7 @@ use Illuminate\Support\Facades\Storage;
                             <option value="indefinite">Indefinite</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="reason">Reason:</label>
                         <select id="reason" name="reason" required>
@@ -1096,7 +1103,7 @@ use Illuminate\Support\Facades\Storage;
                             <option value="Other">Other</option>
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="admin_notes">Admin Notes (Optional):</label>
                         <textarea id="admin_notes" name="admin_notes" rows="3" placeholder="Additional details..."></textarea>
@@ -1114,7 +1121,7 @@ use Illuminate\Support\Facades\Storage;
         function toggleDuration() {
             const violationType = document.getElementById('violation_type').value;
             const durationGroup = document.getElementById('durationGroup');
-            
+
             if (violationType === 'suspension') {
                 durationGroup.style.display = 'block';
                 document.getElementById('suspension_duration').required = true;

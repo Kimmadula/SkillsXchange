@@ -16,13 +16,13 @@
     <div class="admin-sidebar">
         <div class="sidebar-header">
             <div class="logo">
-                <!-- LOGO IS HERE 
+                <!-- LOGO IS HERE
                 <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="admin-logo">
                 -->
                 <span class="logo-text">SkillsXchange Admin</span>
             </div>
         </div>
-        
+
         <nav class="sidebar-nav">
             <a href="{{ route('admin.dashboard') }}" class="nav-item">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -53,6 +53,13 @@
                     <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
                 <span>Exchanges</span>
+            </a>
+            <a href="{{ route('admin.fee-settings.index') }}" class="nav-item">
+                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                </svg>
+                <span>Token Management</span>
             </a>
             <a href="{{ route('admin.reports.index') }}" class="nav-item">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -95,7 +102,7 @@
                         </svg>
                         <span class="notification-badge">{{ $notifications->count() }}</span>
                     </div>
-                    
+
                     <!-- Notification Dropdown -->
                     <div x-show="notificationsOpen" @click.away="notificationsOpen = false" x-transition class="notification-dropdown">
                         <div class="notification-header">
@@ -165,7 +172,7 @@
                             </svg>
                         </div>
                     </button>
-                    
+
                     <!-- Dropdown Menu -->
                     <div x-show="profileOpen" @click.away="profileOpen = false" x-transition class="user-dropdown">
                         <a href="{{ route('admin.profile') }}" class="dropdown-item">
@@ -266,7 +273,7 @@
                         </select>
                     </div>
                 </div>
-                
+
                 <div class="table-container">
                     <table class="exchanges-table">
                         <thead>
@@ -324,7 +331,7 @@
                         </tbody>
                     </table>
                 </div>
-                
+
                 <div class="table-pagination">
                     {{ $trades->links() }}
                 </div>
@@ -625,13 +632,13 @@
     .exchange-stats-row {
         grid-template-columns: 1fr;
     }
-    
+
     .table-header {
         flex-direction: column;
         gap: 16px;
         align-items: flex-start;
     }
-    
+
     .table-container {
         overflow-x: auto;
     }

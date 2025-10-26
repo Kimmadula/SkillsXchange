@@ -18,7 +18,7 @@
         <div class="admin-sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                <!-- LOGO IS HERE 
+                <!-- LOGO IS HERE
                 <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="admin-logo">
                 -->
                     <span class="logo-text">SkillsXchange Admin</span>
@@ -55,6 +55,13 @@
                         <line x1="3" y1="10" x2="21" y2="10" />
                     </svg>
                     <span>Exchanges</span>
+                </a>
+                <a href="{{ route('admin.fee-settings.index') }}" class="nav-item">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+                    </svg>
+                    <span>Token Management</span>
                 </a>
                 <a href="{{ route('admin.reports.index') }}" class="nav-item">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -207,9 +214,9 @@
                 <!-- Debug Info (remove in production) -->
                 @if(config('app.debug'))
                 <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 12px;">
-                    <strong>Debug Info:</strong> 
-                    User: {{ auth()->user()->email }} | 
-                    Role: {{ auth()->user()->role }} | 
+                    <strong>Debug Info:</strong>
+                    User: {{ auth()->user()->email }} |
+                    Role: {{ auth()->user()->role }} |
                     Skills Count: {{ $skills->count() }}
                 </div>
                 @endif
