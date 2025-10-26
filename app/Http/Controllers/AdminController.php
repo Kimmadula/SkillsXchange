@@ -599,10 +599,13 @@ class AdminController extends Controller
 
     public function messagesIndex()
     {
-        // This would integrate with your messaging system
-        $messages = collect(); // Placeholder
+        // Use Messages tab for Announcements management
+        $announcements = Announcement::with('creator')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
         $notifications = $this->getNotifications();
-        return view('admin.messages.index', compact('messages', 'notifications'));
+        return view('admin.messages.index', compact('announcements', 'notifications'));
     }
 
     public function settingsIndex()

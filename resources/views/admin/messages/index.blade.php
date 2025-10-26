@@ -91,7 +91,7 @@
         <div class="admin-header">
             <div class="header-left">
                 <h1 class="page-title">Messages</h1>
-                <p class="page-subtitle">System messages and notifications</p>
+                <p class="page-subtitle">System announcements and notifications</p>
             </div>
             <div class="header-right">
                 <div class="notifications" x-data="{ notificationsOpen: false }">
@@ -202,42 +202,77 @@
         <div class="dashboard-content">
             <div class="messages-card">
                 <div class="messages-header">
-                    <h3 class="card-title">System Messages</h3>
-                    <button class="btn btn-primary">Send Message</button>
+                    <h3 class="card-title">System Announcements</h3>
+                    <a href="{{ route('admin.announcements.create') }}" class="btn btn-primary">Create Announcement</a>
                 </div>
 
                 <div class="messages-list">
-                    @forelse($messages as $message)
-                    <div class="message-item">
-                        <div class="message-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                            </svg>
-                        </div>
-                        <div class="message-content">
-                            <div class="message-title">{{ $message['title'] ?? 'System Message' }}</div>
-                            <div class="message-text">{{ $message['content'] ?? 'No content available' }}</div>
-                            <div class="message-meta">
-                                <span class="message-time">{{ $message['time'] ?? 'Unknown' }}</span>
-                                <span class="message-type">{{ $message['type'] ?? 'System' }}</span>
+                    @if(isset($announcements) && $announcements->count() > 0)
+                        @foreach($announcements as $announcement)
+                        <div class="message-item">
+                            <div class="message-icon">
+                                @if($announcement->type === 'info')
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <path d="M12 16v-4"/>
+                                        <path d="M12 8h.01"/>
+                                    </svg>
+                                @elseif($announcement->type === 'success')
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                        <polyline points="22,4 12,14.01 9,11.01"/>
+                                    </svg>
+                                @elseif($announcement->type === 'warning')
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                        <line x1="12" y1="9" x2="12" y2="13"/>
+                                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                    </svg>
+                                @else
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <line x1="15" y1="9" x2="9" y2="15"/>
+                                        <line x1="9" y1="9" x2="15" y2="15"/>
+                                    </svg>
+                                @endif
+                            </div>
+                            <div class="message-content">
+                                <div class="message-title">{{ $announcement->title }}</div>
+                                <div class="message-text">{{ Str::limit($announcement->message, 100) }}</div>
+                                <div class="message-meta">
+                                    <span class="message-time">{{ $announcement->created_at->diffForHumans() }}</span>
+                                    <span class="message-type">{{ ucfirst($announcement->type) }} • {{ ucfirst($announcement->priority) }}</span>
+                                    <span class="message-status {{ $announcement->is_active ? 'active' : 'inactive' }}">
+                                        {{ $announcement->is_active ? 'Active' : 'Inactive' }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="message-actions">
+                                <a href="{{ route('admin.announcements.edit', $announcement) }}" class="btn btn-sm btn-view">Edit</a>
+                                <button onclick="deleteAnnouncement({{ $announcement->id }})" class="btn btn-sm btn-delete">Delete</button>
+                                <button onclick="toggleAnnouncement({{ $announcement->id }})" class="btn btn-sm {{ $announcement->is_active ? 'btn-warning' : 'btn-success' }}">
+                                    {{ $announcement->is_active ? 'Deactivate' : 'Activate' }}
+                                </button>
                             </div>
                         </div>
-                        <div class="message-actions">
-                            <button class="btn btn-sm btn-view">View</button>
-                            <button class="btn btn-sm btn-delete">Delete</button>
+                        @endforeach
+
+                        <!-- Pagination -->
+                        <div class="pagination-wrapper">
+                            {{ $announcements->links() }}
                         </div>
-                    </div>
-                    @empty
+                    @else
                     <div class="no-messages">
                         <div class="no-messages-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                <path d="M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5m-1.414-9.414a2 2 0 1 1 2.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                             </svg>
                         </div>
-                        <h4>No Messages</h4>
-                        <p>There are no system messages at this time.</p>
+                        <h4>No Announcements</h4>
+                        <p>You haven't created any announcements yet. Create your first announcement to communicate with users.</p>
+                        <a href="{{ route('admin.announcements.create') }}" class="btn btn-primary">Create Announcement</a>
                     </div>
-                    @endforelse
+                    @endif
                 </div>
             </div>
         </div>
@@ -410,6 +445,70 @@
     margin: 0;
     color: #6b7280;
 }
+
+.message-status.active {
+    color: #10b981;
+    font-weight: 600;
+}
+
+.message-status.inactive {
+    color: #ef4444;
+    font-weight: 600;
+}
+
+.pagination-wrapper {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+}
 </style>
+
+<script>
+function toggleAnnouncement(announcementId) {
+    fetch(`/admin/announcements/${announcementId}/toggle`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while updating the announcement.');
+    });
+}
+
+function deleteAnnouncement(announcementId) {
+    if (confirm('Are you sure you want to delete this announcement? This action cannot be undone.')) {
+        fetch(`/admin/announcements/${announcementId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while deleting the announcement.');
+        });
+    }
+}
+</script>
 </body>
 </html>
