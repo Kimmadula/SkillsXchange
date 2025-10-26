@@ -357,8 +357,12 @@ Route::get('/debug-users', function () {
 });
 
 Route::get('/', function () {
-    // If user is authenticated, redirect to dashboard
+    // If user is authenticated, redirect based on role
     if (auth()->check()) {
+        $user = auth()->user();
+        if ($user->role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
         return redirect()->route('dashboard');
     }
     return view('welcome');
@@ -875,6 +879,12 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         // Admin profile
         Route::get('/admin/profile', [AdminController::class, 'profile'])->name('admin.profile');
         Route::put('/admin/profile', [AdminController::class, 'updateProfile'])->name('admin.profile.update');
+
+        // Fee Settings Management
+        Route::get('/admin/fee-settings', [AdminController::class, 'feeSettingsIndex'])->name('admin.fee-settings.index');
+        Route::put('/admin/fee-settings/{feeSetting}', [AdminController::class, 'updateFeeSetting'])->name('admin.fee-settings.update');
+        Route::post('/admin/fee-settings', [AdminController::class, 'createFeeSetting'])->name('admin.fee-settings.create');
+        Route::delete('/admin/fee-settings/{feeSetting}', [AdminController::class, 'deleteFeeSetting'])->name('admin.fee-settings.delete');
     });
 
     // Token Purchase Routes

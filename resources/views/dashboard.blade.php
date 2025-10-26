@@ -22,50 +22,6 @@
         </div>
         @endif
 
-        @if(auth()->user()->role === 'admin')
-        <!-- Admin Stats Cards -->
-        <div class="stats-grid">
-            <div class="stat-card fade-in">
-                <div class="stat-icon stat-icon--primary">
-                    <i class="fas fa-users"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-label">Total Users</div>
-                    <div class="stat-value">{{ isset($stats) ? $stats['totalUsers'] : 0 }}</div>
-                </div>
-            </div>
-
-            <div class="stat-card fade-in">
-                <div class="stat-icon stat-icon--success">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-label">Verified Users</div>
-                    <div class="stat-value">{{ isset($stats) ? $stats['verifiedUsers'] : 0 }}</div>
-                </div>
-            </div>
-
-            <div class="stat-card fade-in">
-                <div class="stat-icon stat-icon--warning">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-label">Pending Users</div>
-                    <div class="stat-value">{{ isset($stats) ? $stats['pendingUsers'] : 0 }}</div>
-                </div>
-            </div>
-
-            <div class="stat-card fade-in">
-                <div class="stat-icon stat-icon--info">
-                    <i class="fas fa-exchange-alt"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-label">Total Trades</div>
-                    <div class="stat-value">{{ isset($stats) ? $stats['totalTrades'] : 0 }}</div>
-                </div>
-            </div>
-        </div>
-        @else
         <!-- User Stats Cards -->
         <div class="stats-grid">
             <div class="stat-card fade-in">
@@ -108,7 +64,6 @@
                 </div>
             </div>
         </div>
-        @endif
 
         <!-- Expired Sessions -->
         @if(isset($expiredSessions) && $expiredSessions->count() > 0)
@@ -388,77 +343,6 @@
         @endif
         @endif
 
-        <!-- Admin Section (if admin) -->
-        @if(auth()->user()->role === 'admin')
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-8">
-            <div class="p-6">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Admin Panel</h2>
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-md font-medium text-gray-700">Pending Users ({{ isset($pendingUsers) ?
-                        $pendingUsers->count() : 0 }})</h3>
-                    <a href="{{ route('admin.skills.index') }}"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition text-sm">
-                        Manage Skills
-                    </a>
-                </div>
-                @if(isset($pendingUsers) && $pendingUsers->count() > 0)
-                <div class="overflow-x-auto">
-                    <table class="min-w-full bg-white border border-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th
-                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
-                                    Name</th>
-                                <th
-                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
-                                    Email</th>
-                                <th
-                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
-                                    Skill</th>
-                                <th
-                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
-                                    Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            @foreach($pendingUsers->take(3) as $user)
-                            <tr>
-                                <td class="px-4 py-2 whitespace-nowrap">
-                                    {{ $user->firstname }} {{ $user->lastname }}
-                                </td>
-                                <td class="px-4 py-2 whitespace-nowrap">{{ $user->email }}</td>
-                                <td class="px-4 py-2 whitespace-nowrap">{{ optional($user->skill)->name ?? '—' }}</td>
-                                <td class="px-4 py-2 whitespace-nowrap space-x-2">
-                                    <a href="{{ route('admin.user.show', $user->id) }}"
-                                        class="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition">
-                                        View
-                                    </a>
-                                    <form action="{{ route('admin.approve', $user->id) }}" method="POST" class="inline">
-                                        @csrf
-                                        @method('PATCH')
-                                        <button type="submit"
-                                            class="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 transition">
-                                            Approve
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                    @if($pendingUsers->count() > 3)
-                    <div class="mt-4 text-center">
-                        <a href="#" class="text-blue-600 hover:text-blue-800 text-sm">View all {{ $pendingUsers->count()
-                            }} pending users</a>
-                    </div>
-                    @endif
-                </div>
-                @else
-                <p class="text-gray-500 text-sm">No pending users at the moment.</p>
-                @endif
-            </div>
-        </div>
-        @endif
     </div>
 </div>
 @endsection
