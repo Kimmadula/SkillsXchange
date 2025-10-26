@@ -694,51 +694,56 @@ window.displayUserFeedback = function displayUserFeedback(ratings) {
     const avgHelpfulness = ratings.reduce((sum, r) => sum + (r.helpfulness_rating || 0), 0) / ratings.length;
     const avgKnowledge = ratings.reduce((sum, r) => sum + (r.knowledge_rating || 0), 0) / ratings.length;
 
+    
+    const showAverageRatings = false; // Set to true to show average ratings section
+
     container.innerHTML = `
-        <div class="row">
-            <div class="col-md-6">
-                <div class="rating-summary mb-4">
-                    <h6 class="text-muted mb-3">Average Ratings</h6>
-                    <div class="rating-item mb-2">
-                        <span class="rating-label">Overall Experience:</span>
-                        <div class="stars">${generateStars(avgOverall)}</div>
-                        <span class="rating-value">${avgOverall.toFixed(1)}/5</span>
+        ${showAverageRatings ? `
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="rating-summary">
+                        <h6 class="text-muted mb-3"><i class="fas fa-chart-bar me-2"></i>Average Ratings</h6>
+                        <div class="rating-item mb-2">
+                            <span class="rating-label">Overall Experience:</span>
+                            <div class="stars">${generateStars(avgOverall)}</div>
+                            <span class="rating-value">${avgOverall.toFixed(1)}/5</span>
+                        </div>
+                        <div class="rating-item mb-2">
+                            <span class="rating-label">Communication:</span>
+                            <div class="stars">${generateStars(avgCommunication)}</div>
+                            <span class="rating-value">${avgCommunication.toFixed(1)}/5</span>
+                        </div>
+                        <div class="rating-item mb-2">
+                            <span class="rating-label">Helpfulness:</span>
+                            <div class="stars">${generateStars(avgHelpfulness)}</div>
+                            <span class="rating-value">${avgHelpfulness.toFixed(1)}/5</span>
+                        </div>
+                        <div class="rating-item mb-2">
+                            <span class="rating-label">Knowledge:</span>
+                            <div class="stars">${generateStars(avgKnowledge)}</div>
+                            <span class="rating-value">${avgKnowledge.toFixed(1)}/5</span>
+                        </div>
                     </div>
-                    <div class="rating-item mb-2">
-                        <span class="rating-label">Communication:</span>
-                        <div class="stars">${generateStars(avgCommunication)}</div>
-                        <span class="rating-value">${avgCommunication.toFixed(1)}/5</span>
-                    </div>
-                    <div class="rating-item mb-2">
-                        <span class="rating-label">Helpfulness:</span>
-                        <div class="stars">${generateStars(avgHelpfulness)}</div>
-                        <span class="rating-value">${avgHelpfulness.toFixed(1)}/5</span>
-                    </div>
-                    <div class="rating-item mb-2">
-                        <span class="rating-label">Knowledge:</span>
-                        <div class="stars">${generateStars(avgKnowledge)}</div>
-                        <span class="rating-value">${avgKnowledge.toFixed(1)}/5</span>
+                </div>
+                <div class="col-md-6">
+                    <div class="feedback-stats">
+                        <h6 class="text-muted mb-3"><i class="fas fa-info-circle me-2"></i>Feedback Summary</h6>
+                        <div class="stat-item">
+                            <i class="fas fa-star text-warning"></i>
+                            <span>Total Ratings: ${ratings.length}</span>
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-comments text-info"></i>
+                            <span>Written Feedback: ${ratings.filter(r => r.written_feedback).length}</span>
+                        </div>
+                        <div class="stat-item">
+                            <i class="fas fa-clock text-secondary"></i>
+                            <span>Most Recent: ${new Date(ratings[0].created_at).toLocaleDateString()}</span>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="feedback-stats">
-                    <h6 class="text-muted mb-3">Feedback Summary</h6>
-                    <div class="stat-item">
-                        <i class="fas fa-star text-warning"></i>
-                        <span>Total Ratings: ${ratings.length}</span>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fas fa-comments text-info"></i>
-                        <span>Written Feedback: ${ratings.filter(r => r.written_feedback).length}</span>
-                    </div>
-                    <div class="stat-item">
-                        <i class="fas fa-clock text-secondary"></i>
-                        <span>Most Recent: ${new Date(ratings[0].created_at).toLocaleDateString()}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+        ` : ''}
         
         <div class="feedback-list mt-4">
             <h6 class="text-muted mb-3">Recent Feedback</h6>
