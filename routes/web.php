@@ -867,6 +867,9 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         // Enhanced user verification routes
         Route::patch('/admin/users/{user}/approve', [AdminController::class, 'approveUser'])->name('admin.users.approve');
         Route::patch('/admin/users/{user}/deny', [AdminController::class, 'denyUser'])->name('admin.users.deny');
+        Route::patch('/admin/users/{user}/suspend', [AdminController::class, 'suspendUser'])->name('admin.users.suspend');
+        Route::patch('/admin/users/{user}/lift-suspension', [AdminController::class, 'liftSuspension'])->name('admin.users.lift-suspension');
+        Route::get('/admin/users/{user}/violations', [AdminController::class, 'getUserViolations'])->name('admin.users.violations');
         Route::get('/admin/user/{user}', [AdminController::class, 'show'])->name('admin.user.show');
 
         // Admin profile

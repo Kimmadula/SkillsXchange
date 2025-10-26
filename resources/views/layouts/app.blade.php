@@ -99,6 +99,7 @@
 
 <body class="bg-light">
     <div class="min-vh-100 d-flex flex-column">
+        <x-suspension-banner />
         @include('layouts.navigation')
 
         <!-- Page Heading -->

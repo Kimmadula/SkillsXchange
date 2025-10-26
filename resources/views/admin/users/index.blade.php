@@ -343,16 +343,28 @@ use Illuminate\Support\Facades\Storage;
                                                         Deny
                                                 </button>
                                             @else
-                                                    <button onclick="verifyUser({{ $user->id }}, false)" 
-                                                            class="btn btn-revoke" 
-                                                            id="revoke-btn-{{ $user->id }}">
+                                                @if($user->isAccountRestricted())
+                                                    <button onclick="liftSuspension({{ $user->id }})" 
+                                                            class="btn btn-success" 
+                                                            id="lift-btn-{{ $user->id }}">
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                            <path d="M9 12l2 2 4-4"></path>
+                                                            <circle cx="12" cy="12" r="10"></circle>
+                                                        </svg>
+                                                        Lift Suspension
+                                                    </button>
+                                                @else
+                                                    <button onclick="openSuspendModal({{ $user->id }}, '{{ $user->name }}')" 
+                                                            class="btn btn-warning" 
+                                                            id="suspend-btn-{{ $user->id }}">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                             <circle cx="12" cy="12" r="10"></circle>
                                                             <line x1="15" y1="9" x2="9" y2="15"></line>
                                                             <line x1="9" y1="9" x2="15" y2="15"></line>
                                                         </svg>
-                                                        Revoke
-                                                </button>
+                                                        Suspend
+                                                    </button>
+                                                @endif
                                             @endif
                                             @endif
                                             <a href="{{ route('admin.user.show', $user->id) }}"
@@ -967,7 +979,258 @@ use Illuminate\Support\Facades\Storage;
                 });
             }
         });
+
+        // Suspension modal functions
+        function openSuspendModal(userId, userName) {
+            document.getElementById('suspendUserId').value = userId;
+            document.getElementById('suspendUserName').textContent = userName;
+            document.getElementById('suspendModal').style.display = 'block';
+        }
+
+        function closeSuspendModal() {
+            document.getElementById('suspendModal').style.display = 'none';
+            document.getElementById('suspendForm').reset();
+        }
+
+        function submitSuspension() {
+            const form = document.getElementById('suspendForm');
+            const formData = new FormData(form);
+            const userId = formData.get('user_id');
+
+            fetch(`/admin/users/${userId}/suspend`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({
+                    violation_type: formData.get('violation_type'),
+                    suspension_duration: formData.get('suspension_duration'),
+                    reason: formData.get('reason'),
+                    admin_notes: formData.get('admin_notes')
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while suspending the user.');
+            });
+        }
+
+        function liftSuspension(userId) {
+            if (confirm('Are you sure you want to lift the suspension for this user?')) {
+                fetch(`/admin/users/${userId}/lift-suspension`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while lifting the suspension.');
+                });
+            }
+        }
     </script>
+
+    <!-- Suspension Modal -->
+    <div id="suspendModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Suspend User</h3>
+                <span class="close" onclick="closeSuspendModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="suspendForm">
+                    <input type="hidden" id="suspendUserId" name="user_id">
+                    
+                    <div class="form-group">
+                        <label>User: <span id="suspendUserName"></span></label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="violation_type">Action Type:</label>
+                        <select id="violation_type" name="violation_type" required onchange="toggleDuration()">
+                            <option value="">Select action...</option>
+                            <option value="suspension">Suspend</option>
+                            <option value="permanent_ban">Permanent Ban</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="durationGroup" style="display: none;">
+                        <label for="suspension_duration">Suspension Duration:</label>
+                        <select id="suspension_duration" name="suspension_duration">
+                            <option value="7_days">7 Days</option>
+                            <option value="30_days">30 Days</option>
+                            <option value="indefinite">Indefinite</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reason">Reason:</label>
+                        <select id="reason" name="reason" required>
+                            <option value="">Select reason...</option>
+                            <option value="Inappropriate behavior">Inappropriate behavior</option>
+                            <option value="Spam or harassment">Spam or harassment</option>
+                            <option value="Violation of terms of service">Violation of terms of service</option>
+                            <option value="Fraudulent activity">Fraudulent activity</option>
+                            <option value="Multiple account violations">Multiple account violations</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="admin_notes">Admin Notes (Optional):</label>
+                        <textarea id="admin_notes" name="admin_notes" rows="3" placeholder="Additional details..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeSuspendModal()">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="submitSuspension()">Confirm Suspension</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleDuration() {
+            const violationType = document.getElementById('violation_type').value;
+            const durationGroup = document.getElementById('durationGroup');
+            
+            if (violationType === 'suspension') {
+                durationGroup.style.display = 'block';
+                document.getElementById('suspension_duration').required = true;
+            } else {
+                durationGroup.style.display = 'none';
+                document.getElementById('suspension_duration').required = false;
+            }
+        }
+    </script>
+
+    <style>
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 0;
+            border: none;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: #495057;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+    </style>
 </body>
 
 </html>

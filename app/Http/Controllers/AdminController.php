@@ -7,6 +7,7 @@ use App\Models\Skill;
 use App\Models\Trade;
 use App\Models\UserSkill;
 use App\Models\UserReport;
+use App\Models\Violation;
 use App\Http\Requests\StoreSkillRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -651,5 +652,158 @@ class AdminController extends Controller
                 'message' => 'An error occurred while processing the request.'
             ], 500);
         }
+    }
+
+    /**
+     * Suspend user with reason and duration
+     */
+    public function suspendUser(Request $request, User $user)
+    {
+        try {
+            // Prevent admins from being suspended
+            if ($user->role === 'admin') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot suspend admin users.'
+                ], 403);
+            }
+
+            $request->validate([
+                'violation_type' => 'required|in:suspension,permanent_ban',
+                'suspension_duration' => 'required_if:violation_type,suspension|in:7_days,30_days,indefinite',
+                'reason' => 'required|string|max:1000',
+                'admin_notes' => 'nullable|string|max:2000'
+            ]);
+
+            // Deactivate any existing active violations
+            $user->violations()->active()->update(['is_active' => false]);
+
+            // Calculate suspension dates
+            $suspensionStart = now();
+            $suspensionEnd = null;
+
+            if ($request->violation_type === 'suspension') {
+                switch ($request->suspension_duration) {
+                    case '7_days':
+                        $suspensionEnd = $suspensionStart->copy()->addDays(7);
+                        break;
+                    case '30_days':
+                        $suspensionEnd = $suspensionStart->copy()->addDays(30);
+                        break;
+                    case 'indefinite':
+                        $suspensionEnd = null;
+                        break;
+                }
+            }
+
+            // Create violation record
+            $violation = Violation::create([
+                'user_id' => $user->id,
+                'admin_id' => auth()->id(),
+                'violation_type' => $request->violation_type,
+                'suspension_duration' => $request->suspension_duration,
+                'reason' => $request->reason,
+                'admin_notes' => $request->admin_notes,
+                'suspension_start' => $suspensionStart,
+                'suspension_end' => $suspensionEnd,
+                'is_active' => true
+            ]);
+
+            // Update user suspension status
+            $user->update([
+                'is_suspended' => true,
+                'suspension_start' => $suspensionStart,
+                'suspension_end' => $suspensionEnd,
+                'suspension_reason' => $request->reason
+            ]);
+
+            $action = $request->violation_type === 'permanent_ban' ? 'permanently banned' : 'suspended';
+            $duration = $request->violation_type === 'suspension' ? " for {$request->suspension_duration}" : '';
+
+            Log::info("User {$action} by admin", [
+                'admin_user' => auth()->user()->email,
+                'affected_user' => $user->email,
+                'user_id' => $user->id,
+                'violation_id' => $violation->id,
+                'reason' => $request->reason,
+                'duration' => $request->suspension_duration ?? 'permanent'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "User {$user->name} has been {$action}{$duration}.",
+                'violation' => $violation
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error suspending user', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id,
+                'admin_user' => auth()->user()->email
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while suspending the user.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Lift suspension/ban for a user
+     */
+    public function liftSuspension(User $user)
+    {
+        try {
+            // Deactivate all active violations
+            $user->violations()->active()->update(['is_active' => false]);
+
+            // Update user suspension status
+            $user->update([
+                'is_suspended' => false,
+                'suspension_start' => null,
+                'suspension_end' => null,
+                'suspension_reason' => null
+            ]);
+
+            Log::info("User suspension lifted by admin", [
+                'admin_user' => auth()->user()->email,
+                'affected_user' => $user->email,
+                'user_id' => $user->id
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Suspension lifted for user {$user->name}."
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error lifting suspension', [
+                'error' => $e->getMessage(),
+                'user_id' => $user->id,
+                'admin_user' => auth()->user()->email
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while lifting the suspension.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get user violation history
+     */
+    public function getUserViolations(User $user)
+    {
+        $violations = $user->violations()
+            ->with('admin:id,firstname,lastname,email')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'violations' => $violations
+        ]);
     }
 }

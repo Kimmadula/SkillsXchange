@@ -746,7 +746,6 @@ window.displayUserFeedback = function displayUserFeedback(ratings) {
         ` : ''}
         
         <div class="feedback-list mt-4">
-            <h6 class="text-muted mb-3">Recent Feedback</h6>
             ${ratings.slice(0, 5).map(rating => {
                 // Check if rater exists
                 if (!rating.rater) {

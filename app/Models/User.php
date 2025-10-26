@@ -91,6 +91,86 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Get violations for this user
+     */
+    public function violations()
+    {
+        return $this->hasMany(Violation::class);
+    }
+
+    /**
+     * Get active violations for this user
+     */
+    public function activeViolations()
+    {
+        return $this->violations()->active();
+    }
+
+    /**
+     * Check if user is currently suspended
+     */
+    public function isSuspended()
+    {
+        $activeSuspension = $this->violations()
+            ->active()
+            ->suspensions()
+            ->where(function($query) {
+                $query->where('suspension_duration', 'indefinite')
+                      ->orWhere('suspension_duration', 'permanent')
+                      ->orWhere('suspension_end', '>', now());
+            })
+            ->first();
+
+        return $activeSuspension && $activeSuspension->isSuspensionActive();
+    }
+
+    /**
+     * Check if user is permanently banned
+     */
+    public function isPermanentlyBanned()
+    {
+        return $this->violations()
+            ->active()
+            ->permanentBans()
+            ->exists();
+    }
+
+    /**
+     * Check if user account is restricted (suspended or banned)
+     */
+    public function isAccountRestricted()
+    {
+        return $this->isSuspended() || $this->isPermanentlyBanned();
+    }
+
+    /**
+     * Get current active suspension
+     */
+    public function getCurrentSuspension()
+    {
+        return $this->violations()
+            ->active()
+            ->suspensions()
+            ->where(function($query) {
+                $query->where('suspension_duration', 'indefinite')
+                      ->orWhere('suspension_duration', 'permanent')
+                      ->orWhere('suspension_end', '>', now());
+            })
+            ->first();
+    }
+
+    /**
+     * Get current active ban
+     */
+    public function getCurrentBan()
+    {
+        return $this->violations()
+            ->active()
+            ->permanentBans()
+            ->first();
+    }
+
+    /**
      * Get unique skills acquired through trading.
      * 
      * @return \Illuminate\Database\Eloquent\Collection
