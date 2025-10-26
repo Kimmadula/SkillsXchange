@@ -39,17 +39,36 @@
                         @endif
                     </div>
                     @if($r->status === 'pending')
-                        <div style="display:flex; gap:8px; margin-left:16px;">
-                            <form method="POST" action="{{ route('trades.respond', $r->id) }}" style="display:inline;">
-                                @csrf
-                                <input type="hidden" name="action" value="accept">
-                                <button type="submit" style="padding:6px 12px; background:#10b981; color:#fff; border:none; border-radius:4px; cursor:pointer;">Accept</button>
-                            </form>
-                            <form method="POST" action="{{ route('trades.respond', $r->id) }}" style="display:inline;">
-                                @csrf
-                                <input type="hidden" name="action" value="decline">
-                                <button type="submit" style="padding:6px 12px; background:#ef4444; color:#fff; border:none; border-radius:4px; cursor:pointer;">Decline</button>
-                            </form>
+                        @php
+                            $acceptanceFee = \App\Models\TradeFeeSetting::getFeeAmount('trade_acceptance');
+                            $userBalance = auth()->user()->token_balance ?? 0;
+                        @endphp
+                        <div style="margin-left:16px;">
+                            @if($acceptanceFee > 0 && \App\Models\TradeFeeSetting::isFeeActive('trade_acceptance'))
+                                <div style="margin-bottom:8px; padding:6px 10px; background:#fef3c7; color:#92400e; border-radius:4px; font-size:0.8rem; border:1px solid #f59e0b;">
+                                    <div style="font-weight:600;">Acceptance Fee: {{ $acceptanceFee }} token{{ $acceptanceFee > 1 ? 's' : '' }}</div>
+                                    <div style="font-size:0.75rem;">Your balance: {{ $userBalance }} tokens</div>
+                                    <div style="font-size:0.7rem; color:#92400e; margin-top:2px;">
+                                        <i>Both users will be charged when you accept</i>
+                                    </div>
+                                </div>
+                            @endif
+                            <div style="display:flex; gap:8px;">
+                                <form method="POST" action="{{ route('trades.respond', $r->id) }}" style="display:inline;">
+                                    @csrf
+                                    <input type="hidden" name="action" value="accept">
+                                    <button type="submit"
+                                            style="padding:6px 12px; background:#10b981; color:#fff; border:none; border-radius:4px; cursor:pointer; {{ $acceptanceFee > 0 && $userBalance < $acceptanceFee ? 'opacity:50; cursor:not-allowed;' : '' }}"
+                                            {{ $acceptanceFee > 0 && $userBalance < $acceptanceFee ? 'disabled' : '' }}>
+                                        Accept
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ route('trades.respond', $r->id) }}" style="display:inline;">
+                                    @csrf
+                                    <input type="hidden" name="action" value="decline">
+                                    <button type="submit" style="padding:6px 12px; background:#ef4444; color:#fff; border:none; border-radius:4px; cursor:pointer;">Decline</button>
+                                </form>
+                            </div>
                         </div>
                     @endif
                 </div>

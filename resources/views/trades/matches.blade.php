@@ -33,7 +33,7 @@
                     <div style="flex:1;">
                         <div style="font-weight:700; font-size:1.1rem;">{{ $t->use_username ? $t->user->username : ($t->user->firstname.' '.$t->user->lastname) }}</div>
                         <div style="color:#374151; margin-top:4px;">
-                            <strong>Offering:</strong> {{ optional($t->offeringSkill)->name }} 
+                            <strong>Offering:</strong> {{ optional($t->offeringSkill)->name }}
                             <span style="margin:0 8px;">→</span>
                             <strong>Looking for:</strong> {{ optional($t->lookingSkill)->name }}
                         </div>
@@ -65,14 +65,28 @@
                         </div>
                     </div>
                 </div>
-                
+
                 @if($t->is_compatible)
-                    <form method="POST" action="{{ route('trades.request', $t->id) }}" style="display:flex; gap:8px; align-items:center;">
-                        @csrf
-                        <button type="submit" style="padding:8px 16px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; white-space:nowrap;">
-                            Request Trade
-                        </button>
-                    </form>
+                    @php
+                        $requestFee = \App\Models\TradeFeeSetting::getFeeAmount('trade_request');
+                        $userBalance = auth()->user()->token_balance ?? 0;
+                    @endphp
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        @if($requestFee > 0 && \App\Models\TradeFeeSetting::isFeeActive('trade_request'))
+                            <div style="padding:6px 12px; background:#dbeafe; color:#1e40af; border-radius:6px; font-size:0.8rem; border:1px solid #3b82f6;">
+                                <div style="font-weight:600;">Fee: {{ $requestFee }} token{{ $requestFee > 1 ? 's' : '' }} (when accepted)</div>
+                                <div style="font-size:0.75rem;">Balance: {{ $userBalance }} tokens</div>
+                            </div>
+                        @endif
+                        <form method="POST" action="{{ route('trades.request', $t->id) }}" style="display:inline;">
+                            @csrf
+                            <button type="submit"
+                                    style="padding:8px 16px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; white-space:nowrap; {{ $requestFee > 0 && $userBalance < $requestFee ? 'opacity:50; cursor:not-allowed;' : '' }}"
+                                    {{ $requestFee > 0 && $userBalance < $requestFee ? 'disabled' : '' }}>
+                                Request Trade
+                            </button>
+                        </form>
+                    </div>
                 @else
                     <div style="padding:8px 16px; background:#9ca3af; color:#6b7280; border-radius:6px; font-size:0.9rem;">
                         Not compatible with your skills

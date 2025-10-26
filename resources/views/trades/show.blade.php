@@ -9,7 +9,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
-                    
+
                     <!-- Debug Information -->
                     <div class="mb-6 p-4 bg-yellow-100 border border-yellow-400 rounded">
                         <h3 class="font-bold text-yellow-800">Debug Information:</h3>
@@ -20,7 +20,7 @@
                         <p><strong>Offering Skill:</strong> {{ $trade->offeringSkill->name ?? 'Not found' }}</p>
                         <p><strong>Looking Skill:</strong> {{ $trade->lookingSkill->name ?? 'Not found' }}</p>
                     </div>
-                    
+
                     <!-- Trade Header -->
                     <div class="mb-6">
                         <h1 class="text-2xl font-bold text-gray-900 mb-2">Trade Details</h1>
@@ -29,7 +29,7 @@
 
                     <!-- Trade Information -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        
+
                         <!-- Offering User -->
                         <div class="bg-blue-50 p-6 rounded-lg">
                             <h3 class="text-lg font-semibold text-blue-900 mb-4">Offering</h3>
@@ -105,7 +105,7 @@
                             </div>
                             @endif
                         </div>
-                        
+
                         @if($trade->preferred_days)
                         <div class="mt-4">
                             <span class="font-medium text-gray-700">Preferred Days:</span>
@@ -143,14 +143,36 @@
                         <a href="{{ route('dashboard') }}" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
                             Back to Dashboard
                         </a>
-                        
+
                         @if($user->id !== $trade->user_id && $trade->status === 'open')
-                        <form action="{{ route('trades.request', $trade->id) }}" method="POST" class="inline">
-                            @csrf
-                            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                                Request This Trade
-                            </button>
-                        </form>
+                        <div class="text-right">
+                            @php
+                                $requestFee = \App\Models\TradeFeeSetting::getFeeAmount('trade_request');
+                            @endphp
+                            @if($requestFee > 0 && \App\Models\TradeFeeSetting::isFeeActive('trade_request'))
+                                <div class="mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <div class="flex items-center text-blue-800">
+                                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <span class="text-sm font-medium">
+                                            Fee: {{ $requestFee }} token{{ $requestFee > 1 ? 's' : '' }} (charged when accepted)
+                                        </span>
+                                    </div>
+                                    <div class="text-xs text-blue-700 mt-1">
+                                        Your balance: {{ $user->token_balance }} tokens
+                                    </div>
+                                </div>
+                            @endif
+                            <form action="{{ route('trades.request', $trade->id) }}" method="POST" class="inline">
+                                @csrf
+                                <button type="submit"
+                                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded {{ $requestFee > 0 && $user->token_balance < $requestFee ? 'opacity-50 cursor-not-allowed' : '' }}"
+                                        {{ $requestFee > 0 && $user->token_balance < $requestFee ? 'disabled' : '' }}>
+                                    Request This Trade
+                                </button>
+                            </form>
+                        </div>
                         @elseif($user->id === $trade->user_id)
                         <span class="text-gray-500 text-sm">This is your trade</span>
                         @endif
