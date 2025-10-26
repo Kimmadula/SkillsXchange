@@ -466,7 +466,7 @@
 .metric-card {
     background: white;
     border-radius: 12px;
-    padding: 24px;
+    padding: 20px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     display: flex;
     justify-content: space-between;
@@ -478,7 +478,7 @@
 }
 
 .metric-value {
-    font-size: 36px;
+    font-size: 28px;
     font-weight: 700;
     color: #1a202c;
     margin-bottom: 4px;
@@ -508,8 +508,8 @@
 }
 
 .metric-icon {
-    width: 48px;
-    height: 48px;
+    width: 40px;
+    height: 40px;
     color: #3b82f6;
 }
 
@@ -851,12 +851,111 @@
     padding: 20px;
 }
 
+/* Token Management Styles */
+.token-management-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 24px;
+}
+
+.token-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin: 16px 0;
+}
+
+.token-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.token-stat-icon {
+    width: 24px;
+    height: 24px;
+    color: #8b5cf6;
+    flex-shrink: 0;
+}
+
+.token-stat-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.token-stat-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.token-stat-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a202c;
+    line-height: 1.2;
+}
+
+.token-stat-label {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.token-actions {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.action-group h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #f1f5f9;
+    color: #475569;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.action-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
     .metrics-row {
         grid-template-columns: 1fr;
     }
-    
+
     .content-row {
         grid-template-columns: 1fr;
     }
@@ -868,40 +967,40 @@
         transition: transform 0.3s ease;
         width: 280px;
     }
-    
+
     .admin-sidebar.open {
         transform: translateX(0);
     }
-    
+
     .admin-main {
         margin-left: 0;
         width: 100%;
     }
-    
+
     .sidebar-nav {
         display: flex;
         flex-direction: column;
         overflow-y: auto;
         padding: 8px 0;
     }
-    
+
     .nav-item {
         white-space: nowrap;
         border-left: 3px solid transparent;
         border-bottom: none;
     }
-    
+
     .nav-item.active {
         border-left-color: #3b82f6;
         border-bottom: none;
     }
-    
+
     .admin-header {
         flex-direction: column;
         gap: 16px;
         align-items: flex-start;
     }
-    
+
     .header-right {
         width: 100%;
         justify-content: space-between;
