@@ -134,10 +134,11 @@
             </div>
         </div>
 
-        <!-- Profile Picture -->
+        <!-- Student ID Photo -->
         <div class="form-group">
-            <label for="photo" class="form-label">Profile Picture</label>
-            <input id="photo" type="file" name="photo" accept="image/*" class="form-input">
+            <label for="photo" class="form-label">Student ID <span class="text-red-500">*</span></label>
+            <p class="text-sm text-gray-600 mb-2">Please upload a clear photo of your valid Student ID for verification purposes.</p>
+            <input id="photo" type="file" name="photo" accept="image/*" class="form-input" required>
             <x-input-error :messages="$errors->get('photo')" class="mt-2" />
         </div>
 
@@ -160,7 +161,7 @@
             </div>
             <input type="hidden" name="selected_skills" id="selected_skills" value="">
             <x-input-error :messages="$errors->get('selected_skills')" class="mt-2" />
-            
+
             <!-- Helpful message about skills -->
             <div class="skills-help-message">
                 <i class="fas fa-info-circle me-2"></i>
@@ -180,7 +181,7 @@
             margin-right: 6px;
             cursor: pointer;
         }
-        
+
         .skills-container {
             max-height: 200px;
             overflow-y: auto;
@@ -188,29 +189,29 @@
             border-radius: 4px;
             padding: 0.5rem;
         }
-        
+
         .skills-container label {
             transition: background-color 0.2s ease;
             padding: 0.25rem 0.5rem;
             margin: 0.125rem 0;
             font-size: 0.85rem;
         }
-        
+
         .skills-container label:hover {
             background-color: #f8f9fa;
         }
-        
+
         .skills-container label:has(input:checked) {
             background-color: #e3f2fd;
             border-color: #2196f3;
         }
-        
+
         /* Fallback for browsers that don't support :has() */
         .skills-container label.checked {
             background-color: #e3f2fd;
             border-color: #2196f3;
         }
-        
+
         .skills-help-message {
             margin-top: 12px;
             padding: 12px 16px;
@@ -221,13 +222,13 @@
             align-items: flex-start;
             gap: 8px;
         }
-        
+
         .skills-help-message i {
             color: #3b82f6;
             margin-top: 2px;
             flex-shrink: 0;
         }
-        
+
         .skills-help-message span {
             line-height: 1.5;
         }
@@ -238,12 +239,12 @@
             const categorySelect = document.getElementById('skill_category');
             const skillsContainer = document.getElementById('skills-container');
             const selectedSkillsInput = document.getElementById('selected_skills');
-            
+
             // Get skills data from the data attribute
             const skillsDataElement = document.getElementById('skills-data');
             let allSkills = [];
             let selectedSkills = [];
-            
+
             try {
                 if (skillsDataElement && skillsDataElement.dataset.skills) {
                     allSkills = JSON.parse(skillsDataElement.dataset.skills);
@@ -259,7 +260,7 @@
 
             categorySelect.addEventListener('change', function() {
                 const selectedCategory = this.value;
-                
+
                 if (!selectedCategory) {
                     skillsContainer.innerHTML = '<p class="text-gray-500 text-sm">Please select a category first to choose skills.</p>';
                     selectedSkills = [];
@@ -269,33 +270,33 @@
 
                 // Filter skills by category
                 const categorySkills = allSkills.filter(skill => skill.category === selectedCategory);
-                
+
                 // Debug: Log the filtered skills
                 console.log('Selected category:', selectedCategory);
                 console.log('Filtered skills:', categorySkills);
-                
+
                 if (categorySkills.length === 0) {
                     skillsContainer.innerHTML = '<p class="text-gray-500 text-sm">No skills found for this category.</p>';
                     return;
                 }
-                
+
                 // Create skill selection interface
                 let skillsHTML = '<div class="space-y-2">';
                 skillsHTML += '<p class="text-sm font-medium text-gray-700">Select your skills from ' + selectedCategory + ':</p>';
-                
+
                 categorySkills.forEach(skill => {
                     skillsHTML += `
                         <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded border border-gray-200">
-                            <input type="checkbox" 
-                                   class="skill-checkbox" 
-                                   value="${skill.skill_id}" 
+                            <input type="checkbox"
+                                   class="skill-checkbox"
+                                   value="${skill.skill_id}"
                                    data-skill-name="${skill.name}"
                                    onchange="toggleSkill(this)">
                             <span class="text-sm text-gray-700">${skill.name}</span>
                         </label>
                     `;
                 });
-                
+
                 skillsHTML += '</div>';
                 skillsContainer.innerHTML = skillsHTML;
             });
@@ -305,7 +306,7 @@
                 const skillId = checkbox.value;
                 const skillName = checkbox.getAttribute('data-skill-name');
                 const label = checkbox.closest('label');
-                
+
                 if (checkbox.checked) {
                     if (!selectedSkills.find(skill => skill.id === skillId)) {
                         selectedSkills.push({ id: skillId, name: skillName });
@@ -315,7 +316,7 @@
                     selectedSkills = selectedSkills.filter(skill => skill.id !== skillId);
                     label.classList.remove('checked');
                 }
-                
+
                 updateSelectedSkillsInput();
                 updateSkillsDisplay();
             };
@@ -333,8 +334,8 @@
                                 ${selectedSkills.map(skill => `
                                     <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                         ${skill.name}
-                                        <button type="button" 
-                                                onclick="removeSkill('${skill.id}')" 
+                                        <button type="button"
+                                                onclick="removeSkill('${skill.id}')"
                                                 class="ml-1 text-blue-600 hover:text-blue-800">
                                             ×
                                         </button>
@@ -343,13 +344,13 @@
                             </div>
                         </div>
                     `;
-                    
+
                     // Add to skills container
                     const existingDisplay = skillsContainer.querySelector('.selected-skills-display');
                     if (existingDisplay) {
                         existingDisplay.remove();
                     }
-                    
+
                     const displayDiv = document.createElement('div');
                     displayDiv.className = 'selected-skills-display';
                     displayDiv.innerHTML = displayHTML;
@@ -367,7 +368,7 @@
                 selectedSkills = selectedSkills.filter(skill => skill.id !== skillId);
                 updateSelectedSkillsInput();
                 updateSkillsDisplay();
-                
+
                 // Uncheck the corresponding checkbox and remove visual feedback
                 const checkbox = document.querySelector(`input[value="${skillId}"]`);
                 if (checkbox) {
@@ -421,24 +422,24 @@
             // Enhanced form validation with proper duplicate submission prevention
             const form = document.getElementById('registerForm');
             let isSubmitting = false;
-            
+
             form.addEventListener('submit', function(e) {
                 // Prevent multiple submissions
                 if (isSubmitting) {
                     e.preventDefault();
                     return false;
                 }
-                
+
                 // Validate skills selection
                 if (selectedSkills.length === 0) {
                     e.preventDefault();
                     alert('Please select at least one skill.');
                     return false;
                 }
-                
+
                 // Set submitting state
                 isSubmitting = true;
-                
+
                 // Show loading state
                 const submitBtn = form.querySelector('button[type="submit"]');
                 const originalText = submitBtn.textContent;
@@ -446,12 +447,12 @@
                 submitBtn.disabled = true;
                 submitBtn.style.opacity = '0.6';
                 submitBtn.style.cursor = 'not-allowed';
-                
+
                 // Add a visual indicator
                 const loadingSpinner = document.createElement('span');
                 loadingSpinner.innerHTML = ' <i class="fas fa-spinner fa-spin"></i>';
                 submitBtn.appendChild(loadingSpinner);
-                
+
                 // Don't re-enable the button - let the page redirect handle it
                 // This prevents duplicate submissions completely
             });
@@ -462,7 +463,7 @@
                 input.addEventListener('blur', function() {
                     validateField(this);
                 });
-                
+
                 // Add real-time validation for birthdate field
                 if (input.name === 'bdate') {
                     input.addEventListener('change', function() {
@@ -523,12 +524,12 @@
                     const today = new Date();
                     let age = today.getFullYear() - birthDate.getFullYear();
                     const monthDiff = today.getMonth() - birthDate.getMonth();
-                    
+
                     // Check if birthday hasn't occurred this year
                     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
                         age--;
                     }
-                    
+
                     if (age < 18) {
                         isValid = false;
                         errorMessage = 'You must be 18 years or above to register.';
@@ -576,6 +577,78 @@
             }
         });
         </script>
+
+        <!-- Terms and Conditions -->
+        <div class="form-group terms-section">
+            <div class="terms-checkbox-group">
+                <input type="checkbox" id="terms_agreement" name="terms_agreement" required class="terms-checkbox">
+                <label for="terms_agreement" class="terms-label">
+                    I agree to the <a href="#" target="_blank" class="terms-link">Terms and Conditions</a>
+                    <span class="text-red-500">*</span>
+                </label>
+            </div>
+            <x-input-error :messages="$errors->get('terms_agreement')" class="mt-2" />
+
+            <div class="terms-checkbox-group">
+                <input type="checkbox" id="privacy_agreement" name="privacy_agreement" required class="terms-checkbox">
+                <label for="privacy_agreement" class="terms-label">
+                    I agree to the <a href="#" target="_blank" class="terms-link">Privacy Policy</a>
+                    <span class="text-red-500">*</span>
+                </label>
+            </div>
+            <x-input-error :messages="$errors->get('privacy_agreement')" class="mt-2" />
+
+            <div class="terms-checkbox-group">
+                <input type="checkbox" id="student_verification" name="student_verification" required class="terms-checkbox">
+                <label for="student_verification" class="terms-label">
+                    I confirm that the information provided is accurate and that I am a valid student.
+                    <span class="text-red-500">*</span>
+                </label>
+            </div>
+            <x-input-error :messages="$errors->get('student_verification')" class="mt-2" />
+        </div>
+
+        <style>
+        .terms-section {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .terms-checkbox-group {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .terms-checkbox {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            cursor: pointer;
+            accent-color: #3b82f6;
+        }
+
+        .terms-label {
+            flex: 1;
+            cursor: pointer;
+            line-height: 1.5;
+            color: #374151;
+            font-size: 0.95rem;
+        }
+
+        .terms-link {
+            color: #3b82f6;
+            text-decoration: underline;
+        }
+
+        .terms-link:hover {
+            color: #2563eb;
+        }
+        </style>
 
         <div class="form-footer">
             <a href="{{ route('login') }}">

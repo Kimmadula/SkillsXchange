@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
- 
+
 
 class RegisteredUserController extends Controller
 {
@@ -38,7 +38,7 @@ class RegisteredUserController extends Controller
     {
         // Check for duplicate submission using a simple token mechanism
         $submissionKey = 'registration_' . $request->ip() . '_' . $request->username . '_' . $request->email;
-        
+
         if (Cache::has($submissionKey)) {
             Log::warning('Duplicate registration attempt detected', [
                 'ip' => $request->ip(),
@@ -46,15 +46,15 @@ class RegisteredUserController extends Controller
                 'email' => $request->email,
                 'user_agent' => $request->userAgent()
             ]);
-            
+
             return redirect()->back()
                 ->withErrors(['error' => 'Registration is already in progress. Please wait a moment and try again.'])
                 ->withInput();
         }
-        
+
         // Set a temporary lock for 30 seconds to prevent duplicate submissions
         Cache::put($submissionKey, true, 30);
-        
+
         $request->validate([
             'firstname' => ['required', 'string', 'max:50'],
             'middlename' => ['nullable', 'string', 'max:50'],
@@ -66,8 +66,11 @@ class RegisteredUserController extends Controller
             // Normalize later but keep unique constraint here
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'photo' => ['nullable', 'image', 'max:2048'],
+            'photo' => ['required', 'image', 'max:2048'],
             'selected_skills' => ['required', 'string'],
+            'terms_agreement' => ['required', 'accepted'],
+            'privacy_agreement' => ['required', 'accepted'],
+            'student_verification' => ['required', 'accepted'],
         ]);
 
         // Normalize email to enforce one-account-per-email regardless of case or whitespace
@@ -85,7 +88,7 @@ class RegisteredUserController extends Controller
 
         // Parse selected skills
         $selectedSkills = json_decode($request->selected_skills, true);
-        
+
         if (!$selectedSkills || !is_array($selectedSkills) || empty($selectedSkills)) {
             return redirect()->back()
                 ->withInput()
@@ -95,7 +98,7 @@ class RegisteredUserController extends Controller
         // Validate that all skill IDs exist
         $skillIds = array_column($selectedSkills, 'id');
         $existingSkills = Skill::whereIn('skill_id', $skillIds)->pluck('skill_id')->toArray();
-        
+
         if (count($skillIds) !== count($existingSkills)) {
             return redirect()->back()
                 ->withInput()
@@ -105,7 +108,7 @@ class RegisteredUserController extends Controller
         // Use database transaction to ensure data integrity
         try {
             DB::beginTransaction();
-            
+
             $user = User::create([
                 'firstname' => $request->firstname,
                 'middlename' => $request->middlename,
@@ -127,7 +130,7 @@ class RegisteredUserController extends Controller
 
             // Attach all selected skills to the user
             $user->skills()->attach($skillIds);
-            
+
             // Record skill acquisitions in history for registered skills
             foreach ($skillIds as $skillId) {
                 \App\Models\SkillAcquisitionHistory::create([
@@ -140,12 +143,12 @@ class RegisteredUserController extends Controller
                     'acquired_at' => now()
                 ]);
             }
-            
+
             DB::commit();
         } catch (\Exception $e) {
             DB::rollback();
             Log::error('User registration failed: ' . $e->getMessage());
-            
+
             return redirect()->back()
                 ->withErrors(['error' => 'Registration failed. Please try again.'])
                 ->withInput();

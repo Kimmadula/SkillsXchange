@@ -104,3 +104,4 @@ frontend/.env.development.local
 frontend/.env.test.local
 frontend/.env.production.local
 >>>>>>> 4314806ab9d4fdc3a9ccec4c29df8f889e22901c
+.cursorignore

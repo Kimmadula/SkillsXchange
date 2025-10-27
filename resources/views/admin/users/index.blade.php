@@ -295,7 +295,7 @@ use Illuminate\Support\Facades\Storage;
                                     <th>EMAIL</th>
                                     <th>SKILL</th>
                                     <th>STATUS</th>
-                                    <th>PHOTO</th>
+                                    <th>STUDENT ID</th>
                                     <th>ACTIONS</th>
                                 </tr>
                             </thead>
@@ -321,15 +321,16 @@ use Illuminate\Support\Facades\Storage;
                                         <div class="user-photo-container">
                                             @if($user->photo && Storage::disk('public')->exists($user->photo))
                                                 <img src="{{ Storage::disk('public')->url($user->photo) }}"
-                                                     alt="User Photo"
-                                                     class="user-photo"
+                                                     alt="Student ID"
+                                                     class="user-photo clickable-image-table"
+                                                     onclick="openStudentIdModal('{{ Storage::disk('public')->url($user->photo) }}', '{{ $user->name }}')"
                                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                                 <div class="user-avatar-fallback" style="display: none;">
-                                                    {{ substr($user->firstname, 0, 1) }}{{ substr($user->lastname, 0, 1) }}
+                                                    No ID
                                                 </div>
                                         @else
                                                 <div class="user-avatar-fallback">
-                                                    {{ substr($user->firstname, 0, 1) }}{{ substr($user->lastname, 0, 1) }}
+                                                    No ID
                                                 </div>
                                         @endif
                                         </div>
@@ -1013,7 +1014,7 @@ use Illuminate\Support\Facades\Storage;
             // Added client-side validation
             const violationType = document.getElementById('violation_type').value;
             const reason = document.getElementById('reason').value;
-            
+
             if (!violationType) {
                 alert('Please select an action type.');
                 return;
@@ -1276,7 +1277,116 @@ use Illuminate\Support\Facades\Storage;
         .btn:hover {
             opacity: 0.9;
         }
+
+        .clickable-image-table {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .clickable-image-table:hover {
+            transform: scale(1.1);
+        }
+
+        /* Student ID Modal */
+        .student-id-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .student-id-modal-content {
+            position: relative;
+            margin: auto;
+            margin-top: 5vh;
+            max-width: 90%;
+            max-height: 90vh;
+            animation: zoomIn 0.3s ease;
+        }
+
+        .student-id-modal-image {
+            width: 100%;
+            height: auto;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .student-id-modal-header {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .student-id-modal-close {
+            color: white;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .student-id-modal-close:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes zoomIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
     </style>
+
+    <!-- Student ID Modal -->
+    <div id="studentIdModal" class="student-id-modal" onclick="if(event.target.id === 'studentIdModal') closeStudentIdModal()">
+        <div class="student-id-modal-content">
+            <div class="student-id-modal-header">
+                <span class="student-id-modal-close" onclick="closeStudentIdModal()">&times;</span>
+            </div>
+            <img id="modalStudentIdImage" class="student-id-modal-image" src="" alt="Student ID">
+            <p id="modalStudentName" style="color: white; text-align: center; margin-top: 10px; font-weight: 500;"></p>
+        </div>
+    </div>
+
+    <script>
+        function openStudentIdModal(imageUrl, studentName) {
+            document.getElementById('modalStudentIdImage').src = imageUrl;
+            document.getElementById('modalStudentName').textContent = 'Student ID - ' + studentName;
+            document.getElementById('studentIdModal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeStudentIdModal() {
+            document.getElementById('studentIdModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeStudentIdModal();
+            }
+        });
+    </script>
 </body>
 
 </html>

@@ -23,9 +23,9 @@ use Illuminate\Support\Facades\Storage;
         <div class="admin-sidebar">
             <div class="sidebar-header">
                 <div class="logo">
-                    <!-- LOGO IS HERE 
+                    <!-- LOGO IS HERE
                     <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="admin-logo">
-                    -->                    
+                    -->
                     <span class="logo-text">SkillsXchange Admin</span>
                 </div>
             </div>
@@ -108,38 +108,59 @@ use Illuminate\Support\Facades\Storage;
                     </div>
                     <div class="card-body">
                         <div class="user-profile-section">
-                            <div class="user-avatar-large">
+                            <div class="student-id-section">
+                                <h4 class="student-id-title">Student ID Verification</h4>
                                 @if($user->photo && Storage::disk('public')->exists($user->photo))
-                                    <img src="{{ Storage::disk('public')->url($user->photo) }}" 
-                                         alt="User Photo" 
-                                         class="user-photo-large"
-                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                    <div class="user-avatar-fallback-large" style="display: none;">
-                                        {{ substr($user->firstname, 0, 1) }}{{ substr($user->lastname, 0, 1) }}
+                                    <div class="student-id-image-container">
+                                        <img src="{{ Storage::disk('public')->url($user->photo) }}"
+                                             alt="Student ID"
+                                             class="user-photo-large clickable-image"
+                                             onclick="openStudentIdModal('{{ Storage::disk('public')->url($user->photo) }}', '{{ $user->name }}')"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div class="user-avatar-fallback-large" style="display: none;">
+                                            No ID Photo
+                                        </div>
+                                        <div class="image-actions">
+                                            <button onclick="openStudentIdModal('{{ Storage::disk('public')->url($user->photo) }}', '{{ $user->name }}')" class="btn-view-student-id">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                                    <circle cx="12" cy="12" r="3"></circle>
+                                                </svg>
+                                                View Full Size
+                                            </button>
+                                            <a href="{{ Storage::disk('public')->url($user->photo) }}" download="{{ 'student-id-' . $user->username . '.jpg' }}" class="btn-download-student-id">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                                </svg>
+                                                Download
+                                            </a>
+                                        </div>
                                     </div>
                                 @else
                                     <div class="user-avatar-fallback-large">
-                                        {{ substr($user->firstname, 0, 1) }}{{ substr($user->lastname, 0, 1) }}
+                                        No Student ID Photo Uploaded
                                     </div>
                                 @endif
                             </div>
-                            
+
                             <div class="user-details-grid">
                                 <div class="detail-item">
                                     <label class="detail-label">Full Name</label>
                                     <div class="detail-value">{{ $user->name }}</div>
                                 </div>
-                                
+
                                 <div class="detail-item">
                                     <label class="detail-label">Email</label>
                                     <div class="detail-value">{{ $user->email }}</div>
                                 </div>
-                                
+
                                 <div class="detail-item">
                                     <label class="detail-label">Username</label>
                                     <div class="detail-value">{{ $user->username }}</div>
                 </div>
-                
+
                                 <div class="detail-item">
                                     <label class="detail-label">Role</label>
                                     <div class="detail-value">
@@ -148,7 +169,7 @@ use Illuminate\Support\Facades\Storage;
                         </span>
                     </div>
                 </div>
-                
+
                                 <div class="detail-item">
                                     <label class="detail-label">Status</label>
                                     <div class="detail-value">
@@ -169,22 +190,22 @@ use Illuminate\Support\Facades\Storage;
                                     <label class="detail-label">Gender</label>
                                     <div class="detail-value">{{ $user->gender ? ucfirst($user->gender) : 'Not provided' }}</div>
                         </div>
-                                
+
                                 <div class="detail-item">
                                     <label class="detail-label">Birth Date</label>
                                     <div class="detail-value">{{ $user->bdate ? $user->bdate->format('F j, Y') : 'Not provided' }}</div>
                     </div>
-                                
+
                                 <div class="detail-item">
                                     <label class="detail-label">Age</label>
                                     <div class="detail-value">{{ $user->bdate ? $user->bdate->age . ' years old' : 'Not provided' }}</div>
                     </div>
-                                
+
                                 <div class="detail-item">
                                     <label class="detail-label">Member Since</label>
                                     <div class="detail-value">{{ $user->created_at->format('F j, Y') }}</div>
                     </div>
-                                
+
                                 <div class="detail-item full-width">
                                     <label class="detail-label">Address</label>
                                     <div class="detail-value">{{ $user->address ?: 'Not provided' }}</div>
@@ -199,20 +220,20 @@ use Illuminate\Support\Facades\Storage;
                                 <div class="skills-list">
                 @foreach($user->skills as $skill)
                                         <span class="skill-tag {{ $skill->skill_id == $user->skill_id ? 'skill-tag-primary' : 'skill-tag-secondary' }}">
-                                            {{ $skill->skill_name }}
+                                            {{ $skill->name }}
                                             @if($skill->skill_id == $user->skill_id)
                                                 <svg class="skill-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                     <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
                                                 </svg>
                                             @endif
-                </span>
-                @endforeach
-            </div>
-                            @else
-                                <p class="no-skills">No skills assigned yet.</p>
-                            @endif
-        </div>
-                        
+                        </span>
+                    @endforeach
+                </div>
+            @else
+                <p class="no-skills">No skills assigned yet.</p>
+            @endif
+                        </div>
+
                         <!-- Actions Section -->
                         <div class="actions-section">
                             <h4 class="section-title">Account Actions</h4>
@@ -247,9 +268,11 @@ use Illuminate\Support\Facades\Storage;
                 </div>
             </div>
         </div>
-</div>
+    </div>
 
-<style>
+    @include('admin.dashboard-styles')
+
+    <style>
     .user-details-card {
         background: white;
         border-radius: 12px;
@@ -279,8 +302,24 @@ use Illuminate\Support\Facades\Storage;
         margin-bottom: 32px;
     }
 
-    .user-avatar-large {
+    .user-avatar-large, .student-id-section {
         flex-shrink: 0;
+    }
+
+    .student-id-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .student-id-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0;
     }
 
     .user-photo-large {
@@ -436,6 +475,15 @@ use Illuminate\Support\Facades\Storage;
         background: #dc2626;
     }
 
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: #4b5563;
+    }
+
     .status-badge {
         display: inline-block;
         padding: 4px 8px;
@@ -471,6 +519,131 @@ use Illuminate\Support\Facades\Storage;
         color: #3730a3;
     }
 
+    .student-id-image-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .clickable-image {
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .clickable-image:hover {
+        transform: scale(1.05);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .image-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .btn-view-student-id, .btn-download-student-id {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+
+    .btn-view-student-id {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .btn-view-student-id:hover {
+        background: #2563eb;
+    }
+
+    .btn-download-student-id {
+        background: #10b981;
+        color: white;
+    }
+
+    .btn-download-student-id:hover {
+        background: #059669;
+    }
+
+    /* Student ID Modal */
+    .student-id-modal {
+        display: none;
+        position: fixed;
+        z-index: 10000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.9);
+        animation: fadeIn 0.3s ease;
+    }
+
+    .student-id-modal-content {
+        position: relative;
+        margin: auto;
+        margin-top: 5vh;
+        max-width: 90%;
+        max-height: 90vh;
+        animation: zoomIn 0.3s ease;
+    }
+
+    .student-id-modal-image {
+        width: 100%;
+        height: auto;
+        max-height: 90vh;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .student-id-modal-header {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .student-id-modal-close {
+        color: white;
+        font-size: 35px;
+        font-weight: bold;
+        cursor: pointer;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+    }
+
+    .student-id-modal-close:hover {
+        background: rgba(0, 0, 0, 0.8);
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes zoomIn {
+        from { transform: scale(0.8); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+
     @media (max-width: 768px) {
         .user-profile-section {
             flex-direction: column;
@@ -486,5 +659,37 @@ use Illuminate\Support\Facades\Storage;
         }
     }
     </style>
+
+    <!-- Student ID Modal -->
+    <div id="studentIdModal" class="student-id-modal" onclick="if(event.target.id === 'studentIdModal') closeStudentIdModal()">
+        <div class="student-id-modal-content">
+            <div class="student-id-modal-header">
+                <span class="student-id-modal-close" onclick="closeStudentIdModal()">&times;</span>
+            </div>
+            <img id="modalStudentIdImage" class="student-id-modal-image" src="" alt="Student ID">
+            <p id="modalStudentName" style="color: white; text-align: center; margin-top: 10px; font-weight: 500;"></p>
+        </div>
+    </div>
+
+    <script>
+        function openStudentIdModal(imageUrl, studentName) {
+            document.getElementById('modalStudentIdImage').src = imageUrl;
+            document.getElementById('modalStudentName').textContent = 'Student ID - ' + studentName;
+            document.getElementById('studentIdModal').style.display = 'block';
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        }
+
+        function closeStudentIdModal() {
+            document.getElementById('studentIdModal').style.display = 'none';
+            document.body.style.overflow = 'auto'; // Restore scrolling
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeStudentIdModal();
+            }
+        });
+    </script>
 </body>
 </html>
