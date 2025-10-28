@@ -1,7 +1,79 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="py-4 py-md-5 dark-theme">
+<div class="py-4 py-md-5 dark-theme dashboard-scope">
+    <style>
+        /* Scope all dashboard styles to prevent conflicts with app.css */
+        .dashboard-scope * { box-sizing: border-box; }
+        .dashboard-scope .text-gradient { color: inherit; background: none; }
+
+        /* Neutral, light cards */
+        .dashboard-scope .dashboard-card {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .dashboard-scope .dashboard-card--stats { background: #ffffff; }
+        .dashboard-scope .dashboard-card--warning { background: #fffdf5; border-color: #ffe58f; }
+
+        /* Stat grid */
+        .dashboard-scope .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .dashboard-scope .stat-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 12px;
+        }
+        .dashboard-scope .stat-icon { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; }
+        .dashboard-scope .stat-icon--success { background: #ecfdf5; color: #047857; }
+        .dashboard-scope .stat-icon--primary { background: #eff6ff; color: #1d4ed8; }
+        .dashboard-scope .stat-icon--warning { background: #fffbeb; color: #b45309; }
+        .dashboard-scope .stat-icon--danger { background: #fef2f2; color: #b91c1c; }
+        .dashboard-scope .stat-label { color: #6b7280; font-size: 0.85rem; }
+        .dashboard-scope .stat-value { color: #111827; font-weight: 700; font-size: 1.25rem; }
+
+        /* Responsive tiles */
+        .dashboard-scope .responsive-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+        .dashboard-scope .responsive-item {
+            border-radius: 12px;
+            padding: 14px;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+        }
+        .dashboard-scope .responsive-item--yellow { background: #fffdf5; border-color: #ffe58f; }
+        .dashboard-scope .responsive-item--blue { background: #ffffff; border-color: #bfdbfe; }
+        .dashboard-scope .responsive-item--green { background: #ffffff; border-color: #bbf7d0; }
+        .dashboard-scope .responsive-item--purple { background: #ffffff; border-color: #ddd6fe; }
+
+        /* Alerts */
+        .dashboard-scope .alert-responsive { display: flex; align-items: center; gap: 8px; padding: 10px; border-radius: 10px; background: #fffdf5; color: #92400e; }
+        .dashboard-scope .alert-responsive--warning { border: 1px solid #ffe58f; }
+
+        /* Utility overrides to avoid global collisions */
+        .dashboard-scope .badge { display: inline-block; padding: 4px 8px; border-radius: 9999px; font-size: 12px; }
+        .dashboard-scope a { text-decoration: none; }
+
+        /* Mobile */
+        @media (max-width: 480px) {
+            .dashboard-scope .stats-grid { grid-template-columns: 1fr; }
+            .dashboard-scope .responsive-container { grid-template-columns: 1fr; }
+            .dashboard-scope .stat-card { padding: 10px; }
+        }
+    </style>
     <div class="container">
         <!-- Welcome Section -->
         <div class="mb-4 mb-md-5">

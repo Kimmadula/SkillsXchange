@@ -596,10 +596,22 @@ class TokenController extends Controller
     public function history(Request $request)
     {
         $user = Auth::user();
-        $transactions = DB::table('token_transactions')
-            ->where('user_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        // Optional date filters
+        $fromDate = $request->get('from_date');
+        $toDate = $request->get('to_date');
+
+        $query = DB::table('token_transactions')
+            ->where('user_id', $user->id);
+
+        if ($fromDate) {
+            $query->whereDate('created_at', '>=', $fromDate);
+        }
+
+        if ($toDate) {
+            $query->whereDate('created_at', '<=', $toDate);
+        }
+
+        $transactions = $query->orderBy('created_at', 'desc')->get();
 
         // Handle payment redirect parameters
         $paymentStatus = $request->get('payment');

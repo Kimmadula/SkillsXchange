@@ -86,7 +86,7 @@
                     <strong>📅 Scheduling Rules:</strong> You can only schedule trades for today or future dates. Past dates are not allowed to ensure realistic scheduling.
                 </p>
             </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
                 <div>
                     <label style="display:block; font-weight:600; margin-bottom:4px;">Start Date</label>
                     <input type="date" name="start_date" required min="{{ date('Y-m-d') }}" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;" />
@@ -118,7 +118,7 @@
 
         <fieldset style="border:1px solid #eee; border-radius:8px; padding:12px;">
             <legend style="padding:0 8px; color:#374151;">Other Preferences</legend>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
                 <div>
                     <label style="display:block; font-weight:600; margin-bottom:4px;">Gender Preference</label>
                     <select name="gender_pref" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
@@ -180,27 +180,27 @@
             categorySelect.addEventListener('change', function() {
                 const selectedCategory = this.value;
                 console.log('🎯 Category selected:', selectedCategory);
-                
+
                 skillSelect.innerHTML = '<option value="">Select a skill</option>';
-                
+
                 if (selectedCategory) {
                     skillSelect.disabled = false;
                     let addedCount = 0;
-                    
+
                     allOptions.forEach(option => {
                         if (!option.value) return; // skip placeholder
                         const optionCategory = option.getAttribute('data-category');
                         console.log('🔍 Checking option:', option.textContent, 'Category:', optionCategory);
-                        
+
                         if (optionCategory === selectedCategory) {
                             skillSelect.appendChild(option.cloneNode(true));
                             addedCount++;
                             console.log('✅ Added skill:', option.textContent);
                         }
                     });
-                    
+
                     console.log('📈 Added', addedCount, 'skills for category:', selectedCategory);
-                    
+
                     if (addedCount === 0) {
                         skillSelect.innerHTML = '<option value="">No skills found for this category</option>';
                         console.log('⚠️ No skills found for category:', selectedCategory);

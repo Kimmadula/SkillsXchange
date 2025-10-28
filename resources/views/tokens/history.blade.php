@@ -38,6 +38,26 @@
         <div class="dashboard-card dashboard-card--stats slide-up">
             <h2 class="h5 fw-bold text-gradient mb-4">Transaction History</h2>
 
+            <!-- Filters -->
+            <form method="GET" class="row g-3 align-items-end mb-4">
+                <div class="col-md-4">
+                    <label for="from_date" class="form-label">From</label>
+                    <input type="date" id="from_date" name="from_date" value="{{ request('from_date') }}" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label for="to_date" class="form-label">To</label>
+                    <input type="date" id="to_date" name="to_date" value="{{ request('to_date') }}" class="form-control">
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1">
+                        <i class="fas fa-filter me-2"></i>Apply Filters
+                    </button>
+                    <a href="{{ route('tokens.history') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-undo me-2"></i>Reset
+                    </a>
+                </div>
+            </form>
+
             @if($transactions->count() > 0)
             <div class="table-responsive">
                 <table class="table table-hover">
