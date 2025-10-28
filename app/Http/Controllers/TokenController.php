@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Models\TradeFeeSetting;
 
 class TokenController extends Controller
 {
@@ -16,7 +17,7 @@ class TokenController extends Controller
     public function purchase(Request $request)
     {
         $request->validate([
-            'quantity' => 'required|integer|min:20|max:100', // Minimum 20 tokens = ₱100
+            'quantity' => 'required|integer|min:1|max:100',
             'total_amount' => 'required|numeric|min:100' // PayMongo Links require minimum ₱100
         ]);
 
@@ -24,15 +25,16 @@ class TokenController extends Controller
         $quantity = $request->quantity;
         $amount = $request->total_amount;
 
-        // Verify amount calculation (₱5 per token)
-        $expectedAmount = $quantity * 5.00;
+        // Verify amount calculation using configurable token price (default ₱5 per token)
+        $configuredPrice = (float) (TradeFeeSetting::getFeeAmount('token_price') ?: 5);
+        $expectedAmount = $quantity * $configuredPrice;
         if (abs($amount - $expectedAmount) > 0.01) {
             return redirect()->back()->withErrors(['amount' => 'Amount calculation mismatch']);
         }
 
         // Ensure minimum amount for PayMongo Links (₱100 minimum)
         if ($amount < 100) {
-            return redirect()->back()->withErrors(['amount' => 'Minimum purchase amount is ₱100.00 (20 tokens) for PayMongo payments']);
+            return redirect()->back()->withErrors(['amount' => 'Minimum purchase amount is ₱100.00 for PayMongo payments']);
         }
 
         try {

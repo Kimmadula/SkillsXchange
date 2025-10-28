@@ -221,6 +221,12 @@
 
         <!-- Fee Settings Content -->
         <div class="dashboard-content">
+            @php
+                $availableFeeTypes = $feeSettings->pluck('fee_type')->unique()->values()->toArray();
+                if (!in_array('token_price', $availableFeeTypes, true)) {
+                    $availableFeeTypes[] = 'token_price';
+                }
+            @endphp
 
             <!-- Fee Settings Statistics Cards -->
             <div class="fee-stats-row">
@@ -1124,8 +1130,14 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label for="create_fee_type">Fee Type</label>
-                    <input type="text" id="create_fee_type" name="fee_type" required placeholder="e.g., premium_trade">
-                    <small>Enter a unique identifier for this fee type</small>
+                    <select id="create_fee_type_select">
+                        @foreach($availableFeeTypes as $type)
+                            <option value="{{ $type }}">{{ $type }}</option>
+                        @endforeach
+                        <option value="__custom__">Custom...</option>
+                    </select>
+                    <input type="text" id="create_fee_type_custom" placeholder="Enter custom fee type" style="display:none; margin-top:8px;" />
+                    <small>Select an existing type or choose Custom to enter a new one</small>
                 </div>
                 <div class="form-group">
                     <label for="create_fee_amount">Fee Amount (Tokens)</label>
@@ -1249,11 +1261,39 @@
     }
 
     // Handle Create Fee Form Submission
+    // Toggle custom fee type field visibility
+    (function() {
+        const select = document.getElementById('create_fee_type_select');
+        const custom = document.getElementById('create_fee_type_custom');
+        if (select) {
+            select.addEventListener('change', function() {
+                if (this.value === '__custom__') {
+                    custom.style.display = 'block';
+                    custom.required = true;
+                    custom.focus();
+                } else {
+                    custom.style.display = 'none';
+                    custom.required = false;
+                }
+            });
+        }
+    })();
+
     document.getElementById('createFeeForm').addEventListener('submit', function(e) {
         e.preventDefault();
 
         const formData = new FormData(this);
         const data = Object.fromEntries(formData.entries());
+
+        // Resolve fee_type from dropdown/custom input
+        const selectedType = document.getElementById('create_fee_type_select').value;
+        const customType = document.getElementById('create_fee_type_custom').value.trim();
+        data.fee_type = selectedType === '__custom__' ? customType : selectedType;
+
+        if (!data.fee_type) {
+            alert('Please select or enter a fee type.');
+            return;
+        }
 
         // Convert string values to proper types
         data.fee_amount = parseInt(data.fee_amount);

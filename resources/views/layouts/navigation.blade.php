@@ -167,15 +167,22 @@
                         </div>
                     </div>
 
+                    @php
+                        $tokenPrice = \App\Models\TradeFeeSetting::getFeeAmount('token_price') ?: 5;
+                        $minQty = max(1, (int) ceil(100 / max($tokenPrice, 0.01))); // PayMongo min ₱100
+                        $maxQty = 100;
+                        $minAmt = $minQty * $tokenPrice;
+                    @endphp
+
                     <!-- Quantity Selection -->
                     <div class="mb-3">
                         <label for="tokenQuantity" class="form-label">Number of Tokens</label>
                         <div class="input-group">
                             <button type="button" class="btn btn-outline-secondary" id="decreaseQuantity">-</button>
-                            <input type="number" class="form-control text-center" id="tokenQuantity" name="quantity" value="20" min="20" max="100" required>
+                            <input type="number" class="form-control text-center" id="tokenQuantity" name="quantity" value="{{ $minQty }}" min="{{ $minQty }}" max="100" required>
                             <button type="button" class="btn btn-outline-secondary" id="increaseQuantity">+</button>
                         </div>
-                        <div class="form-text">Minimum: 20 tokens (₱100), Maximum: 100 tokens</div>
+                        <div class="form-text">Minimum payment: ₱100.00 ({{ $minQty }} tokens at ₱{{ number_format($tokenPrice, 2) }} each). Maximum: 100 tokens</div>
                     </div>
 
                     <!-- Price Display -->
@@ -184,10 +191,10 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-6">
-                                        <strong>Tokens:</strong> <span id="displayQuantity">1</span>
+                                        <strong>Tokens:</strong> <span id="displayQuantity">{{ $minQty }}</span>
                                     </div>
                                     <div class="col-6 text-end">
-                                        <strong>Total: ₱<span id="totalPrice">5.00</span></strong>
+                                        <strong>Total: ₱<span id="totalPrice">{{ number_format($minAmt, 2) }}</span></strong>
                                     </div>
                                 </div>
                             </div>
@@ -259,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const purchaseBtn = document.getElementById('purchaseBtn');
     const form = document.getElementById('buyTokensForm');
 
-    const TOKEN_PRICE = 5.00; // 1 token = 5 pesos
+    const TOKEN_PRICE = {{ (float) $tokenPrice }}; // price per token in PHP pesos
 
     function updateDisplay() {
         const quantity = parseInt(quantityInput.value) || 1;
@@ -270,8 +277,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function updateQuantity(change) {
-        const currentValue = parseInt(quantityInput.value) || 20;
-        const newValue = Math.max(20, Math.min(100, currentValue + change));
+        const currentValue = parseInt(quantityInput.value) || {{ $minQty }};
+        const newValue = Math.max({{ $minQty }}, Math.min({{ $maxQty }}, currentValue + change));
         quantityInput.value = newValue;
         updateDisplay();
     }
@@ -286,9 +293,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const quantity = parseInt(quantityInput.value);
         const total = quantity * TOKEN_PRICE;
 
-        if (quantity < 20 || quantity > 100) {
+        if (quantity < {{ $minQty }} || quantity > {{ $maxQty }}) {
             e.preventDefault();
-            alert('Please enter a valid quantity (20-100 tokens). Minimum purchase is ₱100.00');
+            alert('Please enter a valid quantity ({{ $minQty }}-{{ $maxQty }} tokens). Minimum purchase is ₱100.00');
             return;
         }
 

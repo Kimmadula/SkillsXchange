@@ -83,10 +83,21 @@ class TradeController extends Controller
             return redirect()->route('admin.dashboard')->with('error', 'Admin users cannot access user trading functionality.');
         }
 
-        // Get user's skill
+        // Require user has a skill on profile
         $userSkill = $user->skill;
         if (!$userSkill) {
             return view('trades.matches', ['trades' => collect([]), 'noSkill' => true]);
+        }
+
+        // Require user has posted at least one open trade before viewing matches
+        $userOpenTrade = Trade::where('user_id', $user->id)
+            ->where('status', 'open')
+            ->first();
+        if (!$userOpenTrade) {
+            return view('trades.matches', [
+                'trades' => collect([]),
+                'noTradePosted' => true
+            ]);
         }
 
         // Get all open trades from other users
@@ -101,9 +112,59 @@ class TradeController extends Controller
                 // Check if this trade is compatible with user's skill
                 $trade->is_compatible = $this->isTradeCompatible($trade, $user);
 
+                // Partner rating stats
+                $ratingRow = \DB::table('session_ratings')
+                    ->selectRaw('AVG(overall_rating) as avg_rating, COUNT(*) as total_ratings')
+                    ->where('rated_user_id', $trade->user_id)
+                    ->first();
+                $trade->partner_rating_avg = $ratingRow ? round((float)($ratingRow->avg_rating ?? 0), 2) : 0;
+                $trade->partner_rating_count = $ratingRow ? (int)($ratingRow->total_ratings ?? 0) : 0;
+
                 return $trade;
             })
-            ->sortByDesc('compatibility_score');
+            // Only show compatible trades
+            ->filter(function($trade) {
+                return (bool) ($trade->is_compatible ?? false);
+            })
+            // Highest score first
+            ->sortByDesc('compatibility_score')
+            ->values();
+
+        // Create notifications for new matches (avoid duplicates)
+        foreach ($trades as $match) {
+            $exists = \DB::table('user_notifications')
+                ->where('user_id', $user->id)
+                ->where('type', 'match_found')
+                ->where('data', 'like', '%"trade_id":' . $match->id . '%')
+                ->exists();
+
+            if (!$exists) {
+                \DB::table('user_notifications')->insert([
+                    'user_id' => $user->id,
+                    'type' => 'match_found',
+                    'data' => json_encode([
+                        'trade_id' => $match->id,
+                        'offering_skill' => $match->offeringSkill->name ?? 'Unknown Skill',
+                        'looking_skill' => $match->lookingSkill->name ?? 'Unknown Skill',
+                        'partner_username' => $match->user->username,
+                        'partner_name' => trim(($match->user->firstname ?? '') . ' ' . ($match->user->lastname ?? '')),
+                        'compatibility_score' => $match->compatibility_score,
+                        'session_type' => $match->session_type,
+                        'location' => $match->location,
+                        'available_from' => $match->available_from,
+                        'available_to' => $match->available_to,
+                        'preferred_days' => $match->preferred_days,
+                        'start_date' => $match->start_date,
+                        'end_date' => $match->end_date,
+                        'partner_rating_avg' => $match->partner_rating_avg,
+                        'partner_rating_count' => $match->partner_rating_count,
+                    ]),
+                    'read' => false,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
 
         return view('trades.matches', compact('trades'));
     }
@@ -432,7 +493,7 @@ class TradeController extends Controller
             'user_id' => $trade->user_id,
             'type' => 'trade_request',
             'data' => json_encode([
-                'requester_name' => $user->firstname . ' ' . $user->lastname,
+                'requester_name' => ($user->use_username ? $user->username : ($user->firstname . ' ' . $user->lastname)),
                 'requester_username' => $user->username,
                 'trade_id' => $trade->id,
                 'offering_skill' => $trade->offeringSkill->name ?? 'Unknown Skill',
@@ -481,7 +542,7 @@ class TradeController extends Controller
             'user_id' => $tradeRequest->requester_id,
             'type' => 'trade_response',
             'data' => json_encode([
-                'trade_owner_name' => $user->firstname . ' ' . $user->lastname,
+                'trade_owner_name' => ($user->use_username ? $user->username : ($user->firstname . ' ' . $user->lastname)),
                 'trade_owner_username' => $user->username,
                 'trade_id' => $tradeRequest->trade_id,
                 'offering_skill' => $tradeRequest->trade->offeringSkill->name ?? 'Unknown Skill',

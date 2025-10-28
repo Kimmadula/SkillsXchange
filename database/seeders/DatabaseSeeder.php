@@ -14,11 +14,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run()
     {
-
-          $this->call([
-              AdminUserSeeder::class,
-              // SkillSeeder::class, // Disabled - skills will be managed manually
-              TestUserSeeder::class,
-          ]);
+        $this->call([
+            AdminUserSeeder::class,
+            // SkillSeeder::class, // Disabled - skills will be managed manually
+            TestUserSeeder::class,
+        ]);
     }
 }

@@ -26,12 +26,22 @@
         </div>
     @endif
 
+    @if(isset($noTradePosted) && $noTradePosted)
+        <div style="background:#e0e7ff; color:#3730a3; padding:20px; border-radius:8px; text-align:center; margin-bottom:16px;">
+            <div style="font-size:1.2rem; margin-bottom:8px;">📣 Post a Trade First</div>
+            <div style="margin-bottom:16px;">You need to post your own trade before you can view and request matches.</div>
+            <a href="{{ route('trades.create') }}" style="display:inline-block; padding:10px 20px; background:#2563eb; color:#fff; text-decoration:none; border-radius:6px; font-weight:600;">
+                Post a Trade
+            </a>
+        </div>
+    @endif
+
     <div style="display:grid; gap:12px;">
         @forelse($trades as $t)
             <div style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:16px;">
                 <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">
                     <div style="flex:1;">
-                        <div style="font-weight:700; font-size:1.1rem;">{{ $t->use_username ? $t->user->username : ($t->user->firstname.' '.$t->user->lastname) }}</div>
+                        <div style="font-weight:700; font-size:1.1rem;">{{ $t->use_username ? ($t->user->username ?? 'User') : (($t->user->firstname ?? '') . ' ' . ($t->user->lastname ?? '')) }}</div>
                         <div style="color:#374151; margin-top:4px;">
                             <strong>Offering:</strong> {{ optional($t->offeringSkill)->name }}
                             <span style="margin:0 8px;">→</span>
@@ -39,6 +49,27 @@
                         </div>
                         <div style="color:#6b7280; font-size:0.9rem; margin-top:4px;">
                             📍 {{ $t->location ?: 'Any location' }} • {{ strtoupper($t->session_type) }} • {{ ucfirst($t->user->gender ?? 'Not specified') }}
+                        </div>
+                        @php
+                            $avg = (float)($t->partner_rating_avg ?? 0);
+                            $count = (int)($t->partner_rating_count ?? 0);
+                            $full = (int) floor($avg);
+                            $half = ($avg - $full) >= 0.5 ? 1 : 0;
+                            $empty = 5 - $full - $half;
+                        @endphp
+                        <div style="color:#6b7280; font-size:0.85rem; margin-top:4px; display:flex; align-items:center; gap:6px;">
+                            <span>
+                                @for($i=0;$i<$full;$i++)
+                                    <span style="color:#F59E0B; font-size:0.9rem;">★</span>
+                                @endfor
+                                @if($half)
+                                    <span style="color:#F59E0B; opacity:0.5; font-size:0.9rem;">★</span>
+                                @endif
+                                @for($i=0;$i<$empty;$i++)
+                                    <span style="color:#D1D5DB; font-size:0.9rem;">☆</span>
+                                @endfor
+                            </span>
+                            <span>({{ $count }})</span>
                         </div>
                         @if($t->start_date && $t->end_date)
                             <div style="color:#6b7280; font-size:0.9rem;">
@@ -88,9 +119,7 @@
                         </form>
                     </div>
                 @else
-                    <div style="padding:8px 16px; background:#9ca3af; color:#6b7280; border-radius:6px; font-size:0.9rem;">
-                        Not compatible with your skills
-                    </div>
+                    {{-- Not rendered: list is already filtered to compatible only --}}
                 @endif
             </div>
         @empty
