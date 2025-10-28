@@ -22,38 +22,6 @@
         </div>
         @endif
 
-        <!-- System Announcements -->
-        @if(isset($announcements) && $announcements->count() > 0)
-            @foreach($announcements as $announcement)
-                @if(!$announcement->isReadBy(auth()->user()))
-                <div class="alert {{ $announcement->getAlertClass() }} alert-dismissible fade show mb-4 announcement-item" 
-                     data-announcement-id="{{ $announcement->id }}" role="alert">
-                    <div class="d-flex align-items-start">
-                        <i class="{{ $announcement->getIcon() }} me-2 mt-1"></i>
-                        <div class="flex-grow-1">
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h5 class="alert-heading mb-0">{{ $announcement->title }}</h5>
-                                <span class="badge {{ $announcement->getPriorityBadgeClass() }}">
-                                    {{ ucfirst($announcement->priority) }}
-                                </span>
-                            </div>
-                            <p class="mb-0">{{ $announcement->message }}</p>
-                            <small class="text-muted">
-                                Posted {{ $announcement->created_at->diffForHumans() }}
-                                @if($announcement->creator)
-                                    by {{ $announcement->creator->name }}
-                                @endif
-                            </small>
-                        </div>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" 
-                            onclick="markAnnouncementAsRead({{ $announcement->id }})" 
-                            aria-label="Close"></button>
-                </div>
-                @endif
-            @endforeach
-        @endif
-
         <!-- User Stats Cards -->
         <div class="stats-grid">
             <div class="stat-card fade-in">
@@ -378,39 +346,4 @@
     </div>
 </div>
 
-<script>
-function markAnnouncementAsRead(announcementId) {
-    fetch(`/announcements/${announcementId}/mark-read`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update notification count in navigation
-            updateNotificationCount();
-        }
-    })
-    .catch(error => {
-        console.error('Error marking announcement as read:', error);
-    });
-}
-
-function updateNotificationCount() {
-    // This would update the notification count in the navigation
-    // Implementation depends on your navigation structure
-    fetch('/trades/notifications')
-        .then(response => response.text())
-        .then(html => {
-            // You could update a specific element with the new count
-            // This is a placeholder - implement based on your needs
-        })
-        .catch(error => {
-            console.error('Error updating notification count:', error);
-        });
-}
-</script>
 @endsection

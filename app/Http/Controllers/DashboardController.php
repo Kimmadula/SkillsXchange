@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Skill;
 use App\Models\Trade;
-use App\Models\Announcement;
 use App\Models\TradeRequest;
 use App\Models\TradeTask;
 use Illuminate\Http\Request;
@@ -15,6 +14,23 @@ use Illuminate\Support\Facades\View;
 
 class DashboardController extends Controller
 {
+    public static function getUnreadAnnouncementCount($userId)
+    {
+        $activeIds = \App\Models\Announcement::active()->pluck('id');
+        if ($activeIds->isEmpty()) {
+            return 0;
+        }
+        $read = \App\Models\AnnouncementRead::where('user_id', $userId)
+            ->whereIn('announcement_id', $activeIds)
+            ->pluck('announcement_id');
+        return $activeIds->diff($read)->count();
+    }
+
+    public function markAnnouncementAsRead(\App\Models\Announcement $announcement)
+    {
+        $announcement->markAsReadBy(auth()->user());
+        return response()->json(['success' => true]);
+    }
     public function index()
     {
         try {
@@ -92,8 +108,9 @@ class DashboardController extends Controller
 
             Log::info('UserDashboard: Loading for user ' . $user->id . ' with stats: ' . json_encode($userStats));
 
-            // Get active announcements
-            $announcements = Announcement::active()
+            // Fetch active announcements targeted for this user's role
+            $announcements = \App\Models\Announcement::active()
+                ->audienceForUser($user)
                 ->orderBy('priority', 'desc')
                 ->orderBy('created_at', 'desc')
                 ->get();

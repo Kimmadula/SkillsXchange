@@ -17,6 +17,8 @@ class Announcement extends Model
         'message',
         'type',
         'priority',
+        'audience_type',
+        'audience_value',
         'is_active',
         'starts_at',
         'expires_at',
@@ -27,6 +29,7 @@ class Announcement extends Model
         'is_active' => 'boolean',
         'starts_at' => 'datetime',
         'expires_at' => 'datetime',
+        'audience_value' => 'array',
     ];
 
     /**
@@ -103,6 +106,25 @@ class Announcement extends Model
                         $q->whereNull('expires_at')
                           ->orWhere('expires_at', '>=', $now);
                     });
+    }
+
+    /**
+     * Scope: filter announcements to those targeted at the given user (admin/user)
+     */
+    public function scopeAudienceForUser($query, User $user)
+    {
+        $role = $user->role === 'admin' ? 'admin' : 'user';
+
+        return $query->where(function ($q) use ($role) {
+            $q->where('audience_type', 'all')
+              ->orWhere(function ($q2) use ($role) {
+                  $q2->where('audience_type', 'role')
+                     ->where(function ($q3) use ($role) {
+                         $q3->whereNull('audience_value')
+                            ->orWhereJsonContains('audience_value', $role);
+                     });
+              });
+        });
     }
 
     /**

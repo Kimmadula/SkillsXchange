@@ -8,11 +8,10 @@ use App\Models\Trade;
 use App\Models\UserSkill;
 use App\Models\UserReport;
 use App\Models\Violation;
-use App\Models\Announcement;
-use App\Models\AnnouncementRead;
 use App\Models\TradeFeeSetting;
 use App\Models\TokenTransaction;
 use App\Models\FeeTransaction;
+use App\Models\Announcement;
 use App\Http\Requests\StoreSkillRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -599,13 +598,83 @@ class AdminController extends Controller
 
     public function messagesIndex()
     {
-        // Use Messages tab for Announcements management
-        $announcements = Announcement::with('creator')
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-
         $notifications = $this->getNotifications();
-        return view('admin.messages.index', compact('announcements', 'notifications'));
+
+        $announcements = collect();
+        if (auth()->user() && auth()->user()->role === 'admin') {
+            $announcements = Announcement::orderBy('created_at', 'desc')->paginate(10);
+        }
+
+        return view('admin.messages.index', compact('notifications', 'announcements'));
+    }
+
+    /**
+     * Store a new announcement from Messages tab (admin only)
+     */
+    public function messagesAnnouncementsStore(Request $request)
+    {
+        if (!auth()->user() || auth()->user()->role !== 'admin') {
+            return redirect()->back()->with('error', 'Unauthorized');
+        }
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'message' => 'required|string|max:2000',
+            'type' => 'required|in:info,warning,success,danger',
+            'priority' => 'required|in:low,medium,high,urgent',
+            'is_active' => 'sometimes|boolean',
+            'starts_at' => 'nullable|date',
+            'expires_at' => 'nullable|date|after:starts_at',
+            'audience_type' => 'required|in:all,role',
+            'audience_role' => 'nullable|in:admin,user',
+        ]);
+
+        $audienceType = $validated['audience_type'];
+        $audienceValue = null;
+        if ($audienceType === 'role') {
+            $audienceValue = json_encode([$validated['audience_role'] ?? 'user']);
+        }
+
+        Announcement::create([
+            'title' => $validated['title'],
+            'message' => $validated['message'],
+            'type' => $validated['type'],
+            'priority' => $validated['priority'],
+            'is_active' => (bool)($request->is_active ?? true),
+            'starts_at' => $validated['starts_at'] ?? null,
+            'expires_at' => $validated['expires_at'] ?? null,
+            'created_by' => auth()->id(),
+            'audience_type' => $audienceType,
+            'audience_value' => $audienceValue,
+        ]);
+
+        return redirect()->route('admin.messages.index')->with('success', 'Announcement created.');
+    }
+
+    /**
+     * Toggle announcement active flag (admin only)
+     */
+    public function messagesAnnouncementsToggle(Announcement $announcement)
+    {
+        if (!auth()->user() || auth()->user()->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $announcement->update(['is_active' => !$announcement->is_active]);
+        return response()->json(['success' => true, 'is_active' => $announcement->is_active]);
+    }
+
+    /**
+     * Delete announcement (admin only)
+     */
+    public function messagesAnnouncementsDestroy(Announcement $announcement)
+    {
+        if (!auth()->user() || auth()->user()->role !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $announcement->delete();
+        return response()->json(['success' => true]);
     }
 
     public function settingsIndex()
@@ -1178,185 +1247,4 @@ class AdminController extends Controller
         }
     }
 
-    /**
-     * Display announcements management page
-     */
-    public function announcementsIndex()
-    {
-        $announcements = Announcement::with('creator')
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
-
-        $notifications = $this->getNotifications();
-
-        return view('admin.announcements.index', compact('announcements', 'notifications'));
-    }
-
-    /**
-     * Show the form for creating a new announcement
-     */
-    public function announcementsCreate()
-    {
-        $notifications = $this->getNotifications();
-        return view('admin.announcements.create', compact('notifications'));
-    }
-
-    /**
-     * Store a newly created announcement
-     */
-    public function announcementsStore(Request $request)
-    {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'message' => 'required|string|max:2000',
-            'type' => 'required|in:info,warning,success,danger',
-            'priority' => 'required|in:low,medium,high,urgent',
-            'starts_at' => 'nullable|date|after_or_equal:now',
-            'expires_at' => 'nullable|date|after:starts_at'
-        ]);
-
-        $announcement = Announcement::create([
-            'title' => $request->title,
-            'message' => $request->message,
-            'type' => $request->type,
-            'priority' => $request->priority,
-            'is_active' => $request->boolean('is_active', true),
-            'starts_at' => $request->starts_at,
-            'expires_at' => $request->expires_at,
-            'created_by' => auth()->id()
-        ]);
-
-        Log::info('Announcement created', [
-            'announcement_id' => $announcement->id,
-            'title' => $announcement->title,
-            'created_by' => auth()->user()->email
-        ]);
-
-        return redirect()->route('admin.announcements.index')
-            ->with('success', 'Announcement created successfully.');
-    }
-
-    /**
-     * Show the form for editing an announcement
-     */
-    public function announcementsEdit(Announcement $announcement)
-    {
-        $notifications = $this->getNotifications();
-        return view('admin.announcements.edit', compact('announcement', 'notifications'));
-    }
-
-    /**
-     * Update the specified announcement
-     */
-    public function announcementsUpdate(Request $request, Announcement $announcement)
-    {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'message' => 'required|string|max:2000',
-            'type' => 'required|in:info,warning,success,danger',
-            'priority' => 'required|in:low,medium,high,urgent',
-            'starts_at' => 'nullable|date|after_or_equal:now',
-            'expires_at' => 'nullable|date|after:starts_at'
-        ]);
-
-        $announcement->update([
-            'title' => $request->title,
-            'message' => $request->message,
-            'type' => $request->type,
-            'priority' => $request->priority,
-            'is_active' => $request->boolean('is_active', true),
-            'starts_at' => $request->starts_at,
-            'expires_at' => $request->expires_at
-        ]);
-
-        Log::info('Announcement updated', [
-            'announcement_id' => $announcement->id,
-            'title' => $announcement->title,
-            'updated_by' => auth()->user()->email
-        ]);
-
-        return redirect()->route('admin.announcements.index')
-            ->with('success', 'Announcement updated successfully.');
-    }
-
-    /**
-     * Delete an announcement
-     */
-    public function announcementsDestroy(Announcement $announcement)
-    {
-        $title = $announcement->title;
-        $announcement->delete();
-
-        Log::info('Announcement deleted', [
-            'announcement_title' => $title,
-            'deleted_by' => auth()->user()->email
-        ]);
-
-        return redirect()->route('admin.announcements.index')
-            ->with('success', 'Announcement deleted successfully.');
-    }
-
-    /**
-     * Toggle announcement active status
-     */
-    public function announcementsToggle(Announcement $announcement)
-    {
-        $announcement->update(['is_active' => !$announcement->is_active]);
-
-        $status = $announcement->is_active ? 'activated' : 'deactivated';
-        
-        Log::info("Announcement {$status}", [
-            'announcement_id' => $announcement->id,
-            'title' => $announcement->title,
-            'updated_by' => auth()->user()->email
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => "Announcement {$status} successfully.",
-            'is_active' => $announcement->is_active
-        ]);
-    }
-
-    /**
-     * Get active announcements for users
-     */
-    public static function getActiveAnnouncements()
-    {
-        return Announcement::active()
-            ->orderBy('priority', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->get();
-    }
-
-    /**
-     * Get unread announcement count for a user
-     */
-    public static function getUnreadAnnouncementCount($userId)
-    {
-        $activeAnnouncements = Announcement::active()->pluck('id');
-        
-        if ($activeAnnouncements->isEmpty()) {
-            return 0;
-        }
-
-        $readAnnouncements = AnnouncementRead::where('user_id', $userId)
-            ->whereIn('announcement_id', $activeAnnouncements)
-            ->pluck('announcement_id');
-
-        return $activeAnnouncements->diff($readAnnouncements)->count();
-    }
-
-    /**
-     * Mark announcement as read by user
-     */
-    public function markAnnouncementAsRead(Request $request, Announcement $announcement)
-    {
-        $announcement->markAsReadBy(auth()->user());
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Announcement marked as read.'
-        ]);
-    }
 }

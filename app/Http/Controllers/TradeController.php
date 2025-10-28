@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Skill;
 use App\Models\Trade;
 use App\Models\TradeRequest;
-use App\Models\Announcement;
 use App\Models\TradeFeeSetting;
 use App\Models\FeeTransaction;
 
@@ -380,13 +379,14 @@ class TradeController extends Controller
                 return $notification;
             });
 
-        // Get active announcements
-        $announcements = Announcement::active()
-            ->orderBy('priority', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        // Quick-card: unread announcements count for this user
+        $announcementsCount = \App\Models\Announcement::active()
+            ->audienceForUser($user)
+            ->get()
+            ->reject(function($a) use ($user) { return $a->isReadBy($user); })
+            ->count();
 
-        return view('trades.notifications', compact('notifications', 'announcements'));
+        return view('trades.notifications', compact('notifications', 'announcementsCount'));
     }
 
     public static function getUnreadNotificationCount($userId)
