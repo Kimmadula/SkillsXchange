@@ -2,8 +2,13 @@
 
 @section('content')
 <main style="padding:32px; max-width:1100px; margin:0 auto;">
-    <h1 style="font-size:1.5rem; margin-bottom:1rem;">Ongoing Trades</h1>
-    
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <h1 style="font-size:1.5rem; margin:0;">Ongoing Trades</h1>
+        <a href="{{ route('dashboard') }}" style="padding:8px 12px; background:#6b7280; color:#fff; text-decoration:none; border-radius:6px; font-size:0.875rem;">
+            ← Back to Dashboard
+        </a>
+    </div>
+
     @if(session('success'))
         <div style="background:#def7ec; color:#03543f; padding:10px 12px; border-radius:6px; margin-bottom:16px;">
             {{ session('success') }}
@@ -22,8 +27,8 @@
                             {{ $t->use_username ? $t->user->username : ($t->user->firstname.' '.$t->user->lastname) }}
                         </div>
                         <div style="color:#374151; margin-bottom:4px;">
-                            <strong>Offering:</strong> {{ optional($t->offeringSkill)->name }} 
-                            <span style="color:#6b7280;">→</span> 
+                            <strong>Offering:</strong> {{ optional($t->offeringSkill)->name }}
+                            <span style="color:#6b7280;">→</span>
                             <strong>Looking for:</strong> {{ optional($t->lookingSkill)->name }}
                         </div>
                         <div style="color:#6b7280; font-size:0.9rem; margin-bottom:4px;">
@@ -53,17 +58,17 @@
                                 Participating
                             </span>
                         @endif
-                        
+
                         <!-- Chat Button -->
-                        <a href="{{ route('chat.show', $t->id) }}" 
-                           style="background:#8b5cf6; color:#fff; padding:6px 12px; border:none; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px; transition:background 0.2s; text-decoration:none;" 
-                           onmouseover="this.style.background='#7c3aed'" 
+                        <a href="{{ route('chat.show', $t->id) }}"
+                           style="background:#8b5cf6; color:#fff; padding:6px 12px; border:none; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px; transition:background 0.2s; text-decoration:none;"
+                           onmouseover="this.style.background='#7c3aed'"
                            onmouseout="this.style.background='#8b5cf6'">
                             💬 Chat
                         </a>
                     </div>
                 </div>
-                
+
                 @if($t->session_type)
                     <div style="background:#f3f4f6; padding:8px; border-radius:6px; margin-top:8px;">
                         <div style="font-size:0.875rem; color:#374151;">

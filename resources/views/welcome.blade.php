@@ -56,6 +56,11 @@
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
 
+    /* Ensure hero content isn't hidden behind fixed navbar */
+    body.has-fixed-nav { padding-top: 76px; }
+    @media (max-width: 768px) { body.has-fixed-nav { padding-top: 84px; } }
+    .navbar.fixed-top { min-height: 64px; }
+
     .hero-gradient {
       background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
     }
@@ -115,12 +120,12 @@
   </style>
 </head>
 
-<body>
+<body class="has-fixed-nav">
   <!-- Header -->
   <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow-sm">
     <div class="container">
       <a class="navbar-brand fw-bold text-primary fs-5" href="/">
-        <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="me-2" style="width: 100px; height: 100px;">
+        <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="me-2" style="width: 64px; height: 64px;">
       </a>
 
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">

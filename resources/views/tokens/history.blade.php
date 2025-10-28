@@ -5,10 +5,17 @@
     <div class="container">
         <!-- Header Section -->
         <div class="mb-4 mb-md-5">
-            <h1 class="h2 fw-bold text-gradient mb-2">
-                <i class="fas fa-history me-2"></i>Token History
-            </h1>
-            <p class="text-muted">View your token purchase and usage history.</p>
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h2 fw-bold text-gradient mb-2">
+                        <i class="fas fa-history me-2"></i>Token History
+                    </h1>
+                    <p class="text-muted">View your token purchase and usage history.</p>
+                </div>
+                <a href="{{ route('dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+            </div>
         </div>
 
         <!-- Payment Status Messages -->

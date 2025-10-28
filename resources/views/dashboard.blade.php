@@ -33,6 +33,27 @@
             border: 1px solid #e5e7eb;
             border-radius: 12px;
             padding: 12px;
+            transition: all 0.2s ease;
+        }
+        .dashboard-scope .stat-card--clickable {
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+        }
+        .dashboard-scope .stat-card--clickable:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: #d1d5db;
+        }
+        .dashboard-scope .stat-action {
+            margin-left: auto;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            color: #6b7280;
+        }
+        .dashboard-scope .stat-card--clickable:hover .stat-action {
+            opacity: 1;
         }
         .dashboard-scope .stat-icon { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; }
         .dashboard-scope .stat-icon--success { background: #ecfdf5; color: #047857; }
@@ -106,7 +127,7 @@
                 </div>
             </div>
 
-            <div class="stat-card fade-in">
+            <a href="{{ route('trades.ongoing') }}" class="stat-card fade-in stat-card--clickable">
                 <div class="stat-icon stat-icon--primary">
                     <i class="fas fa-clock"></i>
                 </div>
@@ -114,9 +135,12 @@
                     <div class="stat-label">Ongoing Sessions</div>
                     <div class="stat-value">{{ isset($userStats) ? $userStats['ongoingSessions'] : 0 }}</div>
                 </div>
-            </div>
+                <div class="stat-action">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </a>
 
-            <div class="stat-card fade-in">
+            <a href="{{ route('trades.requests') }}" class="stat-card fade-in stat-card--clickable">
                 <div class="stat-icon stat-icon--warning">
                     <i class="fas fa-hourglass-half"></i>
                 </div>
@@ -124,9 +148,12 @@
                     <div class="stat-label">Pending Requests</div>
                     <div class="stat-value">{{ isset($userStats) ? $userStats['pendingRequests'] : 0 }}</div>
                 </div>
-            </div>
+                <div class="stat-action">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </a>
 
-            <div class="stat-card fade-in">
+            <a href="{{ route('trades.requests') }}?status=declined" class="stat-card fade-in stat-card--clickable">
                 <div class="stat-icon stat-icon--danger">
                     <i class="fas fa-times-circle"></i>
                 </div>
@@ -134,7 +161,10 @@
                     <div class="stat-label">Declined Requests</div>
                     <div class="stat-value">{{ isset($userStats) ? $userStats['declinedRequests'] : 0 }}</div>
                 </div>
-            </div>
+                <div class="stat-action">
+                    <i class="fas fa-arrow-right"></i>
+                </div>
+            </a>
         </div>
 
         <!-- Expired Sessions -->

@@ -10,6 +10,9 @@
                 <p class="text-muted">Explore and manage available skills</p>
             </div>
             <div class="d-flex gap-2">
+                <a href="{{ route('dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
                 <a href="{{ route('skills.history') }}" class="btn btn-outline-primary">
                     <i class="fas fa-history me-2"></i>My History
                 </a>
@@ -22,8 +25,8 @@
                 <form method="GET" action="{{ route('skills.index') }}" class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Search Skills</label>
-                        <input type="text" name="search" class="form-control" 
-                               placeholder="Search by name or description..." 
+                        <input type="text" name="search" class="form-control"
+                               placeholder="Search by name or description..."
                                value="{{ request('search') }}">
                     </div>
                     <div class="col-md-3">
@@ -73,7 +76,7 @@
                                 <span class="badge bg-primary">{{ $skill->category }}</span>
                             </div>
                             <div class="dropdown">
-                                <button class="btn btn-sm btn-outline-secondary" type="button" 
+                                <button class="btn btn-sm btn-outline-secondary" type="button"
                                         data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
@@ -111,10 +114,10 @@
                         @if($skill->difficulty_level)
                         <div class="mb-2">
                             <small class="text-muted">Difficulty: </small>
-                            <span class="badge bg-{{ 
-                                $skill->difficulty_level == 'beginner' ? 'success' : 
-                                ($skill->difficulty_level == 'intermediate' ? 'warning' : 
-                                ($skill->difficulty_level == 'advanced' ? 'danger' : 'dark')) 
+                            <span class="badge bg-{{
+                                $skill->difficulty_level == 'beginner' ? 'success' :
+                                ($skill->difficulty_level == 'intermediate' ? 'warning' :
+                                ($skill->difficulty_level == 'advanced' ? 'danger' : 'dark'))
                             }}">
                                 {{ ucfirst($skill->difficulty_level) }}
                             </span>

@@ -10,11 +10,11 @@
                 <p class="text-muted">Track your skill acquisition journey and progress</p>
             </div>
             <div class="d-flex gap-2">
+                <a href="{{ route('dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
                 <a href="{{ route('skills.history.export') }}" class="btn btn-outline-primary">
                     <i class="fas fa-download me-2"></i>Export CSV
-                </a>
-                <a href="{{ route('dashboard') }}" class="btn btn-primary">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
                 </a>
             </div>
         </div>
@@ -104,7 +104,7 @@
                 <div class="card border-0 shadow-sm">
                     <div class="card-body">
                         <h5 class="card-title mb-3">Recent Acquisitions</h5>
-                        
+
                         @forelse($recentAcquisitions as $recent)
                         <div class="d-flex align-items-start mb-3 pb-3 border-bottom">
                             <div class="flex-shrink-0 me-3">
@@ -132,7 +132,7 @@
                 <div class="card border-0 shadow-sm mt-4">
                     <div class="card-body">
                         <h5 class="card-title mb-3">Acquisition Methods</h5>
-                        
+
                         @if(!empty($stats['by_method']))
                             @foreach($stats['by_method'] as $method => $count)
                             @php
@@ -167,7 +167,7 @@
                 <div class="card border-0 shadow-sm">
                     <div class="card-body">
                         <h5 class="card-title mb-3">Complete History</h5>
-                        
+
                         @forelse($skillHistory as $history)
                         <div class="d-flex align-items-start mb-4 pb-4 border-bottom">
                             <div class="flex-shrink-0 me-3">
@@ -184,7 +184,7 @@
                                     </div>
                                     <small class="text-muted">{{ $history->acquired_at->format('M j, Y g:i A') }}</small>
                                 </div>
-                                
+
                                 <div class="mb-2">
                                     <span class="badge bg-{{ $history->method_color }}">{{ $history->method_display }}</span>
                                     @if($history->score_achieved)

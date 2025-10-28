@@ -3,15 +3,20 @@
 @section('content')
 <main style="padding:32px; max-width:900px; margin:0 auto;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
-        <h1 style="font-size:1.5rem; margin:0;">Notifications</h1>
-        @php
-            $unreadCount = App\Http\Controllers\TradeController::getUnreadNotificationCount(Auth::id());
-        @endphp
-        @if($unreadCount > 0)
-            <span style="background:#ef4444; color:white; padding:4px 12px; border-radius:12px; font-size:0.875rem; font-weight:600;">
-                {{ $unreadCount }} unread
-            </span>
-        @endif
+        <h1 style="font-size:1.5rem; margin:0;">Trade Notifications</h1>
+        <div style="display:flex; align-items:center; gap:12px;">
+            @php
+                $unreadCount = App\Http\Controllers\TradeController::getUnreadNotificationCount(Auth::id());
+            @endphp
+            @if($unreadCount > 0)
+                <span style="background:#ef4444; color:white; padding:4px 12px; border-radius:12px; font-size:0.875rem; font-weight:600;">
+                    {{ $unreadCount }} unread
+                </span>
+            @endif
+            <a href="{{ route('dashboard') }}" style="padding:8px 12px; background:#6b7280; color:#fff; text-decoration:none; border-radius:6px; font-size:0.875rem;">
+                ← Back to Dashboard
+            </a>
+        </div>
     </div>
 
     @if(session('success'))
@@ -21,23 +26,6 @@
     @endif
 
     <div style="display:grid; gap:12px;">
-        <!-- Announcements Quick Card -->
-        <div style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:16px; display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <div style="width:40px; height:40px; border-radius:9999px; background:#EFF6FF; display:flex; align-items:center; justify-content:center; color:#2563EB;">📣</div>
-                <div>
-                    <div style="font-weight:600; color:#1f2937;">Announcements</div>
-                    <div style="font-size:0.9rem; color:#6b7280;">
-                        @if(($announcementsCount ?? 0) > 0)
-                            {{ $announcementsCount }} unread announcement{{ $announcementsCount > 1 ? 's' : '' }}
-                        @else
-                            You're all caught up
-                        @endif
-                    </div>
-                </div>
-            </div>
-            <a href="{{ route('dashboard') }}" style="padding:8px 12px; background:#2563eb; color:#fff; text-decoration:none; border-radius:6px; font-size:0.875rem;">View</a>
-        </div>
         <!-- Trade Notifications -->
         @forelse($notifications as $n)
             <div style="background:#fff; border:1px solid {{ $n->read ? '#e5e7eb' : '#ef4444' }}; border-radius:8px; padding:16px; {{ $n->read ? '' : 'border-left:4px solid #ef4444;' }}">
@@ -162,8 +150,8 @@
         @empty
             <div style="text-align:center; padding:32px; color:#6b7280;">
                 <div style="font-size:3rem; margin-bottom:16px;">🔔</div>
-                <div style="font-size:1.1rem; margin-bottom:8px;">No notifications yet</div>
-                <div style="font-size:0.9rem;">You'll see notifications here when someone requests a trade or responds to your requests.</div>
+                <div style="font-size:1.1rem; margin-bottom:8px;">No trade notifications yet</div>
+                <div style="font-size:0.9rem;">You'll see notifications here for trade requests, responses, matches, and other trading activities.</div>
             </div>
         @endforelse
     </div>
@@ -267,4 +255,3 @@
     }
 </script>
 @endpush
-

@@ -9,9 +9,14 @@
                 <h1 class="h2 fw-bold text-dark mb-2">My Tasks</h1>
                 <p class="text-muted">Manage your tasks and track progress</p>
             </div>
-            <a href="{{ route('tasks.create') }}" class="btn btn-primary">
-                <i class="fas fa-plus me-2"></i>Create Task
-            </a>
+            <div class="d-flex gap-2">
+                <a href="{{ route('dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                </a>
+                <a href="{{ route('tasks.create') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Create Task
+                </a>
+            </div>
         </div>
 
         <!-- Stats Cards -->
@@ -127,7 +132,7 @@
 
                                     <div class="d-flex align-items-center gap-2">
                                         <!-- Priority Badge -->
-                                        <span class="badge 
+                                        <span class="badge
                                                 @if($task->priority === 'high') bg-danger
                                                 @elseif($task->priority === 'medium') bg-warning
                                                 @else bg-success
@@ -214,14 +219,14 @@
     // Task toggle functionality
 document.addEventListener('DOMContentLoaded', function() {
     const checkboxes = document.querySelectorAll('.task-checkbox');
-    
+
     checkboxes.forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             if (this.disabled) return;
-            
+
             const taskId = this.dataset.taskId;
             const isCompleted = this.checked;
-            
+
             fetch(`/tasks/${taskId}/toggle`, {
                 method: 'PATCH',
                 headers: {
@@ -236,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const taskRow = this.closest('.list-group-item');
                     const title = taskRow.querySelector('h6');
                     const statusBadge = taskRow.querySelector('.badge');
-                    
+
                     if (isCompleted) {
                         title.classList.add('text-decoration-line-through', 'text-muted');
                         statusBadge.textContent = 'Completed';

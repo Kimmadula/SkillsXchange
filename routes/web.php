@@ -1,4 +1,3 @@
-use App\Http\Controllers\UserReportController;
 <?php
 
 use App\Http\Controllers\ProfileController;
@@ -681,9 +680,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/trades/requests', [\App\Http\Controllers\TradeController::class, 'requests'])->name('trades.requests');
         Route::get('/trades/ongoing', [\App\Http\Controllers\TradeController::class, 'ongoing'])->name('trades.ongoing');
         Route::get('/trades/notifications', [\App\Http\Controllers\TradeController::class, 'notify'])->name('trades.notifications');
-        
+        Route::get('/announcements', [\App\Http\Controllers\TradeController::class, 'announcements'])->name('announcements.index');
 
-        // Announcement read endpoint for users
+        // Announcement routes (user-facing)
         Route::post('/announcements/{announcement}/mark-read', [\App\Http\Controllers\DashboardController::class, 'markAnnouncementAsRead'])->name('announcements.mark-read');
 
         // Parameterized route must come last
@@ -877,12 +876,11 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         Route::patch('/admin/users/{user}/deny', [AdminController::class, 'denyUser'])->name('admin.users.deny');
         Route::patch('/admin/users/{user}/suspend', [AdminController::class, 'suspendUser'])->name('admin.users.suspend');
         Route::patch('/admin/users/{user}/lift-suspension', [AdminController::class, 'liftSuspension'])->name('admin.users.lift-suspension');
-        
+
         // Messages > Announcements (embedded in Messages tab)
         Route::post('/admin/messages/announcements', [AdminController::class, 'messagesAnnouncementsStore'])->name('admin.messages.announcements.store');
         Route::patch('/admin/messages/announcements/{announcement}/toggle', [AdminController::class, 'messagesAnnouncementsToggle'])->name('admin.messages.announcements.toggle');
         Route::delete('/admin/messages/announcements/{announcement}', [AdminController::class, 'messagesAnnouncementsDestroy'])->name('admin.messages.announcements.destroy');
-
         Route::get('/admin/users/{user}/violations', [AdminController::class, 'getUserViolations'])->name('admin.users.violations');
         Route::get('/admin/user/{user}', [AdminController::class, 'show'])->name('admin.user.show');
 

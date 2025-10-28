@@ -447,7 +447,20 @@ class TradeController extends Controller
             ->reject(function($a) use ($user) { return $a->isReadBy($user); })
             ->count();
 
-        return view('trades.notifications', compact('notifications', 'announcementsCount'));
+        return view('trades.tradenotifications', compact('notifications', 'announcementsCount'));
+    }
+
+    public function announcements()
+    {
+        $user = Auth::user();
+
+        // Get all active announcements for this user
+        $announcements = \App\Models\Announcement::active()
+            ->audienceForUser($user)
+            ->orderByDesc('created_at')
+            ->paginate(10);
+
+        return view('announcements.index', compact('announcements'));
     }
 
     public static function getUnreadNotificationCount($userId)

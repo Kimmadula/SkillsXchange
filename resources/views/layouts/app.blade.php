@@ -104,7 +104,7 @@
 
         <!-- Page Heading -->
         @if (isset($header))
-        <header class="bg-white shadow-sm border-bottom">
+        <header class="bg-white shadow-sm border-bottom main-content">
             <div class="container py-4">
                 {{ $header }}
             </div>
@@ -112,7 +112,7 @@
         @endif
 
         <!-- Page Content -->
-        <main class="flex-grow-1">
+        <main class="flex-grow-1 main-content">
             @yield('content')
         </main>
     </div>

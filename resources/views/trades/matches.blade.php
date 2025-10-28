@@ -2,7 +2,12 @@
 
 @section('content')
 <main style="padding:32px; max-width:1100px; margin:0 auto;">
-    <h1 style="font-size:1.5rem; margin-bottom:1rem;">Matching Trades</h1>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <h1 style="font-size:1.5rem; margin:0;">Matching Trades</h1>
+        <a href="{{ route('dashboard') }}" style="padding:8px 12px; background:#6b7280; color:#fff; text-decoration:none; border-radius:6px; font-size:0.875rem;">
+            ← Back to Dashboard
+        </a>
+    </div>
 
     @if(session('success'))
         <div style="background:#def7ec; color:#03543f; padding:10px 12px; border-radius:6px; margin-bottom:16px;">
