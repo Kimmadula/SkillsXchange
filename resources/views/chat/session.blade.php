@@ -629,9 +629,20 @@
                     remoteVideo.style.visibility = 'visible';
                     remoteVideo.style.width = '100%';
                     remoteVideo.style.height = '100%';
+                    remoteVideo.style.opacity = '1';
+                    remoteVideo.style.backgroundColor = 'transparent';
+                    remoteVideo.style.position = 'relative';
+                    remoteVideo.style.zIndex = '1';
                     remoteVideo.autoplay = true;
                     remoteVideo.playsInline = true;
                     remoteVideo.muted = false; // Allow audio for remote video
+                    
+                    // Ensure video container doesn't hide the video
+                    if (remoteVideoItem) {
+                        remoteVideoItem.style.backgroundColor = '#000';
+                        remoteVideoItem.style.overflow = 'hidden';
+                        remoteVideoItem.style.zIndex = '1';
+                    }
                     
                     // Update connection status
                     const remoteStatus = document.getElementById('remote-status');
@@ -640,9 +651,21 @@
                         remoteStatus.style.color = '#10b981';
                     }
                     
-                    // Wait a moment before playing to avoid interruptions
-                    setTimeout(() => {
-                        remoteVideo.play().then(() => {
+                    // Force video to play immediately and handle with user interaction
+                    const playVideo = async () => {
+                        try {
+                            // Check video element state
+                            console.log('🎬 Attempting to play remote video...', {
+                                srcObject: !!remoteVideo.srcObject,
+                                paused: remoteVideo.paused,
+                                readyState: remoteVideo.readyState,
+                                videoWidth: remoteVideo.videoWidth,
+                                videoHeight: remoteVideo.videoHeight
+                            });
+                            
+                            // Try to play
+                            await remoteVideo.play();
+                            
                             console.log('✅ Remote video started playing');
                             console.log('📐 Remote video dimensions:', {
                                 videoWidth: remoteVideo.videoWidth,
@@ -650,31 +673,160 @@
                                 offsetWidth: remoteVideo.offsetWidth,
                                 offsetHeight: remoteVideo.offsetHeight,
                                 clientWidth: remoteVideo.clientWidth,
-                                clientHeight: remoteVideo.clientHeight
+                                clientHeight: remoteVideo.clientHeight,
+                                paused: remoteVideo.paused,
+                                readyState: remoteVideo.readyState
                             });
                             console.log('📐 Remote video item dimensions:', remoteVideoItem ? {
                                 offsetWidth: remoteVideoItem.offsetWidth,
                                 offsetHeight: remoteVideoItem.offsetHeight,
                                 clientWidth: remoteVideoItem.clientWidth,
-                                clientHeight: remoteVideoItem.clientHeight
+                                clientHeight: remoteVideoItem.clientHeight,
+                                display: window.getComputedStyle(remoteVideoItem).display,
+                                visibility: window.getComputedStyle(remoteVideoItem).visibility,
+                                opacity: window.getComputedStyle(remoteVideoItem).opacity,
+                                zIndex: window.getComputedStyle(remoteVideoItem).zIndex
                             } : 'Container not found');
-                        }).catch(e => {
-                            console.log('Remote video play error (will retry):', e.name, e.message);
-                            // Only retry once after a longer delay
-                            if (!remoteVideo.paused) return; // Already playing
-                            setTimeout(() => {
-                                remoteVideo.play().catch(err => {
-                                    console.log('Final play attempt failed:', err.name, err.message);
-                                });
-                            }, 1500);
+                            
+                            // Log computed styles for debugging
+                            const videoStyles = window.getComputedStyle(remoteVideo);
+                            console.log('🎨 Remote video computed styles:', {
+                                display: videoStyles.display,
+                                visibility: videoStyles.visibility,
+                                opacity: videoStyles.opacity,
+                                width: videoStyles.width,
+                                height: videoStyles.height,
+                                zIndex: videoStyles.zIndex,
+                                position: videoStyles.position
+                            });
+                            
+                        } catch (e) {
+                            console.error('❌ Remote video play error:', e.name, e.message);
+                            console.error('Error details:', e);
+                            
+                            // Try again after user interaction
+                            if (e.name === 'NotAllowedError' || e.name === 'NotSupportedError') {
+                                console.log('⚠️ Autoplay blocked, video will play on next user interaction');
+                                // Set up a click handler to play on next interaction
+                                const playOnInteraction = () => {
+                                    remoteVideo.play().catch(err => {
+                                        console.error('Play failed even after interaction:', err);
+                                    });
+                                    document.removeEventListener('click', playOnInteraction);
+                                    document.removeEventListener('touchstart', playOnInteraction);
+                                };
+                                document.addEventListener('click', playOnInteraction, { once: true });
+                                document.addEventListener('touchstart', playOnInteraction, { once: true });
+                            } else {
+                                // Retry after a delay
+                                setTimeout(async () => {
+                                    try {
+                                        await remoteVideo.play();
+                                        console.log('✅ Remote video started playing on retry');
+                                    } catch (retryErr) {
+                                        console.error('❌ Final play attempt failed:', retryErr.name, retryErr.message);
+                                    }
+                                }, 500);
+                            }
+                        }
+                    };
+                    
+                    // Wait a moment for the stream to be ready
+                    setTimeout(playVideo, 150);
+                    
+                    // Also try playing on loadedmetadata event
+                    remoteVideo.addEventListener('loadedmetadata', () => {
+                        console.log('📹 Remote video metadata loaded, attempting play...');
+                        playVideo();
+                    }, { once: true });
+                    
+                    // Try playing on loadeddata event as well
+                    remoteVideo.addEventListener('loadeddata', () => {
+                        console.log('📹 Remote video data loaded, attempting play...');
+                        if (remoteVideo.paused) {
+                            playVideo();
+                        }
+                    }, { once: true });
+                    
+                    // Track when video actually starts playing/showing frames
+                    remoteVideo.addEventListener('playing', () => {
+                        console.log('🎬✅ Remote video is now playing and rendering!');
+                        console.log('📐 Video has dimensions:', {
+                            videoWidth: remoteVideo.videoWidth,
+                            videoHeight: remoteVideo.videoHeight
                         });
-                    }, 100);
+                    }, { once: true });
+                    
+                    remoteVideo.addEventListener('canplay', () => {
+                        console.log('📹 Remote video can play');
+                        if (remoteVideo.paused) {
+                            playVideo();
+                        }
+                    }, { once: true });
+                    
+                    // Check periodically if video has dimensions (means it's rendering)
+                    const checkVideoRendering = setInterval(() => {
+                        if (remoteVideo.videoWidth > 0 && remoteVideo.videoHeight > 0) {
+                            console.log('✅ Remote video is rendering!', {
+                                videoWidth: remoteVideo.videoWidth,
+                                videoHeight: remoteVideo.videoHeight,
+                                paused: remoteVideo.paused,
+                                currentTime: remoteVideo.currentTime
+                            });
+                            clearInterval(checkVideoRendering);
+                        }
+                    }, 500);
+                    
+                    // Clear the interval after 10 seconds
+                    setTimeout(() => {
+                        clearInterval(checkVideoRendering);
+                        if (remoteVideo.videoWidth === 0 || remoteVideo.videoHeight === 0) {
+                            console.error('⚠️ Remote video still has no dimensions after 10 seconds!');
+                            console.error('Video state:', {
+                                srcObject: !!remoteVideo.srcObject,
+                                paused: remoteVideo.paused,
+                                readyState: remoteVideo.readyState,
+                                networkState: remoteVideo.networkState,
+                                error: remoteVideo.error
+                            });
+                        }
+                    }, 10000);
                     
                     console.log('✅ Remote video stream received and displayed');
                 } else if (remoteVideoSet) {
                     console.log('⚠️ Remote video already set, skipping duplicate assignment');
                 } else if (!remoteVideo) {
                     console.error('❌ Remote video element not found!');
+                }
+                
+                // Check WebRTC connection state if available
+                if (firebaseVideoCall && firebaseVideoCall.peerConnection) {
+                    console.log('🔗 WebRTC Connection State:', firebaseVideoCall.peerConnection.connectionState);
+                    console.log('🧊 ICE Connection State:', firebaseVideoCall.peerConnection.iceConnectionState);
+                    
+                    // If connection isn't fully established, the video might not render yet
+                    if (firebaseVideoCall.peerConnection.connectionState !== 'connected') {
+                        console.warn('⚠️ WebRTC connection not fully established yet. Video may not render until connection is complete.');
+                        
+                        // Listen for connection state change
+                        const onConnectionStateChange = () => {
+                            const state = firebaseVideoCall.peerConnection.connectionState;
+                            console.log('🔗 Connection state changed to:', state);
+                            
+                            if (state === 'connected' && remoteVideo && remoteVideo.paused) {
+                                console.log('🎬 Connection established, attempting to play video...');
+                                remoteVideo.play().catch(e => {
+                                    console.error('Failed to play after connection:', e);
+                                });
+                            }
+                            
+                            if (state === 'connected' || state === 'failed' || state === 'closed') {
+                                firebaseVideoCall.peerConnection.removeEventListener('connectionstatechange', onConnectionStateChange);
+                            }
+                        };
+                        
+                        firebaseVideoCall.peerConnection.addEventListener('connectionstatechange', onConnectionStateChange);
+                    }
                 }
                 
                 videoCallState.isActive = true;
