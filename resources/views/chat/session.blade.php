@@ -2038,19 +2038,7 @@
                                 console.log('✅ Close video button event listener added');
                             }
                             
-                            // Add event listener for end call button
-                            const endCallBtn = document.getElementById('end-call-btn');
-                            if (endCallBtn) {
-                                endCallBtn.addEventListener('click', function() {
-                                    console.log('📞 End call button clicked');
-                                    if (typeof window.endVideoCall === 'function') {
-                                        window.endVideoCall();
-                                    } else {
-                                        console.error('endVideoCall function not available');
-                                    }
-                                });
-                                console.log('✅ End call button event listener added');
-                            }
+                            // End call button already has event listener above (line 1973), no need to duplicate
                             
                             // Add event listeners for remaining buttons
                             
