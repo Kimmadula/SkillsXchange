@@ -687,6 +687,11 @@ Route::middleware('auth')->group(function () {
 
         // Parameterized route must come last
         Route::get('/trades/{trade}', [\App\Http\Controllers\TradeController::class, 'show'])->name('trades.show');
+        // Manage user's own trades
+        Route::get('/trades/mine', [\App\Http\Controllers\TradeController::class, 'manage'])->name('trades.manage');
+        Route::get('/trades/{trade}/edit', [\App\Http\Controllers\TradeController::class, 'edit'])->name('trades.edit');
+        Route::put('/trades/{trade}', [\App\Http\Controllers\TradeController::class, 'update'])->name('trades.update');
+        Route::delete('/trades/{trade}', [\App\Http\Controllers\TradeController::class, 'destroy'])->name('trades.destroy');
 
         // Trade request actions
         Route::post('/trades/{trade}/request', [\App\Http\Controllers\TradeController::class, 'requestTrade'])->name('trades.request');

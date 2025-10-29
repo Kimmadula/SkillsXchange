@@ -463,6 +463,62 @@ class TradeController extends Controller
         return view('announcements.index', compact('announcements'));
     }
 
+    // Simple manage view listing user's own posted trades
+    public function manage()
+    {
+        $user = Auth::user();
+        if ($user->role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+        $trades = Trade::with(['offeringSkill', 'lookingSkill'])
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->paginate(10);
+        return view('trades.manage', compact('trades'));
+    }
+
+    public function edit(Trade $trade)
+    {
+        $user = Auth::user();
+        if ($trade->user_id !== $user->id) {
+            return redirect()->route('trades.manage')->with('error', 'Unauthorized');
+        }
+        $skills = Skill::orderBy('category')->orderBy('name')->get();
+        return view('trades.edit', compact('trade', 'skills'));
+    }
+
+    public function update(Request $request, Trade $trade)
+    {
+        $user = Auth::user();
+        if ($trade->user_id !== $user->id) {
+            return redirect()->route('trades.manage')->with('error', 'Unauthorized');
+        }
+        $validated = $request->validate([
+            'offering_skill_id' => ['required', 'exists:skills,skill_id'],
+            'looking_skill_id' => ['required', 'exists:skills,skill_id'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'location' => ['nullable','string','max:255'],
+            'session_type' => ['required','in:any,online,onsite'],
+        ]);
+        $trade->update($validated);
+        return redirect()->route('trades.manage')->with('success', 'Trade updated');
+    }
+
+    public function destroy(Trade $trade)
+    {
+        $user = Auth::user();
+        if ($trade->user_id !== $user->id) {
+            return redirect()->route('trades.manage')->with('error', 'Unauthorized');
+        }
+        // Only allow deleting open trades
+        if ($trade->status !== 'open') {
+            return redirect()->route('trades.manage')->with('error', 'Only open trades can be deleted');
+        }
+        $trade->delete();
+        return redirect()->route('trades.manage')->with('success', 'Trade deleted');
+    }
+
     public static function getUnreadNotificationCount($userId)
     {
         return \DB::table('user_notifications')

@@ -2190,69 +2190,7 @@
                         // Initialize WebRTC signaling
                         window.webrtcSignaling = new FirebaseWebRTCSignaling();
                         
-                        // Auto-setup callee to listen for offers
-                        function setupCalleeForIncomingCalls() {
-                        console.log('🔧 Setting up callee for incoming calls...');
-                        
-                        // Listen for any new offers in the calls collection
-                        if (window.webrtcSignaling && window.webrtcSignaling.database) {
-                            // Listen for new calls being created
-                            window.webrtcSignaling.database.ref('calls').on('child_added', (snapshot) => {
-                                const callId = snapshot.key;
-                                const callData = snapshot.val();
-                                
-                                // Check if this call has an offer but no answer yet AND it's not from us
-                                if (callData.offer && !callData.answer && callData.offer.from !== window.authUserId) {
-                                    console.log('📞 Incoming call detected from user:', callData.offer.from, 'callId:', callId);
-                                    
-                                    // Enhanced call state management
-                                    const now = Date.now();
-                                    // Only block if we're processing a call or too soon after last call
-                                    if (videoCallState.isProcessingCall || 
-                                        (now - videoCallState.lastCallTime) < videoCallState.callCooldown) {
-                                        console.log('📞 Call already in progress or too soon, ignoring incoming call');
-                                        return;
-                                    }
-                                    
-                                    // Set processing flag to prevent duplicate calls
-                                    videoCallState.isProcessingCall = true;
-                                    videoCallState.lastCallTime = now;
-                                    
-                                    console.log('📞 Auto-answering incoming call from user:', callData.offer.from);
-                                    
-                                    // Auto-answer the call
-                                    window.webrtcSignaling.answerCall(callId).then(success => {
-                                        if (success) {
-                                            console.log('✅ Successfully answered incoming call');
-                                            
-                                            // Show video chat modal for callee
-                                            const modal = document.getElementById('video-chat-modal');
-                                            if (modal) {
-                                                modal.style.display = 'block';
-                                                console.log('📹 Video chat modal opened for callee');
-                                            }
-                                        } else {
-                                            console.error('❌ Failed to answer incoming call');
-                                        }
-                                        
-                                        // Reset processing flag
-                                        videoCallState.isProcessingCall = false;
-                                    }).catch(error => {
-                                        console.error('❌ Error answering call:', error);
-                                        videoCallState.isProcessingCall = false;
-                                    });
-                                } else if (callData.offer && callData.offer.from === window.authUserId) {
-                                    console.log('📞 Ignoring own call offer:', callId);
-                                }
-                            });
-                            
-                            console.log('✅ Callee setup complete - listening for incoming calls');
-                        } else {
-                            console.error('❌ WebRTC signaling not available for callee setup');
-                        }
-                    }
-                        
-                        // setupCalleeForIncomingCalls will be set up when Firebase is initialized (on first call start)
+                        // Auto-setup callee removed (no auto-answer). Incoming offers are handled via Firebase callbacks
                         
                         // openVideoChat will be defined later in the main script
                         

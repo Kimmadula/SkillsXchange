@@ -242,6 +242,18 @@
                         </div>
                     </div>
                 </a>
+
+                @if(auth()->user()->role !== 'admin')
+                <a href="{{ route('trades.manage') }}" class="text-decoration-none">
+                    <div class="responsive-item responsive-item--blue">
+                        <div class="text-center">
+                            <i class="fas fa-tasks mb-2" style="font-size: 1.5rem;"></i>
+                            <h6 class="mb-1">Manage Posts</h6>
+                            <small>Edit or delete your posted trades</small>
+                        </div>
+                    </div>
+                </a>
+                @endif
             </div>
         </div>
 
