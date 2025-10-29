@@ -17,14 +17,12 @@ use Illuminate\Support\Facades\Storage;
 </head>
 
 <body class="font-sans antialiased">
-    <div class="admin-dashboard">
+<div class="admin-dashboard" x-data="{ sidebarOpen: false }">
         <!-- Sidebar -->
-        <div class="admin-sidebar">
+    <div class="admin-sidebar" :class="{ 'open': sidebarOpen }">
             <div class="sidebar-header">
                 <div class="logo">
-                <!-- LOGO IS HERE
                 <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="admin-logo">
-                -->
                 <span class="logo-text">SkillsXchange Admin</span>
                 </div>
             </div>
@@ -82,7 +80,7 @@ use Illuminate\Support\Facades\Storage;
                     </svg>
                     <span>Messages</span>
                 </a>
-                <a href="{{ route('admin.settings.index') }}" class="nav-item">
+            <a href="{{ route('admin.settings.index') }}" class="nav-item with-icon">
                     <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3" />
                         <path
@@ -98,8 +96,17 @@ use Illuminate\Support\Facades\Storage;
             <!-- Header -->
             <div class="admin-header">
                 <div class="header-left">
+                <button class="mobile-nav-toggle" @click="sidebarOpen = !sidebarOpen" aria-label="Toggle navigation">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
                     <h1 class="page-title">Users</h1>
                     <p class="page-subtitle">Manage all registered users</p>
+    <!-- Backdrop for mobile -->
+    <div x-show="sidebarOpen" @click="sidebarOpen = false" class="sidebar-backdrop"></div>
                 </div>
                 <div class="header-right">
                 <div class="notifications" x-data="{ notificationsOpen: false }">

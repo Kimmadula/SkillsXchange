@@ -11,14 +11,12 @@
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="font-sans antialiased">
-<div class="admin-dashboard">
+<div class="admin-dashboard" x-data="{ sidebarOpen: false }">
     <!-- Sidebar -->
-    <div class="admin-sidebar">
+    <div class="admin-sidebar" :class="{ 'open': sidebarOpen }">
         <div class="sidebar-header">
             <div class="logo">
-                <!-- LOGO IS HERE
                 <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="admin-logo">
-                -->
                 <span class="logo-text">SkillsXchange Admin</span>
             </div>
         </div>
@@ -75,7 +73,7 @@
                 </svg>
                 <span>Messages</span>
             </a>
-            <a href="{{ route('admin.settings.index') }}" class="nav-item">
+            <a href="{{ route('admin.settings.index') }}" class="nav-item with-icon">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="3"/>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -90,6 +88,13 @@
         <!-- Header -->
         <div class="admin-header">
             <div class="header-left">
+                <button class="mobile-nav-toggle" @click="sidebarOpen = !sidebarOpen" aria-label="Toggle navigation">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
                 <h1 class="page-title">Exchanges</h1>
                 <p class="page-subtitle">Manage skill exchanges and trades</p>
             </div>
@@ -338,6 +343,8 @@
             </div>
         </div>
     </div>
+    <!-- Backdrop for mobile -->
+    <div x-show="sidebarOpen" @click="sidebarOpen = false" class="sidebar-backdrop"></div>
 </div>
 
 @include('admin.dashboard-styles')

@@ -4,7 +4,11 @@
     min-height: 100vh;
     background-color: #f8fafc;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow-x: hidden;
 }
+
+/* Alpine cloak */
+[x-cloak] { display: none !important; }
 
 /* Sidebar */
 .admin-sidebar {
@@ -17,7 +21,7 @@
     top: 0;
     left: 0;
     height: 100vh;
-    z-index: 1000;
+    z-index: 2000;
 }
 
 .sidebar-header {
@@ -50,6 +54,13 @@
     color: #1a202c;
 }
 
+/* Admin logo image */
+.admin-logo {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+}
+
 .sidebar-nav {
     flex: 1;
     padding: 16px 0;
@@ -65,6 +76,11 @@
     transition: all 0.2s;
     border-left: 3px solid transparent;
 }
+
+/* Hide all nav icons by default */
+.sidebar-nav .nav-item .nav-icon { display: none; }
+/* Show only when explicitly allowed */
+.sidebar-nav .nav-item.with-icon .nav-icon { display: inline-block; }
 
 .nav-item:hover {
     background-color: #f1f5f9;
@@ -97,6 +113,23 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative;
+    z-index: 1600; /* keep header above mobile backdrop */
+}
+
+/* Mobile nav toggle */
+.mobile-nav-toggle {
+    display: none;
+    background: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: #374151;
+}
+
+.mobile-nav-toggle svg {
+    width: 22px;
+    height: 22px;
 }
 
 .header-left .page-title {
@@ -966,15 +999,27 @@
         transform: translateX(-100%);
         transition: transform 0.3s ease;
         width: 280px;
+        pointer-events: none; /* prevent blocking clicks when hidden */
     }
 
     .admin-sidebar.open {
         transform: translateX(0);
+        pointer-events: auto;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
     }
 
     .admin-main {
         margin-left: 0;
         width: 100%;
+    }
+
+    .mobile-nav-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        background: #ffffff;
+        z-index: 1100;
     }
 
     .sidebar-nav {
@@ -1004,6 +1049,21 @@
     .header-right {
         width: 100%;
         justify-content: space-between;
+    }
+}
+
+/* Mobile sidebar backdrop */
+.sidebar-backdrop {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 1900; /* above header (1600), below sidebar (2000) */
+        display: block;
     }
 }
 </style>

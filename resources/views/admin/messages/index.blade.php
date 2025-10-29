@@ -11,14 +11,12 @@
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="font-sans antialiased">
-<div class="admin-dashboard">
+<div class="admin-dashboard messages-page" x-data="{ sidebarOpen: false }">
     <!-- Sidebar -->
-    <div class="admin-sidebar">
+    <div class="admin-sidebar" :class="{ 'open': sidebarOpen }">
         <div class="sidebar-header">
             <div class="logo">
-                <!-- LOGO IS HERE
                 <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="admin-logo">
-                -->
                 <span class="logo-text">SkillsXchange Admin</span>
             </div>
         </div>
@@ -75,7 +73,7 @@
                 </svg>
                 <span>Messages</span>
             </a>
-            <a href="{{ route('admin.settings.index') }}" class="nav-item">
+            <a href="{{ route('admin.settings.index') }}" class="nav-item with-icon">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="3"/>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -90,6 +88,13 @@
         <!-- Header -->
         <div class="admin-header">
             <div class="header-left">
+                <button class="mobile-nav-toggle" @click="sidebarOpen = !sidebarOpen" aria-label="Toggle navigation">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="6" x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
                 <h1 class="page-title">Messages</h1>
                 <p class="page-subtitle">System messages and communications</p>
             </div>
@@ -297,15 +302,19 @@
             </div>
         </div>
     </div>
+    <!-- Backdrop for mobile -->
+    <div x-show="sidebarOpen" @click="sidebarOpen = false" class="sidebar-backdrop"></div>
 </div>
 
 @include('admin.dashboard-styles')
 <style>
+.messages-page { overflow-x: hidden; }
 .messages-card {
     background: white;
     border-radius: 12px;
     padding: 24px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
 }
 
 .messages-header {
@@ -362,6 +371,7 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
+    overflow: hidden;
 }
 
 .message-item {
@@ -372,6 +382,7 @@
     border: 1px solid #e5e7eb;
     border-radius: 8px;
     transition: all 0.2s;
+    overflow: hidden;
 }
 
 .message-item:hover {
@@ -480,6 +491,26 @@
     margin-top: 20px;
     display: flex;
     justify-content: center;
+}
+
+/* Responsive tweaks similar to create post */
+@media (max-width: 768px) {
+    .messages-page .admin-header { flex-direction: column; gap: 16px; align-items: flex-start; }
+    .messages-page .header-right { width: 100%; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .messages-page .messages-list { gap: 12px; }
+    .messages-page .message-item { flex-direction: column; align-items: stretch; }
+    .messages-page .message-actions { width: 100%; display: flex; gap: 8px; justify-content: flex-end; }
+    .messages-page .messages-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+    .messages-page .messages-card .form-input,
+    .messages-page .messages-card select,
+    .messages-page .messages-card textarea { width: 100%; max-width: 100%; box-sizing: border-box; }
+}
+
+@media (max-width: 480px) {
+    .messages-page .notification-dropdown { left: 16px; right: 16px; width: auto; }
+    .messages-page .btn { width: 100%; justify-content: center; }
+    /* Stack grid blocks in the form to avoid overflow */
+    .messages-page form[method="POST"] > div[style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
 }
 </style>
 <script>
