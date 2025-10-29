@@ -480,6 +480,15 @@
         console.log('📞 Handling video call offer:', data);
         
         try {
+            // Ensure video chat modal is visible when answering
+            const videoModal = document.getElementById('video-chat-modal');
+            if (videoModal) {
+                if (videoModal.style.display === 'none' || !videoModal.style.display) {
+                    videoModal.style.display = 'flex';
+                    console.log('✅ Video chat modal opened for incoming call');
+                }
+            }
+            
             // Use Firebase to answer the call
             if (firebaseVideoCall) {
                 // Extract the offer from the call data
@@ -521,12 +530,32 @@
                     
                     // Setup local video display
                     const localVideo = document.getElementById('local-video');
+                    const localVideoItem = document.getElementById('local-video-item');
+                    
+                    if (localVideoItem) {
+                        localVideoItem.style.display = 'flex';
+                        localVideoItem.style.visibility = 'visible';
+                    }
+                    
                     if (localVideo && firebaseVideoCall.localStream) {
                         localVideo.srcObject = firebaseVideoCall.localStream;
                         localVideo.style.display = 'block';
+                        localVideo.style.visibility = 'visible';
+                        localVideo.style.width = '100%';
+                        localVideo.style.height = '100%';
                         localVideo.muted = true;
                         localVideo.autoplay = true;
                         localVideo.playsInline = true;
+                        localVideo.play().catch(e => {
+                            console.log('Local video play error:', e.name);
+                        });
+                    }
+                    
+                    // Ensure remote video container is ready (will be populated when remote stream arrives)
+                    const remoteVideoItem = document.getElementById('remote-video-item');
+                    if (remoteVideoItem) {
+                        remoteVideoItem.style.display = 'flex';
+                        remoteVideoItem.style.visibility = 'visible';
                     }
                     
                     videoCallState.isActive = true;
@@ -564,6 +593,17 @@
             // If we have a remote stream from Firebase, display it
             if (data.remoteStream) {
                 const remoteVideo = document.getElementById('remote-video');
+                const remoteVideoItem = document.getElementById('remote-video-item');
+                const videoModal = document.getElementById('video-chat-modal');
+                
+                // Ensure video chat modal is visible
+                if (videoModal) {
+                    if (videoModal.style.display === 'none' || !videoModal.style.display) {
+                        videoModal.style.display = 'flex';
+                        console.log('✅ Video chat modal made visible');
+                    }
+                }
+                
                 if (remoteVideo && !remoteVideoSet) {
                     // Only set once to prevent play() interruptions
                     remoteVideoSet = true;
@@ -573,23 +613,58 @@
                         remoteVideo.srcObject.getTracks().forEach(track => track.stop());
                     }
                     
+                    // Ensure remote video container is visible
+                    if (remoteVideoItem) {
+                        remoteVideoItem.style.display = 'flex';
+                        remoteVideoItem.style.visibility = 'visible';
+                        console.log('✅ Remote video container made visible');
+                    }
+                    
+                    // Check if stream has tracks
+                    const tracks = data.remoteStream.getTracks();
+                    console.log('📹 Remote stream tracks:', tracks.map(t => `${t.kind} (${t.readyState})`).join(', '));
+                    
                     remoteVideo.srcObject = data.remoteStream;
                     remoteVideo.style.display = 'block';
+                    remoteVideo.style.visibility = 'visible';
+                    remoteVideo.style.width = '100%';
+                    remoteVideo.style.height = '100%';
                     remoteVideo.autoplay = true;
                     remoteVideo.playsInline = true;
                     remoteVideo.muted = false; // Allow audio for remote video
+                    
+                    // Update connection status
+                    const remoteStatus = document.getElementById('remote-status');
+                    if (remoteStatus) {
+                        remoteStatus.textContent = 'Connected';
+                        remoteStatus.style.color = '#10b981';
+                    }
                     
                     // Wait a moment before playing to avoid interruptions
                     setTimeout(() => {
                         remoteVideo.play().then(() => {
                             console.log('✅ Remote video started playing');
+                            console.log('📐 Remote video dimensions:', {
+                                videoWidth: remoteVideo.videoWidth,
+                                videoHeight: remoteVideo.videoHeight,
+                                offsetWidth: remoteVideo.offsetWidth,
+                                offsetHeight: remoteVideo.offsetHeight,
+                                clientWidth: remoteVideo.clientWidth,
+                                clientHeight: remoteVideo.clientHeight
+                            });
+                            console.log('📐 Remote video item dimensions:', remoteVideoItem ? {
+                                offsetWidth: remoteVideoItem.offsetWidth,
+                                offsetHeight: remoteVideoItem.offsetHeight,
+                                clientWidth: remoteVideoItem.clientWidth,
+                                clientHeight: remoteVideoItem.clientHeight
+                            } : 'Container not found');
                         }).catch(e => {
-                            console.log('Remote video play error (will retry):', e.name);
+                            console.log('Remote video play error (will retry):', e.name, e.message);
                             // Only retry once after a longer delay
                             if (!remoteVideo.paused) return; // Already playing
                             setTimeout(() => {
                                 remoteVideo.play().catch(err => {
-                                    console.log('Final play attempt failed:', err.name);
+                                    console.log('Final play attempt failed:', err.name, err.message);
                                 });
                             }, 1500);
                         });
@@ -598,6 +673,8 @@
                     console.log('✅ Remote video stream received and displayed');
                 } else if (remoteVideoSet) {
                     console.log('⚠️ Remote video already set, skipping duplicate assignment');
+                } else if (!remoteVideo) {
+                    console.error('❌ Remote video element not found!');
                 }
                 
                 videoCallState.isActive = true;
@@ -1893,9 +1970,36 @@
                             
                             displayRemoteStream() {
                                 const remoteVideo = document.getElementById('remote-video');
+                                const remoteVideoItem = document.getElementById('remote-video-item');
+                                
                                 if (remoteVideo && this.remoteStream) {
+                                    // Ensure container is visible
+                                    if (remoteVideoItem) {
+                                        remoteVideoItem.style.display = 'flex';
+                                        remoteVideoItem.style.visibility = 'visible';
+                                    }
+                                    
                                     remoteVideo.srcObject = this.remoteStream;
                                     remoteVideo.style.display = 'block';
+                                    remoteVideo.style.visibility = 'visible';
+                                    remoteVideo.style.width = '100%';
+                                    remoteVideo.style.height = '100%';
+                                    remoteVideo.autoplay = true;
+                                    remoteVideo.playsInline = true;
+                                    remoteVideo.muted = false;
+                                    
+                                    // Update connection status
+                                    const remoteStatus = document.getElementById('remote-status');
+                                    if (remoteStatus) {
+                                        remoteStatus.textContent = 'Connected';
+                                        remoteStatus.style.color = '#10b981';
+                                    }
+                                    
+                                    // Play the video
+                                    remoteVideo.play().catch(e => {
+                                        console.log('Remote video play error:', e.name);
+                                    });
+                                    
                                     console.log('✅ Remote video stream displayed');
                                 }
                             }
