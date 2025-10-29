@@ -25,6 +25,8 @@ class FirebaseVideoIntegration {
         this.peerConnection = null;
         this.startTime = null;
         this.timer = null;
+        // Buffer for remote ICE candidates that arrive before remote description is set
+        this.pendingRemoteCandidates = [];
         
         // Callbacks
         this.onCallReceived = options.onCallReceived || (() => {});
@@ -356,6 +358,21 @@ class FirebaseVideoIntegration {
             // Send answer via Firebase
             await this.sendAnswer(answer);
             
+            // Process any pending remote ICE candidates that arrived before remote description
+            if (this.pendingRemoteCandidates.length > 0) {
+                this.log(`🔄 Processing ${this.pendingRemoteCandidates.length} buffered ICE candidates (callee)...`);
+                for (const candidate of this.pendingRemoteCandidates) {
+                    try {
+                        await this.peerConnection.addIceCandidate(candidate);
+                        this.log('✅ Buffered ICE candidate processed (callee)');
+                    } catch (e) {
+                        this.log(`❌ Error processing buffered ICE candidate (callee): ${e.message}`, 'error');
+                    }
+                }
+                this.pendingRemoteCandidates = [];
+                this.log('✅ All buffered ICE candidates processed (callee)');
+            }
+
             this.isActive = true;
             this.startCallTimer();
             
@@ -533,16 +550,39 @@ class FirebaseVideoIntegration {
         
         await this.peerConnection.setRemoteDescription(rtcAnswer);
         this.log('✅ Remote answer set');
+
+        // Process any pending remote ICE candidates that arrived before remote description
+        if (this.pendingRemoteCandidates.length > 0) {
+            this.log(`🔄 Processing ${this.pendingRemoteCandidates.length} buffered ICE candidates (caller)...`);
+            for (const candidate of this.pendingRemoteCandidates) {
+                try {
+                    await this.peerConnection.addIceCandidate(candidate);
+                    this.log('✅ Buffered ICE candidate processed (caller)');
+                } catch (e) {
+                    this.log(`❌ Error processing buffered ICE candidate (caller): ${e.message}`, 'error');
+                }
+            }
+            this.pendingRemoteCandidates = [];
+            this.log('✅ All buffered ICE candidates processed (caller)');
+        }
     }
     
     // Handle ICE candidate
     async handleIceCandidate(candidate) {
-        // Silently ignore ICE candidates when there's no active call or peer connection
-        // This prevents console spam from stale Firebase data
+        // Ignore when there's no active call or peer connection
         if (!this.peerConnection || !this.isActive) {
             return;
         }
-        
+
+        // If remote description isn't set yet, buffer the candidate
+        const remoteDescSet = this.peerConnection.remoteDescription && this.peerConnection.remoteDescription.type;
+        if (!remoteDescSet) {
+            this.pendingRemoteCandidates.push(candidate);
+            this.log(`🔄 ICE candidate buffered (${this.pendingRemoteCandidates.length} total)`);
+            return;
+        }
+
+        // Otherwise, add immediately
         this.log('📡 Handling ICE candidate...');
         await this.peerConnection.addIceCandidate(candidate);
         this.log('✅ ICE candidate added');
