@@ -1,8 +1,26 @@
 @extends('layouts.app')
 
 @section('content')
-<main style="padding:32px; max-width:960px; margin:0 auto;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+<main role="trades-create" style="padding:32px; max-width:960px; margin:0 auto; overflow-x:hidden;">
+    <style>
+        /* Responsive helpers for this view only */
+        @media (max-width: 480px) {
+            main[role="trades-create"] { padding:16px !important; }
+            .header-bar { flex-wrap: wrap; gap: 10px; }
+            .header-bar a { width: 100%; text-align: center; }
+            .grid-responsive { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 360px) {
+            .header-bar h1 { font-size: 1.125rem !important; }
+        }
+        /* Hard overflow guards */
+        form.trades-create-form { overflow: hidden; }
+        .wrap-anywhere { overflow-wrap: anywhere; word-break: break-word; }
+        .flex-wrap-row { display:flex; gap:12px; align-items:center; flex-wrap: wrap; }
+        .flex-wrap-row > label { margin-top: 6px; }
+        .w-100 { width:100%; max-width:100%; }
+    </style>
+    <div class="header-bar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
         <h1 style="font-size:1.5rem; margin:0;">Post a Skill Trade</h1>
         <a href="{{ route('dashboard') }}" style="padding:8px 12px; background:#6b7280; color:#fff; text-decoration:none; border-radius:6px; font-size:0.875rem;">
             ← Back to Dashboard
@@ -15,13 +33,13 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('trades.store') }}" style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:16px; display:grid; gap:16px;">
+    <form method="POST" action="{{ route('trades.store') }}" class="trades-create-form" style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:16px; display:grid; gap:16px;">
         @csrf
 
         <div>
             <label style="display:block; font-weight:600; margin-bottom:4px;">Name</label>
-            <div style="display:flex; gap:12px; align-items:center;">
-                <input type="text" value="{{ $user->firstname }} {{ $user->middlename }} {{ $user->lastname }}" readonly style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px; background:#f9fafb;" />
+            <div class="flex-wrap-row">
+                <input type="text" value="{{ $user->firstname }} {{ $user->middlename }} {{ $user->lastname }}" readonly class="w-100" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px; background:#f9fafb;" />
                 <label style="display:flex; gap:6px; align-items:center; font-size:0.9rem;">
                     <input type="checkbox" name="use_username" value="1" /> Use username ({{ $user->username }})
                 </label>
@@ -30,7 +48,7 @@
 
         <div>
             <label for="offering_skill_id" style="display:block; font-weight:600; margin-bottom:4px;">Offering (Your Registered Skill)</label>
-            <select id="offering_skill_id" name="offering_skill_id" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; background:#f9fafb;" disabled>
+            <select id="offering_skill_id" name="offering_skill_id" required class="w-100" style="padding:10px; border:1px solid #ddd; border-radius:6px; background:#f9fafb;" disabled>
                 @if($user->skill)
                     <option value="{{ $user->skill->skill_id }}" selected>
                         {{ $user->skill->category }} - {{ $user->skill->name }}
@@ -57,13 +75,13 @@
 
         <div>
             <label for="looking_skill_category" style="display:block; font-weight:600; margin-bottom:4px;">Skill Category (What you want to learn)</label>
-            <select id="looking_skill_category" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
+            <select id="looking_skill_category" required class="w-100" style="padding:10px; border:1px solid #ddd; border-radius:6px;">
                 <option value="">Select a category first</option>
                 @foreach($skills->groupBy('category') as $category => $group)
                     <option value="{{ $category }}">{{ $category }} ({{ $group->count() }} skills)</option>
                 @endforeach
             </select>
-            <small style="color:#6b7280; font-size:0.75rem;">Select a category to see available skills</small>
+            <small class="wrap-anywhere" style="color:#6b7280; font-size:0.75rem;">Select a category to see available skills</small>
             @if($skills->count() === 0)
                 <div style="color:#dc2626; font-size:0.875rem; margin-top:4px;">
                     ⚠️ No skills available. Please contact admin to add skills.
@@ -73,7 +91,7 @@
 
         <div>
             <label for="looking_skill_id" style="display:block; font-weight:600; margin-bottom:4px;">Skill Name (What you want to learn)</label>
-            <select id="looking_skill_id" name="looking_skill_id" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;" disabled>
+            <select id="looking_skill_id" name="looking_skill_id" required class="w-100" style="padding:10px; border:1px solid #ddd; border-radius:6px;" disabled>
                 <option value="">Select a category first</option>
                 @foreach($skills as $s)
                     <option value="{{ $s->skill_id }}" data-category="{{ $s->category }}" {{ $user->skill_id == $s->skill_id ? 'disabled' : '' }}>
@@ -86,12 +104,8 @@
 
         <fieldset style="border:1px solid #eee; border-radius:8px; padding:12px;">
             <legend style="padding:0 8px; color:#374151;">Schedule Preferences</legend>
-            <div style="background:#f0f9ff; border:1px solid #0ea5e9; border-radius:6px; padding:12px; margin-bottom:16px;">
-                <p style="margin:0; color:#0c4a6e; font-size:0.875rem;">
-                    <strong>📅 Scheduling Rules:</strong> You can only schedule trades for today or future dates. Past dates are not allowed to ensure realistic scheduling.
-                </p>
-            </div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+
+            <div class="grid-responsive" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
                 <div>
                     <label style="display:block; font-weight:600; margin-bottom:4px;">Start Date</label>
                     <input type="date" name="start_date" required min="{{ date('Y-m-d') }}" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;" />
@@ -123,7 +137,7 @@
 
         <fieldset style="border:1px solid #eee; border-radius:8px; padding:12px;">
             <legend style="padding:0 8px; color:#374151;">Other Preferences</legend>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+            <div class="grid-responsive" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
                 <div>
                     <label style="display:block; font-weight:600; margin-bottom:4px;">Gender Preference</label>
                     <select name="gender_pref" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;">
@@ -137,9 +151,9 @@
                 </div>
                 <div>
                     <label for="location" style="display:block; font-weight:600; margin-bottom:4px;">Location (Cebu, Philippines)</label>
-                    <input type="text" id="location" name="location" placeholder="Enter your location in Cebu" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;" list="location-suggestions" autocomplete="off" />
+                    <input type="text" id="location" name="location" placeholder="Enter your location in Cebu" class="w-100" style="padding:10px; border:1px solid #ddd; border-radius:6px;" list="location-suggestions" autocomplete="off" />
                     <datalist id="location-suggestions"></datalist>
-                    <div style="color:#6b7280; font-size:0.8rem; margin-top:2px;">
+                    <div class="wrap-anywhere" style="color:#6b7280; font-size:0.8rem; margin-top:2px;">
                         Start typing to see Cebu city and barangay suggestions
                     </div>
                     @error('location')<div style="color:#e53e3e; font-size:0.875rem;">{{ $message }}</div>@enderror
@@ -161,15 +175,7 @@
         </div>
     </form>
 
-    <!-- Debug Information -->
-    @if(config('app.debug'))
-    <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin: 20px 0; font-size: 12px;">
-        <strong>Debug Info:</strong>
-        <br>Total Skills: {{ $skills->count() }}
-        <br>Categories: {{ $skills->groupBy('category')->count() }}
-        <br>Categories List: {{ $skills->groupBy('category')->keys()->implode(', ') }}
-    </div>
-    @endif
+
 
     <script>
         // Skill category selection with debugging
