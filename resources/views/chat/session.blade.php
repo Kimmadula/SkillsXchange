@@ -1390,7 +1390,7 @@
                         class="mobile-only" title="Full Screen Tasks">
                         📋
                     </button>
-                    <button id="video-call-btn" onclick="openVideoChat()"
+                    <button id="video-call-btn"
                         style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem;">📷</button>
 
                     <!-- Ensure openVideoChat is defined immediately -->
@@ -1914,29 +1914,6 @@
                         
                         // openVideoChat will be defined later in the main script
                         
-                        // Function to verify all video functions are available
-                        function verifyVideoFunctions() {
-                            console.log('🔍 Verifying video functions...');
-                            const functions = ['openVideoChat', 'closeVideoChat', 'startVideoCall', 'endVideoCall'];
-                            let allAvailable = true;
-                            
-                            functions.forEach(funcName => {
-                                if (typeof window[funcName] === 'function') {
-                                    console.log(`✅ ${funcName} is available`);
-                                } else {
-                                    console.error(`❌ ${funcName} is NOT available`);
-                                    allAvailable = false;
-                                }
-                            });
-                            
-                            if (allAvailable) {
-                                console.log('🎉 All video functions are available!');
-                            } else {
-                                console.warn('⚠️ Some video functions are missing');
-                            }
-                            
-                            return allAvailable;
-                        }
                         
                         // Add event listener as backup to onclick
                         document.addEventListener('DOMContentLoaded', function() {
@@ -2164,14 +2141,15 @@
                                         return;
                                     }
                                     
-                                    // Get partner ID using existing helper function
-                                    const partnerId = getPartnerId();
+                                    // Get partner ID - use window.partnerId which is set from controller
+                                    const partnerId = window.partnerId;
                                     
-                                    if (!partnerId || partnerId === null || partnerId === undefined) {
+                                    if (!partnerId || partnerId === null || partnerId === undefined || isNaN(partnerId)) {
                                         console.error('❌ Partner ID not found', {
                                             currentUser: {{ auth()->id() }},
                                             tradeOwner: {{ $trade->user_id }},
-                                            partnerId: partnerId
+                                            partnerId: partnerId,
+                                            windowPartnerId: window.partnerId
                                         });
                                         alert('No partner found for this trade. Make sure the trade request has been accepted.');
                                         return;
@@ -2258,10 +2236,6 @@
                                 console.log('✅ Video call ended');
                             };
                             
-                            // Verify functions are available after DOM is loaded
-                            setTimeout(() => {
-                                verifyVideoFunctions();
-                            }, 1000);
                         });
                     </script>
                     <button
@@ -5387,75 +5361,7 @@ let isScreenSharing = false;
     console.log('✅ Video call fixes loaded successfully');
 })();
 
-async function initializeVideoChat() {
-    try {
-        // Check if media devices are supported
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error('Media devices not supported');
-        }
-        
-        console.log('Requesting camera and microphone access...');
-        
-        // Request camera and microphone access with better constraints
-        localStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                width: { ideal: 1280, max: 1920 },
-                height: { ideal: 720, max: 1080 },
-                frameRate: { ideal: 30, max: 60 }
-            },
-            audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true
-            }
-        });
-        
-        // Display local video
-        const localVideo = document.getElementById('local-video');
-        if (localVideo) {
-            console.log('Setting up local video with stream:', localStream);
-            console.log('Local stream tracks:', localStream.getTracks());
-            localVideo.srcObject = localStream;
-            localVideo.muted = true; // Mute local video to prevent echo
-            localVideo.autoplay = true;
-            localVideo.playsInline = true;
-            localVideo.play().then(() => {
-                console.log('Local video started playing');
-            }).catch(e => {
-                console.log('Local video play error:', e);
-                // Try to play again after a short delay
-                setTimeout(() => {
-                    localVideo.play().catch(err => console.log('Retry play error:', err));
-                }, 1000);
-            });
-        }
-        document.getElementById('local-status').textContent = 'Ready';
-        document.getElementById('local-status').className = 'connection-status connected';
-        
-        // Update status
-        document.getElementById('video-status').textContent = 'Camera and microphone ready. Click start call to begin.';
-        
-        // Show start call button
-        document.getElementById('start-call-btn').disabled = false;
-        
-    } catch (error) {
-        console.error('Error accessing media devices:', error);
-        let errorMessage = 'Error: Could not access camera or microphone. ';
-        
-        if (error.name === 'NotAllowedError') {
-            errorMessage += 'Please allow camera and microphone access and refresh the page.';
-        } else if (error.name === 'NotFoundError') {
-            errorMessage += 'No camera or microphone found. Please check your devices.';
-        } else if (error.name === 'NotSupportedError') {
-            errorMessage += 'Your browser does not support video calls.';
-        } else {
-            errorMessage += 'Please check permissions and try again.';
-        }
-        
-        document.getElementById('video-status').textContent = errorMessage;
-        document.getElementById('start-call-btn').disabled = true;
-    }
-}
+// initializeVideoChat function removed - using openVideoChat() instead
 
 // Duplicate startVideoCall function removed - using the one defined earlier
 
