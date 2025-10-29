@@ -578,31 +578,25 @@
 
 <!-- Buy Tokens Modal -->
 <div class="modal fade" id="buyTokensModal" tabindex="-1" aria-labelledby="buyTokensModalLabel" aria-hidden="true" data-bs-focus="false">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="buyTokensModalLabel">
-                    <i class="fas fa-coins me-2"></i>Buy Tokens
+            <div class="modal-header" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); color: #1f2937; border-bottom: 0;">
+                <h5 class="modal-title d-flex align-items-center gap-2" id="buyTokensModalLabel" style="font-weight: 600;">
+                    <i class="fas fa-coins" style="color:#6366f1;"></i>
+                    Buy Tokens
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="buyTokensForm" method="POST" action="{{ route('tokens.purchase') }}">
                 @csrf
                 <div class="modal-body">
-                    <!-- Test Mode Notice -->
-                    <div class="alert alert-warning d-flex align-items-center mb-3">
-                        <i class="fas fa-flask me-2"></i>
-                        <div>
-                            <strong>Test Mode:</strong> This is a sandbox environment. No real money will be charged.
-                        </div>
-                    </div>
-
                     <!-- Current Balance Display -->
-                    <div class="alert alert-info d-flex align-items-center mb-3">
-                        <i class="fas fa-wallet me-2"></i>
-                        <div>
-                            <strong>Current Balance:</strong> {{ auth()->user()->token_balance ?? 0 }} tokens
+                    <div class="d-flex align-items-center justify-content-between p-3 rounded-3 mb-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd;">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-coins text-warning"></i>
+                            <div class="fw-semibold" style="color:#0f172a;">Current Balance</div>
                         </div>
+                        <div class="badge bg-white text-dark border" style="font-size: .9rem;">{{ auth()->user()->token_balance ?? 0 }} tokens</div>
                     </div>
 
                     @php
@@ -614,26 +608,25 @@
 
                     <!-- Quantity Selection -->
                     <div class="mb-3">
-                        <label for="tokenQuantity" class="form-label">Number of Tokens</label>
-                        <div class="input-group">
+                        <label for="tokenQuantity" class="form-label fw-semibold">Number of Tokens</label>
+                        <div class="input-group input-group-lg">
                             <button type="button" class="btn btn-outline-secondary" id="decreaseQuantity">-</button>
                             <input type="number" class="form-control text-center" id="tokenQuantity" name="quantity" value="{{ $minQty }}" min="{{ $minQty }}" max="100" required>
                             <button type="button" class="btn btn-outline-secondary" id="increaseQuantity">+</button>
                         </div>
-                        <div class="form-text">Minimum payment: ₱100.00 ({{ $minQty }} tokens at ₱{{ number_format($tokenPrice, 2) }} each). Maximum: 100 tokens</div>
+                        <div class="form-text">Minimum: ₱100.00 ({{ $minQty }} tokens at ₱{{ number_format($tokenPrice, 2) }} each) • Max: 100 tokens</div>
                     </div>
 
                     <!-- Price Display -->
                     <div class="mb-3">
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-6">
-                                        <strong>Tokens:</strong> <span id="displayQuantity">{{ $minQty }}</span>
-                                    </div>
-                                    <div class="col-6 text-end">
-                                        <strong>Total: ₱<span id="totalPrice">{{ number_format($minAmt, 2) }}</span></strong>
-                                    </div>
+                        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #ecfeff 0%, #dbeafe 100%);">
+                            <div class="card-body d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="text-muted">Tokens</span>
+                                    <span class="fw-semibold" id="displayQuantity">{{ $minQty }}</span>
+                                </div>
+                                <div class="fs-5 fw-bold" style="color:#1e293b;">
+                                    ₱<span id="totalPrice">{{ number_format($minAmt, 2) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -650,9 +643,9 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="purchaseBtn">
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn" id="purchaseBtn" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color:#fff;">
                         <i class="fas fa-credit-card me-2"></i>Pay now
                     </button>
                 </div>
