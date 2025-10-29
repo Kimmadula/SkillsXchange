@@ -473,7 +473,36 @@
         try {
             // Use Firebase to answer the call
             if (firebaseVideoCall) {
-                const success = await firebaseVideoCall.answerCall(data.offer);
+                // Extract the offer from the call data
+                // The call object from Firebase has the offer in data.offer
+                const offerData = data.offer;
+                
+                if (!offerData) {
+                    throw new Error('No offer found in call data');
+                }
+                
+                // Ensure offer is an RTCSessionDescription object
+                let rtcOffer;
+                if (offerData instanceof RTCSessionDescription) {
+                    rtcOffer = offerData;
+                } else if (typeof offerData === 'object' && offerData.type && offerData.sdp) {
+                    // Create RTCSessionDescription from object
+                    rtcOffer = new RTCSessionDescription({
+                        type: offerData.type,
+                        sdp: offerData.sdp
+                    });
+                } else if (typeof offerData === 'string') {
+                    // If it's a JSON string, parse it
+                    const parsed = JSON.parse(offerData);
+                    rtcOffer = new RTCSessionDescription(parsed);
+                } else {
+                    console.error('Invalid offer format:', offerData);
+                    throw new Error('Invalid offer format: offer must have type and sdp properties');
+                }
+                
+                console.log('📞 Answering call with offer:', { type: rtcOffer.type, sdpLength: rtcOffer.sdp?.length });
+                
+                const success = await firebaseVideoCall.answerCall(rtcOffer);
                 
                 if (success) {
                     // Setup local video display
@@ -481,6 +510,9 @@
                     if (localVideo && firebaseVideoCall.localStream) {
                         localVideo.srcObject = firebaseVideoCall.localStream;
                         localVideo.style.display = 'block';
+                        localVideo.muted = true;
+                        localVideo.autoplay = true;
+                        localVideo.playsInline = true;
                     }
                     
                     videoCallState.isActive = true;
@@ -488,7 +520,8 @@
                     videoCallState.partnerId = data.fromUserId;
                     videoCallState.callId = data.callId;
                     
-                    startCallTimer();
+                    // startCallTimer is now handled inside firebaseVideoCall.answerCall()
+                    // No need to call it separately
                     
                     console.log('✅ Video call answered successfully with Firebase');
                 } else {
@@ -501,7 +534,9 @@
         } catch (error) {
             console.error('Error handling offer:', error);
             alert('Failed to answer call: ' + error.message);
-            endVideoCall();
+            if (typeof window.endVideoCall === 'function') {
+                window.endVideoCall();
+            }
         }
     }
 

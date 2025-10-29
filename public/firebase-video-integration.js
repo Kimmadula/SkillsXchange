@@ -194,10 +194,20 @@ class FirebaseVideoIntegration {
                 // Handle incoming answer - only if we're the initiator and actively waiting
                 if (call.fromUserId === this.userId && call.type === 'answer' && this.isInitiator && this.isActive) {
                     // Only process recent answers (within last 5 seconds or part of active call)
-                    if (call.callId === this.callId) {
+                    if (call.callId === this.callId && call.answer) {
                         this.log('📞 Call answered');
-                        this.handleCallAnswer(call.answer);
-                        processedCalls.add(callId);
+                        // Ensure answer is properly formatted
+                        let answerData = call.answer;
+                        if (typeof answerData === 'object' && answerData.type && answerData.sdp) {
+                            // Convert to RTCSessionDescription if needed
+                            if (!(answerData instanceof RTCSessionDescription)) {
+                                answerData = new RTCSessionDescription(answerData);
+                            }
+                            this.handleCallAnswer(answerData);
+                            processedCalls.add(callId);
+                        } else {
+                            this.log('⚠️ Answer missing type or sdp', 'warning');
+                        }
                     }
                 }
                 
@@ -324,7 +334,17 @@ class FirebaseVideoIntegration {
             });
             
             // Set remote description
-            await this.peerConnection.setRemoteDescription(offer);
+            // Ensure offer is an RTCSessionDescription
+            let rtcOffer;
+            if (offer instanceof RTCSessionDescription) {
+                rtcOffer = offer;
+            } else if (typeof offer === 'object' && offer.type && offer.sdp) {
+                rtcOffer = new RTCSessionDescription(offer);
+            } else {
+                throw new Error('Invalid offer format: must be RTCSessionDescription or object with type and sdp');
+            }
+            
+            await this.peerConnection.setRemoteDescription(rtcOffer);
             this.log('✅ Remote description set');
             
             // Create answer
@@ -402,11 +422,16 @@ class FirebaseVideoIntegration {
     // Send offer via Firebase
     async sendOffer(offer) {
         const callRef = this.roomRef.child(`calls/${this.callId}`);
+        // Serialize the RTCSessionDescription to plain object for Firebase storage
+        const offerData = {
+            type: offer.type,
+            sdp: offer.sdp
+        };
         await callRef.set({
             type: 'offer',
             fromUserId: this.userId,
             toUserId: this.partnerId,
-            offer: offer,
+            offer: offerData, // Store as plain object with type and sdp
             callId: this.callId,
             timestamp: Date.now()
         });
@@ -416,11 +441,16 @@ class FirebaseVideoIntegration {
     // Send answer via Firebase
     async sendAnswer(answer) {
         const callRef = this.roomRef.child(`calls/${this.callId}`);
+        // Serialize the RTCSessionDescription to plain object for Firebase storage
+        const answerData = {
+            type: answer.type,
+            sdp: answer.sdp
+        };
         await callRef.set({
             type: 'answer',
             fromUserId: this.userId,
             toUserId: this.partnerId,
-            answer: answer,
+            answer: answerData, // Store as plain object with type and sdp
             callId: this.callId,
             timestamp: Date.now()
         });
@@ -447,6 +477,17 @@ class FirebaseVideoIntegration {
         this.callId = call.callId;
         this.partnerId = call.fromUserId;
         
+        // Ensure the call object has the offer properly formatted
+        if (call.offer && typeof call.offer === 'object') {
+            // If offer is already an object, ensure it has type and sdp
+            if (call.offer.type && call.offer.sdp) {
+                // Good, it's already in the right format
+                this.log('✅ Offer found in call object');
+            } else {
+                this.log('⚠️ Offer object missing type or sdp, attempting to fix...');
+            }
+        }
+        
         // Show incoming call notification
         this.onCallReceived(call);
     }
@@ -460,7 +501,18 @@ class FirebaseVideoIntegration {
             return;
         }
         
-        await this.peerConnection.setRemoteDescription(answer);
+        // Ensure answer is an RTCSessionDescription
+        let rtcAnswer;
+        if (answer instanceof RTCSessionDescription) {
+            rtcAnswer = answer;
+        } else if (typeof answer === 'object' && answer.type && answer.sdp) {
+            rtcAnswer = new RTCSessionDescription(answer);
+        } else {
+            this.log('❌ Invalid answer format', 'error');
+            return;
+        }
+        
+        await this.peerConnection.setRemoteDescription(rtcAnswer);
         this.log('✅ Remote answer set');
     }
     
