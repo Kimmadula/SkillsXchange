@@ -462,6 +462,15 @@
     // Define video call handler functions early to make them globally available
     function handleVideoCallEnd(data) {
         console.log('📞 Video call ended:', data);
+        
+        // Stop any notification sounds/alarms
+        if (window.notificationService && typeof window.notificationService.stopRingtone === 'function') {
+            window.notificationService.stopRingtone();
+        }
+        
+        // Reset remote video flag
+        remoteVideoSet = false;
+        
         if (typeof window.endVideoCall === 'function') {
             window.endVideoCall();
         }
@@ -505,6 +514,11 @@
                 const success = await firebaseVideoCall.answerCall(rtcOffer);
                 
                 if (success) {
+                    // Stop notification sounds/alarms since call is answered
+                    if (window.notificationService && typeof window.notificationService.stopRingtone === 'function') {
+                        window.notificationService.stopRingtone();
+                    }
+                    
                     // Setup local video display
                     const localVideo = document.getElementById('local-video');
                     if (localVideo && firebaseVideoCall.localStream) {
@@ -540,6 +554,9 @@
         }
     }
 
+    // Track if remote video has been set to prevent duplicate assignments
+    let remoteVideoSet = false;
+    
     async function handleVideoCallAnswer(data) {
         console.log('📞 Handling video call answer:', data);
         
@@ -547,29 +564,44 @@
             // If we have a remote stream from Firebase, display it
             if (data.remoteStream) {
                 const remoteVideo = document.getElementById('remote-video');
-                if (remoteVideo) {
+                if (remoteVideo && !remoteVideoSet) {
+                    // Only set once to prevent play() interruptions
+                    remoteVideoSet = true;
+                    
+                    // Clear any existing stream first
+                    if (remoteVideo.srcObject) {
+                        remoteVideo.srcObject.getTracks().forEach(track => track.stop());
+                    }
+                    
                     remoteVideo.srcObject = data.remoteStream;
                     remoteVideo.style.display = 'block';
                     remoteVideo.autoplay = true;
                     remoteVideo.playsInline = true;
                     remoteVideo.muted = false; // Allow audio for remote video
                     
-                    // Ensure video plays
-                    remoteVideo.play().then(() => {
-                        console.log('✅ Remote video started playing');
-                    }).catch(e => {
-                        console.log('Remote video play error:', e);
-                        // Try to play again after a short delay
-                        setTimeout(() => {
-                            remoteVideo.play().catch(err => console.log('Retry play error:', err));
-                        }, 1000);
-                    });
+                    // Wait a moment before playing to avoid interruptions
+                    setTimeout(() => {
+                        remoteVideo.play().then(() => {
+                            console.log('✅ Remote video started playing');
+                        }).catch(e => {
+                            console.log('Remote video play error (will retry):', e.name);
+                            // Only retry once after a longer delay
+                            if (!remoteVideo.paused) return; // Already playing
+                            setTimeout(() => {
+                                remoteVideo.play().catch(err => {
+                                    console.log('Final play attempt failed:', err.name);
+                                });
+                            }, 1500);
+                        });
+                    }, 100);
+                    
+                    console.log('✅ Remote video stream received and displayed');
+                } else if (remoteVideoSet) {
+                    console.log('⚠️ Remote video already set, skipping duplicate assignment');
                 }
                 
                 videoCallState.isActive = true;
                 videoCallState.isConnected = true;
-                
-                console.log('✅ Remote video stream received and displayed');
             }
             
         } catch (error) {
@@ -2254,8 +2286,12 @@
                                 // Clear remote video
                                 const remoteVideo = document.getElementById('remote-video');
                                 if (remoteVideo) {
+                                    if (remoteVideo.srcObject) {
+                                        remoteVideo.srcObject.getTracks().forEach(track => track.stop());
+                                    }
                                     remoteVideo.srcObject = null;
                                     remoteVideo.style.display = 'none';
+                                    remoteVideoSet = false; // Reset flag for next call
                                 }
                                 
                                 // Reset UI

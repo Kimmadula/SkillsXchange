@@ -373,6 +373,9 @@ class FirebaseVideoIntegration {
     async createPeerConnection() {
         this.log('🔗 Creating peer connection...');
         
+        // Reset remote stream notification flag when creating new connection
+        this.remoteStreamNotified = false;
+        
         this.peerConnection = new RTCPeerConnection(this.config);
         
         // Handle ICE candidates
@@ -384,10 +387,26 @@ class FirebaseVideoIntegration {
         };
         
         // Handle remote stream
+        // Track if we've already notified about remote stream to prevent duplicate callbacks
+        this.remoteStreamNotified = this.remoteStreamNotified || false;
         this.peerConnection.ontrack = (event) => {
             this.log('📹 Remote stream received');
-            this.remoteStream = event.streams[0];
-            this.onCallAnswered(this.remoteStream);
+            
+            // Store the first stream that arrives
+            if (!this.remoteStream && event.streams && event.streams[0]) {
+                this.remoteStream = event.streams[0];
+                this.log('📹 Remote stream tracks:', this.remoteStream.getTracks().map(t => t.kind).join(', '));
+            }
+            
+            // Only notify once, even if multiple tracks arrive (audio + video)
+            if (!this.remoteStreamNotified && this.remoteStream) {
+                this.remoteStreamNotified = true;
+                // Delay slightly to ensure all tracks are added
+                setTimeout(() => {
+                    this.log('✅ Notifying about remote stream');
+                    this.onCallAnswered(this.remoteStream);
+                }, 100);
+            }
         };
         
         // Handle connection state changes
