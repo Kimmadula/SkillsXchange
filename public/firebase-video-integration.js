@@ -191,10 +191,10 @@ class FirebaseVideoIntegration {
                     }
                 }
                 
-                // Handle incoming answer - only if we're the initiator and actively waiting
-                if (call.fromUserId === this.userId && call.type === 'answer' && this.isInitiator && this.isActive) {
-                    // Only process recent answers (within last 5 seconds or part of active call)
-                    if (call.callId === this.callId && call.answer) {
+                // Handle incoming answer - initiator should accept partner's answer
+                // Accept answers that match our current callId and are addressed to us
+                if (call.type === 'answer' && this.isInitiator && this.isActive) {
+                    if (call.callId === this.callId && call.toUserId === this.userId && call.answer) {
                         this.log('📞 Call answered');
                         // Ensure answer is properly formatted
                         let answerData = call.answer;
