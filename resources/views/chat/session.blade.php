@@ -659,14 +659,43 @@
         }
     };
 
-    function initializeVideoCallListeners() {
+    // Modified to return a promise and only initialize once
+    let initializingVideoCall = false;
+    
+    async function initializeVideoCallListenersOnce() {
         if (videoCallListenersInitialized) {
             console.log('⚠️ Video call listeners already initialized, skipping...');
-            return;
+            return true;
         }
         
+        if (initializingVideoCall) {
+            // Wait for current initialization to complete
+            while (initializingVideoCall) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            return videoCallListenersInitialized;
+        }
+        
+        initializingVideoCall = true;
         console.log('🔧 Setting up Firebase video call listeners...');
-        videoCallListenersInitialized = true;
+        
+        return new Promise((resolve) => {
+            initializeVideoCallListeners().then(() => {
+                initializingVideoCall = false;
+                resolve(true);
+            }).catch(() => {
+                initializingVideoCall = false;
+                resolve(false);
+            });
+        });
+    }
+    
+    function initializeVideoCallListeners() {
+        if (videoCallListenersInitialized) {
+            return Promise.resolve(true);
+        }
+        
+        return new Promise((resolve, reject) => {
         
         try {
             // Initialize Firebase video call integration
@@ -718,70 +747,35 @@
                 firebaseVideoCall.initialize().then(success => {
                     if (success) {
                         console.log('✅ Firebase video call integration initialized successfully');
+                        videoCallListenersInitialized = true;
+                        console.log('✅ Video call listeners initialized successfully');
+                        resolve(true);
                     } else {
                         console.error('❌ Failed to initialize Firebase video call integration');
-                        // Fallback to HTTP polling
-                        startVideoCallPolling();
+                        videoCallListenersInitialized = true; // Mark as initialized to prevent retries
+                        resolve(false);
                     }
+                }).catch(error => {
+                    console.error('❌ Firebase initialization error:', error);
+                    videoCallListenersInitialized = true;
+                    resolve(false);
                 });
             } else {
-                console.error('❌ FirebaseVideoIntegration not available, falling back to HTTP polling');
-                startVideoCallPolling();
+                console.error('❌ FirebaseVideoIntegration not available');
+                videoCallListenersInitialized = true;
+                resolve(false);
             }
         } catch (error) {
             console.error('❌ Error setting up Firebase video call listeners:', error);
-            console.warn('⚠️ Switching to HTTP polling fallback');
-            startVideoCallPolling();
+            videoCallListenersInitialized = true;
+            resolve(false);
         }
-            
-        console.log('✅ Video call listeners initialized successfully');
-        videoCallListenersInitialized = true;
-        
-        // Also initialize presence listeners
-        initializePresenceListeners();
-        
-        // Check initial presence status
-        checkInitialPresenceStatus();
+        });
     }
 
-    // Initialize Firebase video call listeners when DOM is ready
-    document.addEventListener('DOMContentLoaded', function() {
-        let firebaseWaitCount = 0;
-        const maxFirebaseWait = 50; // 5 seconds max wait
-        
-        // Wait for Firebase to be fully loaded
-        const waitForFirebase = () => {
-            firebaseWaitCount++;
-            
-            if (firebaseWaitCount > maxFirebaseWait) {
-                console.warn('⚠️ Firebase initialization timeout, falling back to HTTP polling...');
-                initializeVideoCallListeners();
-                return;
-            }
-            
-            if (typeof firebase !== 'undefined' && firebase.app) {
-                try {
-                    firebase.app(); // Check if Firebase is initialized
-                    console.log('✅ Firebase is ready, initializing video call listeners...');
-                    initializeVideoCallListeners();
-                } catch (error) {
-                    if (error.code === 'app/no-app') {
-                        console.log('⏳ Waiting for Firebase to initialize... (' + firebaseWaitCount + '/' + maxFirebaseWait + ')');
-                        setTimeout(waitForFirebase, 100);
-                    } else {
-                        console.error('❌ Firebase initialization error:', error);
-                        console.log('🔄 Falling back to HTTP polling...');
-                        initializeVideoCallListeners(); // Fallback to HTTP polling
-                    }
-                }
-            } else {
-                console.log('⏳ Waiting for Firebase SDK to load... (' + firebaseWaitCount + '/' + maxFirebaseWait + ')');
-                setTimeout(waitForFirebase, 100);
-            }
-        };
-        
-        waitForFirebase();
-    });
+    // DON'T initialize Firebase video call on page load
+    // Only initialize when user clicks "Start Call" button
+    // This prevents processing stale ICE candidates and crashing the site
 </script>
 <style>
     @keyframes pulse {
@@ -1909,8 +1903,7 @@
                         }
                     }
                         
-                        // Set up callee after a short delay to ensure Firebase is ready
-                        setTimeout(setupCalleeForIncomingCalls, 2000);
+                        // setupCalleeForIncomingCalls will be set up when Firebase is initialized (on first call start)
                         
                         // openVideoChat will be defined later in the main script
                         
@@ -2134,11 +2127,19 @@
                                 console.log('🚀 Starting video call with Firebase...');
                                 
                                 try {
-                                    // Check if Firebase video call is available
+                                    // Initialize Firebase video call if not already initialized
                                     if (!firebaseVideoCall) {
-                                        console.error('❌ Firebase video call not initialized');
-                                        alert('Video call service not available. Please refresh the page.');
-                                        return;
+                                        console.log('🔧 Initializing Firebase video call...');
+                                        await initializeVideoCallListenersOnce();
+                                        
+                                        // Wait a moment for initialization to complete
+                                        await new Promise(resolve => setTimeout(resolve, 500));
+                                        
+                                        if (!firebaseVideoCall) {
+                                            console.error('❌ Firebase video call failed to initialize');
+                                            alert('Video call service not available. Please refresh the page.');
+                                            return;
+                                        }
                                     }
                                     
                                     // Get partner ID - use window.partnerId which is set from controller

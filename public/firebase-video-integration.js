@@ -157,42 +157,80 @@ class FirebaseVideoIntegration {
     // Setup Firebase listeners for call events
     setupFirebaseListeners() {
         const callsRef = this.roomRef.child('calls');
+        const initializationTime = Date.now();
+        
+        // Track which calls we've already processed to avoid duplicates
+        const processedCalls = new Set();
         
         callsRef.on('value', (snapshot) => {
             const calls = snapshot.val();
             if (!calls) return;
             
-            // Check for incoming calls
+            // Check for incoming calls - only process new ones (created after initialization)
             Object.keys(calls).forEach(callId => {
                 const call = calls[callId];
                 
-                // Handle incoming offer
+                // Skip very old calls (older than 5 minutes) to prevent processing stale data
+                const callAge = Date.now() - (call.timestamp || 0);
+                if (callAge > 300000) { // 5 minutes
+                    return;
+                }
+                
+                // Skip if we've already processed this call
+                if (processedCalls.has(callId)) {
+                    return;
+                }
+                
+                // Handle incoming offer - only for new offers after initialization
                 if (call.toUserId === this.userId && call.type === 'offer' && !this.isInitiator) {
-                    this.log('📞 Incoming call received');
-                    this.handleIncomingCall(call);
-                }
-                
-                // Handle incoming answer
-                if (call.fromUserId === this.userId && call.type === 'answer' && this.isInitiator) {
-                    this.log('📞 Call answered');
-                    this.handleCallAnswer(call.answer);
-                }
-                
-                // Handle ICE candidates
-                if (call.type === 'ice-candidate') {
-                    if ((call.toUserId === this.userId && call.fromUserId !== this.userId) ||
-                        (call.fromUserId === this.userId && call.toUserId !== this.userId)) {
-                        this.handleIceCandidate(call.candidate);
+                    // Only process if this is a new offer (timestamped after initialization or within last 10 seconds)
+                    if (call.timestamp && call.timestamp > (initializationTime - 10000)) {
+                        this.log('📞 Incoming call received');
+                        this.handleIncomingCall(call);
+                        processedCalls.add(callId);
                     }
                 }
                 
-                // Handle call end
-                if (call.type === 'end-call' && 
+                // Handle incoming answer - only if we're the initiator and actively waiting
+                if (call.fromUserId === this.userId && call.type === 'answer' && this.isInitiator && this.isActive) {
+                    // Only process recent answers (within last 5 seconds or part of active call)
+                    if (call.callId === this.callId) {
+                        this.log('📞 Call answered');
+                        this.handleCallAnswer(call.answer);
+                        processedCalls.add(callId);
+                    }
+                }
+                
+                // Handle ICE candidates - only if we have an active call and matching call ID
+                if (call.type === 'ice-candidate' && this.isActive && call.callId === this.callId) {
+                    if ((call.toUserId === this.userId && call.fromUserId !== this.userId) ||
+                        (call.fromUserId === this.userId && call.toUserId !== this.userId)) {
+                        // Only process ICE candidates created after call started
+                        if (call.timestamp && call.timestamp > this.startTime) {
+                            processedCalls.add(callId);
+                            this.handleIceCandidate(call.candidate);
+                        }
+                    }
+                }
+                
+                // Handle call end - only for active calls
+                if (call.type === 'end-call' && this.isActive &&
                     (call.toUserId === this.userId || call.fromUserId === this.userId)) {
-                    this.log('📞 Call ended by partner');
-                    this.handleCallEnd();
+                    // Only process if it's for the current call
+                    if (!call.callId || call.callId === this.callId) {
+                        this.log('📞 Call ended by partner');
+                        this.handleCallEnd();
+                        processedCalls.add(callId);
+                    }
                 }
             });
+            
+            // Clean up old processed calls (keep only last 100 to prevent memory leak)
+            if (processedCalls.size > 100) {
+                const entries = Array.from(processedCalls);
+                processedCalls.clear();
+                entries.slice(-50).forEach(id => processedCalls.add(id));
+            }
         });
         
         // Listen for user presence changes
@@ -214,6 +252,7 @@ class FirebaseVideoIntegration {
             this.partnerId = partnerId;
             this.callId = `call_${Date.now()}_${this.userId}`;
             this.isInitiator = true;
+            this.startTime = Date.now(); // Track when call started for filtering old ICE candidates
             
             // Update status
             this.onStatusUpdate?.('Getting camera access...');
@@ -266,6 +305,7 @@ class FirebaseVideoIntegration {
         try {
             this.log('📞 Answering video call...');
             this.isInitiator = false;
+            this.startTime = Date.now(); // Track when call started for filtering old ICE candidates
             
             // Get user media
             this.localStream = await navigator.mediaDevices.getUserMedia({
@@ -426,13 +466,13 @@ class FirebaseVideoIntegration {
     
     // Handle ICE candidate
     async handleIceCandidate(candidate) {
-        this.log('📡 Handling ICE candidate...');
-        
-        if (!this.peerConnection) {
-            this.log('❌ No peer connection to handle ICE candidate', 'error');
+        // Silently ignore ICE candidates when there's no active call or peer connection
+        // This prevents console spam from stale Firebase data
+        if (!this.peerConnection || !this.isActive) {
             return;
         }
         
+        this.log('📡 Handling ICE candidate...');
         await this.peerConnection.addIceCandidate(candidate);
         this.log('✅ ICE candidate added');
     }
