@@ -2164,18 +2164,20 @@
                                         return;
                                     }
                                     
-                                    // Get partner ID
-                                    const tradeOwnerId = {{ $trade->user_id }};
-                                    const currentUserId = {{ auth()->id() }};
-                                    const partnerId = currentUserId === tradeOwnerId ? 
-                                        {{ $trade->requester_id }} : 
-                                        {{ $trade->user_id }};
+                                    // Get partner ID using existing helper function
+                                    const partnerId = getPartnerId();
                                     
                                     if (!partnerId || partnerId === null || partnerId === undefined) {
-                                        console.error('❌ Partner ID not found:', { tradeOwnerId, currentUserId, requesterId: {{ $trade->requester_id }}, userId: {{ $trade->user_id }} });
-                                        alert('No partner found for this trade.');
+                                        console.error('❌ Partner ID not found', {
+                                            currentUser: {{ auth()->id() }},
+                                            tradeOwner: {{ $trade->user_id }},
+                                            partnerId: partnerId
+                                        });
+                                        alert('No partner found for this trade. Make sure the trade request has been accepted.');
                                         return;
                                     }
+                                    
+                                    console.log('📞 Starting call with partner ID:', partnerId);
                                     
                                     // Update UI to show calling state
                                     const statusElement = document.getElementById('video-status');
