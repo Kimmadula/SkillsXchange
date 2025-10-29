@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="py-4 py-md-5">
+<div class="py-4 py-md-5 dark-theme">
     <div class="container">
         @if(!$user)
             <div class="alert alert-danger">
@@ -12,31 +12,41 @@
         <!-- Profile Header -->
         <div class="row mb-4 mb-md-5">
             <div class="col-12">
-                <div class="profile-header-section">
+                <div class="dashboard-card dashboard-card--stats slide-up">
                     <div class="d-flex align-items-center mb-3">
-                        <div class="profile-picture-container me-4">
+                        <div class="me-4">
                             <form id="photoUploadForm" method="POST" action="{{ route('profile.photo.update') }}" enctype="multipart/form-data" style="display: inline;">
                                 @csrf
                                 @method('PATCH')
+                                @if($user->is_verified)
                                 <input type="file" id="photoInput" name="photo" accept="image/*" style="display: none;" onchange="uploadPhoto()">
                                 <label for="photoInput" style="cursor: pointer; display: inline-block;">
+                                @endif
                                     @if($user->photo && file_exists(storage_path('app/public/' . $user->photo)))
-                                        <div class="profile-picture-wrapper">
-                                            <img src="{{ asset('storage/' . $user->photo) }}" alt="Profile Photo" class="profile-picture">
-                                            <div class="photo-overlay">
-                                                <i class="fas fa-camera"></i>
-                                            </div>
+                                        <div class="position-relative" style="width:96px; height:96px; border-radius:50%; overflow:hidden; border:2px solid rgba(99,102,241,.35);">
+                                            <img src="{{ asset('storage/' . $user->photo) }}" alt="Profile Photo" style="width:100%; height:100%; object-fit:cover;">
+                                            @if($user->is_verified)
+                                                <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background:rgba(0,0,0,.35); opacity:0; transition:opacity .2s;">
+                                                    <i class="fas fa-camera text-light"></i>
+                                                </div>
+                                            @else
+                                                <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background:rgba(0,0,0,.35);">
+                                                    <i class="fas fa-lock text-light" title="Photo locked until admin verification"></i>
+                                                </div>
+                                            @endif
                                         </div>
                                     @else
-                                        <div class="profile-picture-placeholder">
+                                        <div class="d-flex align-items-center justify-content-center" style="width:96px; height:96px; border-radius:50%; background:rgba(99,102,241,.08); border:2px dashed rgba(99,102,241,.35); color:#94a3b8;">
                                             <i class="fas fa-camera"></i>
                                         </div>
                                     @endif
+                                @if($user->is_verified)
                                 </label>
+                                @endif
                             </form>
                         </div>
                         <div class="profile-info">
-                            <h1 class="h2 fw-bold mb-1">{{ $user->name }}</h1>
+                            <h1 class="h2 fw-bold text-gradient mb-1">{{ $user->name }}</h1>
                             <p class="text-muted mb-2">{{ $user->email }}</p>
                             <div class="profile-badges">
                                 <span class="badge bg-primary me-2">{{ ucfirst($user->role) }}</span>
@@ -49,11 +59,30 @@
         </div>
 
         <!-- Profile Information -->
+        @if(session('status') === 'password-updated')
+        <div class="alert alert-success mb-3">
+            <i class="fas fa-check-circle me-2"></i>
+            Your password has been updated successfully.
+        </div>
+        @endif
+
+        @if(!$user->is_verified)
+        <div class="alert alert-warning mb-3">
+            <i class="fas fa-info-circle me-2"></i>
+            Awaiting admin verification. You can edit personal details (except email). Profile photo is locked. After verification, most fields become read‑only; only your profile photo and username will remain editable.
+        </div>
+        @else
+        <div class="alert alert-success mb-3">
+            <i class="fas fa-check-circle me-2"></i>
+            Account verified. You may update your profile photo and change your username (password required for username). Other profile details are locked.
+        </div>
+        @endif
+
         <div class="row">
             <!-- Personal Information -->
             <div class="col-lg-8 mb-4">
-                <div class="profile-card">
-                    <h3 class="h5 fw-bold mb-4">
+                <div class="dashboard-card dashboard-card--stats slide-up">
+                    <h3 class="h5 fw-bold text-gradient mb-4">
                         <i class="fas fa-user me-2"></i>Personal Information
                     </h3>
                     <div class="profile-info-list">
@@ -106,8 +135,8 @@
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="profile-card">
-                    <h3 class="h5 fw-bold mb-4">
+                <div class="dashboard-card dashboard-card--stats slide-up">
+                    <h3 class="h5 fw-bold text-gradient mb-4">
                         <i class="fas fa-cog me-2"></i>Account Settings
                     </h3>
                     <div class="action-buttons">
@@ -123,58 +152,20 @@
 
             <!-- Skills Information -->
             <div class="col-lg-4 mb-4">
-                <div class="profile-card">
-                    <h3 class="h5 fw-bold mb-4">
+                <div class="dashboard-card dashboard-card--stats slide-up">
+                    <h3 class="h5 fw-bold text-gradient mb-4">
                         <i class="fas fa-trophy me-2 text-warning"></i>Skill Lists
                         <small class="text-muted d-block" style="font-size: 0.8rem; font-weight: normal;">All your skills</small>
                     </h3>
                     @if($acquiredSkills && $acquiredSkills->count() > 0)
                         @php
-                            // Get all user skills
                             $allUserSkills = $user->skills;
-                            
-                            // Get skills acquired through trading (from skill_acquisition_history)
                             $acquiredSkillsList = $user->getAcquiredSkills();
-                            
-                            // Get registered skills (skills that are NOT in acquisition history)
                             $registeredSkills = $allUserSkills->filter(function($skill) use ($acquiredSkillsList) {
-                                // Check if this skill is NOT in the acquired skills list
                                 return !$acquiredSkillsList->contains('skill_id', $skill->skill_id);
                             });
-                            
-                            // Debug: Log the counts
-                            \Log::info('Profile skills debug', [
-                                'user_id' => $user->id,
-                                'all_skills_count' => $allUserSkills->count(),
-                                'acquired_skills_count' => $acquiredSkillsList->count(),
-                                'registered_skills_count' => $registeredSkills->count(),
-                                'all_skills' => $allUserSkills->pluck('name')->toArray(),
-                                'acquired_skills' => $acquiredSkillsList->pluck('name')->toArray(),
-                                'registered_skills' => $registeredSkills->pluck('name')->toArray()
-                            ]);
-                            
-                            // Additional debug: Check skill acquisition history
-                            $acquisitionHistory = $user->skillAcquisitions()->with('skill')->get();
-                            \Log::info('Skill acquisition history debug', [
-                                'user_id' => $user->id,
-                                'acquisition_count' => $acquisitionHistory->count(),
-                                'acquisitions' => $acquisitionHistory->map(function($acquisition) {
-                                    return [
-                                        'skill_name' => $acquisition->skill ? $acquisition->skill->name : 'Unknown',
-                                        'method' => $acquisition->acquisition_method,
-                                        'trade_id' => $acquisition->trade_id,
-                                        'created_at' => $acquisition->created_at
-                                    ];
-                                })->toArray()
-                            ]);
-                            
-                            // Debug: Show what's in skill_acquisition_history
-                            \Log::info('Raw skill acquisition history', [
-                                'user_id' => $user->id,
-                                'raw_acquisitions' => $acquisitionHistory->toArray()
-                            ]);
                         @endphp
-                        
+
                         <!-- Registered Skills -->
                         @if($registeredSkills->count() > 0)
                             <div class="mb-3">
@@ -195,7 +186,7 @@
                                 </div>
                             </div>
                         @endif
-                        
+
                         <!-- Acquired Skills -->
                         @if($acquiredSkillsList->count() > 0)
                             <div class="mb-3">
@@ -212,38 +203,28 @@
                                 </div>
                             </div>
                         @endif
-                        
+
                     @else
                         <div class="text-muted mb-3">
                             <p>No skills added yet.</p>
-                            <p><small>Debug: All skills count: {{ $acquiredSkills ? $acquiredSkills->count() : 'null' }}</small></p>
                             <a href="{{ route('trades.matches') }}" class="btn btn-sm btn-outline-primary">Start trading to acquire new skills</a>
                         </div>
                     @endif
                 </div>
-                
+
                 <!-- User Feedback & Ratings Section -->
-                <div class="profile-card mt-4">
-                    <h3 class="h5 fw-bold mb-4">
+                <div class="dashboard-card dashboard-card--stats slide-up mt-4">
+                    <h3 class="h5 fw-bold text-gradient mb-4">
                         <i class="fas fa-star me-2 text-warning"></i>Feedback & Ratings
                         <small class="text-muted d-block" style="font-size: 0.8rem; font-weight: normal;">What others say about you</small>
                     </h3>
-                    
+
                     <div id="user-feedback-section">
                         <div class="text-center py-3">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">Loading feedback...</span>
                             </div>
                             <p class="text-muted mt-2">Loading your feedback...</p>
-                            <small class="text-muted">User ID: {{ $user->id }}</small>
-                            <br>
-                            <button onclick="loadUserFeedback()" class="btn btn-sm btn-outline-secondary mt-2">
-                                <i class="fas fa-refresh"></i> Retry Loading
-                            </button>
-                            <br>
-                            <button onclick="testFunction()" class="btn btn-sm btn-outline-info mt-1">
-                                <i class="fas fa-bug"></i> Test Function
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -254,7 +235,7 @@
         <!-- Danger Zone -->
         <div class="row">
             <div class="col-12">
-                <div class="dashboard-card border-danger">
+                <div class="dashboard-card dashboard-card--stats slide-up border-danger">
                     <h3 class="h5 fw-bold text-danger mb-4">
                         <i class="fas fa-exclamation-triangle me-2"></i>Danger Zone
                     </h3>
@@ -269,7 +250,7 @@
 </div>
 
 <!-- Edit Profile Modal -->
-<div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
+<div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true" data-bs-focus="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -280,6 +261,22 @@
                 @csrf
                 @method('patch')
                 <div class="modal-body">
+                    @if($user->is_verified)
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        After admin verification, only your username can be changed. Please confirm your password to save changes.
+                    </div>
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" value="{{ $user->username }}" required>
+                        </div>
+                        <div class="col-12 mb-1">
+                            <label for="username_current_password" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" id="username_current_password" name="current_password" required>
+                        </div>
+                    </div>
+                    @else
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="firstname" class="form-label">First Name</label>
@@ -307,31 +304,14 @@
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="bdate" class="form-label">Birth Date</label>
-                            @if($user->bdate_edited)
-                                <input type="date" class="form-control" id="bdate" name="bdate" value="{{ $user->bdate ? $user->bdate->format('Y-m-d') : '' }}" readonly>
-                                <div class="form-text text-warning">
-                                    <i class="fas fa-lock me-1"></i>Birth date can only be edited once and has already been modified.
-                                </div>
-                            @else
-                                <input type="date" class="form-control" id="bdate" name="bdate" value="{{ $user->bdate ? $user->bdate->format('Y-m-d') : '' }}">
-                                <div class="form-text text-info">
-                                    <i class="fas fa-info-circle me-1"></i>Birth date can only be edited once.
-                                </div>
-                            @endif
+                            <input type="date" class="form-control" id="bdate" name="bdate" value="{{ $user->bdate ? $user->bdate->format('Y-m-d') : '' }}">
+                            <div class="form-text text-info">
+                                <i class="fas fa-info-circle me-1"></i>Birth date is editable now. After admin verification it will be locked.
+                            </div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="username" class="form-label">Username</label>
-                            @if($user->username_edited)
-                                <input type="text" class="form-control" id="username" name="username" value="{{ $user->username }}" readonly>
-                                <div class="form-text text-warning">
-                                    <i class="fas fa-lock me-1"></i>Username can only be edited once and has already been modified.
-                                </div>
-                            @else
-                                <input type="text" class="form-control" id="username" name="username" value="{{ $user->username }}" required>
-                                <div class="form-text text-info">
-                                    <i class="fas fa-info-circle me-1"></i>Username can only be edited once.
-                                </div>
-                            @endif
+                            <input type="text" class="form-control" id="username" name="username" value="{{ $user->username }}" required>
                         </div>
                     </div>
                     <div class="mb-3">
@@ -345,6 +325,7 @@
                         <label for="address" class="form-label">Address</label>
                         <textarea class="form-control" id="address" name="address" rows="3">{{ $user->address }}</textarea>
                     </div>
+                    @endif
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -358,7 +339,7 @@
 </div>
 
 <!-- Change Password Modal -->
-<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true" data-bs-focus="false">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -370,16 +351,16 @@
                 @method('put')
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="current_password" class="form-label">Current Password</label>
-                        <input type="password" class="form-control" id="current_password" name="current_password" required>
+                        <label for="change_current_password" class="form-label">Current Password</label>
+                        <input type="password" class="form-control" id="change_current_password" name="current_password" required>
                     </div>
                     <div class="mb-3">
-                        <label for="password" class="form-label">New Password</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
+                        <label for="change_password" class="form-label">New Password</label>
+                        <input type="password" class="form-control" id="change_password" name="password" required>
                     </div>
                     <div class="mb-3">
-                        <label for="password_confirmation" class="form-label">Confirm New Password</label>
-                        <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" required>
+                        <label for="change_password_confirmation" class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" id="change_password_confirmation" name="password_confirmation" required>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -395,7 +376,7 @@
 
 
 <!-- Delete Account Modal -->
-<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true" data-bs-focus="false">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -426,51 +407,89 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Blur active element before any modal opens to avoid aria-hidden focus warnings
+    document.addEventListener('show.bs.modal', function () {
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur();
+        }
+    });
+    document.addEventListener('hide.bs.modal', function () {
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur();
+        }
+        setTimeout(function () { document.body.focus(); }, 0);
+    });
+    document.addEventListener('hidden.bs.modal', function () {
+        setTimeout(function () { document.body.focus(); }, 0);
+    });
     // Handle profile photo upload
     function uploadPhoto() {
         const fileInput = document.getElementById('photoInput');
-        const file = fileInput.files[0];
-        
+        const file = fileInput ? fileInput.files[0] : null;
         if (!file) return;
-        
-        // Validate file size (max 2MB)
+
         if (file.size > 2 * 1024 * 1024) {
             showAlert('File size must be less than 2MB', 'danger');
             return;
         }
-        
-        // Validate file type
         const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         if (!allowedTypes.includes(file.type)) {
             showAlert('Please select a valid image file (JPEG, PNG, GIF, or WebP)', 'danger');
             return;
         }
-        
-        // Show loading state
+
         const form = document.getElementById('photoUploadForm');
-        const originalSubmit = form.querySelector('button[type="submit"]');
-        if (originalSubmit) {
-            originalSubmit.disabled = true;
-            originalSubmit.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Uploading...';
-        }
-        
-        // Submit form
-        form.submit();
+        const formData = new FormData();
+        formData.append('photo', file);
+        formData.append('_method', 'PATCH');
+
+        // optimistic overlay
+        const img = form.querySelector('img');
+        const overlay = document.createElement('div');
+        overlay.className = 'position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center';
+        overlay.style.background = 'rgba(0,0,0,.35)';
+        overlay.innerHTML = '<i class="fas fa-spinner fa-spin text-light"></i>';
+        if (img && img.parentElement) img.parentElement.appendChild(overlay);
+
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data && data.success && data.photo_url) {
+                if (img) {
+                    img.src = data.photo_url + '?t=' + Date.now();
+                }
+                showAlert('Profile photo updated successfully', 'success');
+            } else {
+                showAlert((data && data.message) || 'Failed to update profile photo', 'danger');
+            }
+        })
+        .catch(() => showAlert('Failed to update profile photo', 'danger'))
+        .finally(() => {
+            if (overlay && overlay.parentElement) overlay.parentElement.removeChild(overlay);
+            if (fileInput) fileInput.value = '';
+        });
     }
-    
+
     // Handle edit profile form submission
     const editProfileForm = document.getElementById('editProfileForm');
     if (editProfileForm) {
         editProfileForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const saveBtn = document.getElementById('saveProfileBtn');
             const originalText = saveBtn.innerHTML;
-            
+
             // Show loading state
             saveBtn.disabled = true;
             saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
-            
+
             // Submit form via AJAX
             fetch(this.action, {
                 method: 'POST',
@@ -485,10 +504,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     // Update profile information in real-time
                     updateProfileInfo(data.user);
-                    
+
                     // Show success message
                     showAlert('Profile updated successfully!', 'success');
-                    
+
                     // Close modal
                     const modal = bootstrap.Modal.getInstance(document.getElementById('editProfileModal'));
                     modal.hide();
@@ -508,7 +527,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-    
+
     // Function to update profile information in real-time
     function updateProfileInfo(user) {
         // Update name
@@ -516,19 +535,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (nameElement) {
             nameElement.textContent = user.name;
         }
-        
+
         // Update email
         const emailElement = document.querySelector('.profile-info p');
         if (emailElement) {
             emailElement.textContent = user.email;
         }
-        
+
         // Update personal information
         const infoItems = document.querySelectorAll('.info-item');
         infoItems.forEach(item => {
             const label = item.querySelector('.info-label').textContent.toLowerCase();
             const valueElement = item.querySelector('.info-value');
-            
+
             switch(label) {
                 case 'full name':
                     valueElement.textContent = user.name;
@@ -545,10 +564,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 case 'birth date':
                     if (user.bdate) {
                         const date = new Date(user.bdate);
-                        valueElement.textContent = date.toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'long', 
-                            day: 'numeric' 
+                        valueElement.textContent = date.toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
                         });
                     }
                     break;
@@ -570,13 +589,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
     // Function to show alerts
     function showAlert(message, type) {
         // Remove existing alerts
         const existingAlerts = document.querySelectorAll('.alert');
         existingAlerts.forEach(alert => alert.remove());
-        
+
         // Create new alert
         const alertDiv = document.createElement('div');
         alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
@@ -585,11 +604,11 @@ document.addEventListener('DOMContentLoaded', function() {
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
-        
+
         // Insert at the top of the container
         const container = document.querySelector('.container');
         container.insertBefore(alertDiv, container.firstChild);
-        
+
         // Auto-remove after 5 seconds
         setTimeout(() => {
             if (alertDiv.parentNode) {
@@ -597,10 +616,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 5000);
     }
-    
+
     // Make uploadPhoto function globally available
     window.uploadPhoto = uploadPhoto;
-    
+
     // Load user feedback and ratings
     console.log('DOM loaded, starting feedback load for user ID: {{ $user->id }}');
     console.log('loadUserFeedback function available:', typeof window.loadUserFeedback);
@@ -617,7 +636,7 @@ window.testFunction = function testFunction() {
 window.loadUserFeedback = async function loadUserFeedback() {
     try {
         console.log('Loading user feedback for user ID: {{ $user->id }}');
-        
+
         // Test if the container exists
         const container = document.getElementById('user-feedback-section');
         if (!container) {
@@ -625,11 +644,11 @@ window.loadUserFeedback = async function loadUserFeedback() {
             return;
         }
         console.log('Container found:', container);
-        
+
         // Add timeout to prevent infinite loading
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-        
+
         const response = await fetch(`/api/user-ratings/{{ $user->id }}`, {
             method: 'GET',
             headers: {
@@ -642,7 +661,7 @@ window.loadUserFeedback = async function loadUserFeedback() {
         clearTimeout(timeoutId);
         console.log('Response status:', response.status);
         console.log('Response headers:', response.headers);
-        
+
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Response error:', errorText);
@@ -653,7 +672,7 @@ window.loadUserFeedback = async function loadUserFeedback() {
         console.log('Response data:', data);
         console.log('Ratings array:', data.ratings);
         console.log('Total count:', data.total_count);
-        
+
         if (data.success) {
             if (data.ratings && data.ratings.length > 0) {
                 console.log('First rating sample:', data.ratings[0]);
@@ -680,7 +699,7 @@ window.loadUserFeedback = async function loadUserFeedback() {
 
 window.displayUserFeedback = function displayUserFeedback(ratings) {
     const container = document.getElementById('user-feedback-section');
-    
+
     if (!ratings || ratings.length === 0) {
         displayNoFeedback();
         return;
@@ -694,7 +713,7 @@ window.displayUserFeedback = function displayUserFeedback(ratings) {
     const avgHelpfulness = ratings.reduce((sum, r) => sum + (r.helpfulness_rating || 0), 0) / ratings.length;
     const avgKnowledge = ratings.reduce((sum, r) => sum + (r.knowledge_rating || 0), 0) / ratings.length;
 
-    
+
     const showAverageRatings = false; // Set to true to show average ratings section
 
     container.innerHTML = `
@@ -744,17 +763,17 @@ window.displayUserFeedback = function displayUserFeedback(ratings) {
                 </div>
             </div>
         ` : ''}
-        
+
         <div class="feedback-list mt-4">
             ${ratings.slice(0, 5).map(rating => {
                 // Check if rater exists
                 if (!rating.rater) {
                     console.warn('Rating missing rater:', rating);
                 }
-                
+
                 const raterName = rating.rater ? rating.rater.name : 'Anonymous User';
                 const raterUsername = rating.rater ? `@${rating.rater.username}` : '';
-                
+
                 return `
                     <div class="feedback-item border rounded p-3 mb-3">
                         <div class="d-flex justify-content-between align-items-start mb-2">
@@ -853,7 +872,7 @@ window.generateStars = function generateStars(rating) {
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
     const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
-    
+
     let stars = '';
     for (let i = 0; i < fullStars; i++) {
         stars += '<i class="fas fa-star"></i>';
@@ -864,7 +883,7 @@ window.generateStars = function generateStars(rating) {
     for (let i = 0; i < emptyStars; i++) {
         stars += '<i class="far fa-star"></i>';
     }
-    
+
     return stars;
 }
 
@@ -1051,7 +1070,7 @@ window.formatSessionType = function formatSessionType(type) {
         min-width: 100px;
         font-size: 0.85rem;
     }
-    
+
     .info-value {
         font-size: 0.85rem;
     }
@@ -1144,19 +1163,19 @@ window.formatSessionType = function formatSessionType(type) {
         padding: 1.5rem;
         text-align: center;
     }
-    
+
     .profile-picture-container {
         margin-bottom: 1rem;
     }
-    
+
     .profile-info-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .action-buttons {
         flex-direction: column;
     }
-    
+
     .btn-action {
         text-align: center;
     }

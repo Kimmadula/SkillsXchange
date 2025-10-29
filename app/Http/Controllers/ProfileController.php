@@ -22,19 +22,19 @@ class ProfileController extends Controller
     {
         try {
             $user = $request->user();
-            
+
             if (!$user) {
                 abort(404, 'User not found');
             }
-            
+
             $user->load(['skills', 'skill']);
-            
+
             // Get all user skills (both registered and acquired)
             $allUserSkills = $user->skills;
-            
+
             // Get acquired skills through trading for reference
             $acquiredSkills = $user->getAcquiredSkills();
-            
+
             // Debug logging
             Log::info('Profile show - skills debug', [
                 'user_id' => $user->id,
@@ -43,7 +43,7 @@ class ProfileController extends Controller
                 'all_skills' => $allUserSkills ? $allUserSkills->pluck('name')->toArray() : 'null',
                 'acquired_skills' => $acquiredSkills ? $acquiredSkills->pluck('name')->toArray() : 'null'
             ]);
-            
+
             return view('profile.show', [
                 'user' => $user,
                 'acquiredSkills' => $allUserSkills, // Use all skills instead of just acquired ones
@@ -68,9 +68,9 @@ class ProfileController extends Controller
                 'url' => $request->url(),
                 'headers' => $request->headers->all()
             ]);
-            
+
             $user = $request->user();
-            
+
             if (!$user) {
                 Log::warning('Profile edit: User not found', [
                     'auth_check' => Auth::check(),
@@ -79,15 +79,15 @@ class ProfileController extends Controller
                 ]);
                 abort(404, 'User not found');
             }
-            
+
             $user->load(['skills']);
             $skills = Skill::all();
-            
+
             Log::info('Profile edit: Successfully loaded', [
                 'user_id' => $user->id,
                 'skills_count' => $skills->count()
             ]);
-            
+
             return view('profile.edit', [
                 'user' => $user,
                 'skills' => $skills,
@@ -114,20 +114,46 @@ class ProfileController extends Controller
                 'user_id' => $request->user()?->id,
                 'all_data' => $request->all()
             ]);
-            
+
             $user = $request->user();
-            
+
             if (!$user) {
                 abort(404, 'User not found');
             }
-            
+
+            // After admin verification: only username can be changed, with password confirmation
+            if ($user->is_verified) {
+                $validatedLimited = $request->validate([
+                    'username' => 'required|string|max:255|unique:users,username,' . $user->id,
+                    'current_password' => ['required', 'current_password'],
+                ]);
+
+                $user->username = $validatedLimited['username'];
+
+                $user->save();
+
+                if ($request->ajax()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Username updated successfully',
+                        'user' => [
+                            'username' => $user->username,
+                        ]
+                    ]);
+                }
+
+                return Redirect::route('profile.edit')->with('status', 'profile-updated');
+            }
+
+            // If not verified: proceed with normal editable fields (except email remains read-only)
+
             // Handle photo upload
             if ($request->hasFile('photo')) {
                 // Delete old photo if exists
                 if ($user->photo && Storage::disk('public')->exists($user->photo)) {
                     Storage::disk('public')->delete($user->photo);
                 }
-                
+
                 $photoPath = $request->file('photo')->store('photos', 'public');
                 $user->photo = $photoPath;
             }
@@ -135,16 +161,13 @@ class ProfileController extends Controller
             // Update validated fields
             $validatedData = $request->validated();
             Log::info('Validated data for profile update:', $validatedData);
-            
+
             // Update account information
             $user->username = $validatedData['username'];
             $user->email = $validatedData['email'];
-            
-            // Track username editing (only if it has changed and hasn't been edited before)
-            if (isset($validatedData['username']) && $user->username !== $user->getOriginal('username') && !$user->username_edited) {
-                $user->username_edited = true;
-            }
-            
+
+            // Username can be edited unlimited times (no tracking flag)
+
             // Update personal information if provided
             if (isset($validatedData['firstname'])) {
                 $user->firstname = $validatedData['firstname'];
@@ -159,11 +182,10 @@ class ProfileController extends Controller
                 $user->gender = $validatedData['gender'];
             }
             if (isset($validatedData['bdate'])) {
-                // Track birth date editing (only if it has changed and hasn't been edited before)
-                if ($user->bdate !== $user->getOriginal('bdate') && !$user->bdate_edited) {
-                    $user->bdate_edited = true;
+                // Unverified users can edit bdate freely; verified users cannot change bdate
+                if (!$user->is_verified) {
+                    $user->bdate = $validatedData['bdate'];
                 }
-                $user->bdate = $validatedData['bdate'];
             }
             if (isset($validatedData['address'])) {
                 $user->address = $validatedData['address'];
@@ -184,7 +206,7 @@ class ProfileController extends Controller
             ]);
 
             $user->save();
-            
+
             Log::info('User saved successfully', [
                 'username_after_save' => $user->username,
                 'email_after_save' => $user->email,
@@ -214,14 +236,14 @@ class ProfileController extends Controller
             return Redirect::route('profile.edit')->with('status', 'profile-updated');
         } catch (\Exception $e) {
             Log::error('Profile update error: ' . $e->getMessage());
-            
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to update profile. Please try again.'
                 ], 500);
             }
-            
+
             return Redirect::back()->withErrors(['error' => 'Failed to update profile. Please try again.']);
         }
     }
@@ -232,12 +254,22 @@ class ProfileController extends Controller
     public function updatePhoto(Request $request)
     {
         try {
+            // Disallow photo change for unverified accounts
+            $user = $request->user();
+            if (!$user || !$user->is_verified) {
+                if ($request->ajax()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Profile photo cannot be changed until your account is admin verified.'
+                    ], 403);
+                }
+                return response()->json(null)->setStatusCode(403);
+            }
+
             $request->validate([
                 'photo' => 'required|image|max:2048'
             ]);
 
-            $user = $request->user();
-            
             if (!$user) {
                 abort(404, 'User not found');
             }
@@ -246,7 +278,7 @@ class ProfileController extends Controller
             if ($user->photo && Storage::disk('public')->exists($user->photo)) {
                 Storage::disk('public')->delete($user->photo);
             }
-            
+
             // Store new photo
             $photoPath = $request->file('photo')->store('photos', 'public');
             $user->photo = $photoPath;
@@ -280,14 +312,14 @@ class ProfileController extends Controller
                 'all_data' => $request->all(),
                 'headers' => $request->headers->all()
             ]);
-            
+
             $validated = $request->validateWithBag('updatePassword', [
                 'current_password' => ['required', 'current-password'],
                 'password' => ['required', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
             ]);
 
             $user = $request->user();
-            
+
             if (!$user) {
                 abort(404, 'User not found');
             }
@@ -301,14 +333,14 @@ class ProfileController extends Controller
                 'ip' => $request->ip()
             ]);
 
-            return Redirect::route('profile.edit')->with('status', 'password-updated');
-            
+            return Redirect::back()->with('status', 'password-updated');
+
         } catch (\Exception $e) {
             Log::error('Password update error: ' . $e->getMessage(), [
                 'user_id' => $request->user()?->id,
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             return Redirect::back()->withErrors(['password' => 'Failed to update password. Please try again.']);
         }
     }

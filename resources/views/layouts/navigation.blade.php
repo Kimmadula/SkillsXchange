@@ -577,7 +577,7 @@
 </div>
 
 <!-- Buy Tokens Modal -->
-<div class="modal fade" id="buyTokensModal" tabindex="-1" aria-labelledby="buyTokensModalLabel" aria-hidden="true">
+<div class="modal fade" id="buyTokensModal" tabindex="-1" aria-labelledby="buyTokensModalLabel" aria-hidden="true" data-bs-focus="false">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -661,8 +661,27 @@
     </div>
 </div>
 
+<script>
+// Prevent ARIA warning by blurring focus before opening any modal (handles nested modals as well)
+document.addEventListener('show.bs.modal', function () {
+    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+    }
+});
+
+// Also ensure focus is moved to body when a modal is hidden
+document.addEventListener('hide.bs.modal', function () {
+    if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+    }
+    setTimeout(function () { document.body.focus(); }, 0);
+});
+document.addEventListener('hidden.bs.modal', function () {
+    setTimeout(function () { document.body.focus(); }, 0);
+});
+</script>
 <!-- Terms and Conditions Modal -->
-<div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+<div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true" data-bs-focus="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
