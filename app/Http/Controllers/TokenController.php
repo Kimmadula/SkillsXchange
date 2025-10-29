@@ -599,6 +599,23 @@ class TokenController extends Controller
         // Optional date filters
         $fromDate = $request->get('from_date');
         $toDate = $request->get('to_date');
+        $quick = $request->get('range'); // e.g., 1w, 1m
+
+        // Apply quick range if provided
+        if (!$fromDate && $quick) {
+            if ($quick === '1w') {
+                $fromDate = now()->subWeek()->toDateString();
+            } elseif ($quick === '1m') {
+                $fromDate = now()->subMonth()->toDateString();
+            }
+            $toDate = $toDate ?: now()->toDateString();
+        }
+
+        // If one date is provided without the other, return with error
+        if (($fromDate && !$toDate) || ($toDate && !$fromDate)) {
+            return redirect()->route('tokens.history')
+                ->withErrors(['date_range' => 'Please select both From and To dates.']);
+        }
 
         $query = DB::table('token_transactions')
             ->where('user_id', $user->id);
@@ -611,7 +628,8 @@ class TokenController extends Controller
             $query->whereDate('created_at', '<=', $toDate);
         }
 
-        $transactions = $query->orderBy('created_at', 'desc')->get();
+        // Paginate 5 per page and keep query string for filters
+        $transactions = $query->orderBy('created_at', 'desc')->paginate(5)->withQueryString();
 
         // Handle payment redirect parameters
         $paymentStatus = $request->get('payment');
@@ -626,6 +644,6 @@ class TokenController extends Controller
             $messageType = 'error';
         }
 
-        return view('tokens.history', compact('transactions', 'message', 'messageType'));
+        return view('tokens.history', compact('transactions', 'message', 'messageType', 'fromDate', 'toDate', 'quick'));
     }
 }
