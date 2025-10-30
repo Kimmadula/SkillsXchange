@@ -30,6 +30,29 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
+        // Block banned or suspended users at login
+        if (method_exists($user, 'isAccountRestricted') && $user->isAccountRestricted()) {
+            $ban = method_exists($user, 'getCurrentBan') ? $user->getCurrentBan() : null;
+            $suspension = method_exists($user, 'getCurrentSuspension') ? $user->getCurrentSuspension() : null;
+
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            $message = $ban
+                ? ('Your account has been permanently banned. Reason: ' . ($ban->reason ?? ''))
+                : 'Your account is currently suspended.';
+            if ($suspension && $suspension->suspension_end) {
+                $message .= ' Suspension ends on: ' . $suspension->suspension_end->format('M d, Y \a\t g:i A');
+            } elseif ($suspension) {
+                $message .= ' Suspension is indefinite.';
+            }
+
+            throw ValidationException::withMessages([
+                'email' => [$message],
+            ]);
+        }
+
         if ($user->role === 'admin') {
             return redirect()->route('admin.dashboard');
         }
