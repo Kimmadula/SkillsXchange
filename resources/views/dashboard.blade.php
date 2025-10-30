@@ -248,8 +248,8 @@
                     <div class="responsive-item responsive-item--blue">
                         <div class="text-center">
                             <i class="fas fa-tasks mb-2" style="font-size: 1.5rem;"></i>
-                            <h6 class="mb-1">Manage Posts</h6>
-                            <small>Edit or delete your posted trades</small>
+                            <h6 class="mb-1">Your Trades</h6>
+                            <small>View your posted trades</small>
                         </div>
                     </div>
                 </a>
