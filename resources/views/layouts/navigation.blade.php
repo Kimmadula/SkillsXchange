@@ -521,6 +521,12 @@
             </a>
         </li>
         <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('trades.manage') ? 'active' : '' }}"
+                href="{{ route('trades.manage') }}">
+                My Trades
+            </a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('trades.matches') ? 'active' : '' }}"
                 href="{{ route('trades.matches') }}">
                 Matches

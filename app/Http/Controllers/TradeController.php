@@ -71,7 +71,7 @@ class TradeController extends Controller
         $trade->status = 'open';
         $trade->save();
 
-        return redirect()->route('trades.matches')->with('success', 'Trade posted.');
+        return redirect()->route('trades.manage')->with('success', 'Trade posted.');
     }
 
     public function matches()
@@ -467,9 +467,6 @@ class TradeController extends Controller
     public function manage()
     {
         $user = Auth::user();
-        if ($user->role === 'admin') {
-            return redirect()->route('admin.dashboard');
-        }
         $trades = Trade::with(['offeringSkill', 'lookingSkill'])
             ->where('user_id', $user->id)
             ->orderByDesc('created_at')
