@@ -32,11 +32,40 @@
                             Request from: {{ $r->requester->use_username ? ($r->requester->username ?? 'User') : (($r->requester->firstname ?? '') . ' ' . ($r->requester->lastname ?? '')) }}
                         </div>
                         <div style="color:#6b7280; font-size:0.9rem; margin-bottom:4px;">
-                            Trade: {{ optional($r->trade->offeringSkill)->name }} → {{ optional($r->trade->lookingSkill)->name }}
+                            <strong>Their Trade:</strong> {{ optional(optional($r->other_trade)->offeringSkill)->name ?? '—' }} → {{ optional(optional($r->other_trade)->lookingSkill)->name ?? '—' }}
                         </div>
+                        <div style="color:#6b7280; font-size:0.9rem; margin-bottom:6px;">
+                            <strong>Your Trade:</strong> {{ optional(optional($r->viewer_trade)->offeringSkill)->name ?? optional($r->trade->offeringSkill)->name }} → {{ optional(optional($r->viewer_trade)->lookingSkill)->name ?? optional($r->trade->lookingSkill)->name }}
+                        </div>
+                        @if(isset($r->trade->compatibility_score))
+                            <div style="display:flex; align-items:center; gap:8px; margin:4px 0 8px 0;">
+                                <span style="background:{{ ($r->trade->is_compatible ?? false) ? '#10b981' : '#9ca3af' }}; color:#fff; padding:2px 8px; border-radius:999px; font-size:0.8rem; font-weight:700;">
+                                    {{ $r->trade->compatibility_score }}% Match
+                                </span>
+                                <span style="font-size:0.8rem; color:#6b7280;">{{ ($r->trade->is_compatible ?? false) ? 'Compatible' : 'Not compatible' }}</span>
+                            </div>
+                        @endif
                         <div style="color:#6b7280; font-size:0.9rem; margin-bottom:8px;">
                             Status: <span style="font-weight:600; color:{{ $r->status === 'pending' ? '#f59e0b' : ($r->status === 'accepted' ? '#10b981' : '#ef4444') }}">{{ strtoupper($r->status) }}</span>
                         </div>
+                        @if(isset($r->trade->insights) && is_array($r->trade->insights) && count($r->trade->insights) > 0)
+                            <div style="margin:6px 0 10px 0;">
+                                <div style="font-weight:600; color:#374151; margin-bottom:6px;">Why this match</div>
+                                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                                    @foreach($r->trade->insights as $ins)
+                                        @php
+                                            $bg = '#E5E7EB'; $fg = '#374151'; $bd = '#D1D5DB';
+                                            if (($ins['status'] ?? 'neutral') === 'good') { $bg = '#DCFCE7'; $fg = '#166534'; $bd = '#86EFAC'; }
+                                            elseif (($ins['status'] ?? 'neutral') === 'bad') { $bg = '#FEE2E2'; $fg = '#991B1B'; $bd = '#FCA5A5'; }
+                                        @endphp
+                                        <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 8px; background:{{ $bg }}; color:{{ $fg }}; border:1px solid {{ $bd }}; border-radius:999px; font-size:0.8rem;">
+                                            <strong>{{ $ins['label'] ?? 'Item' }}:</strong>
+                                            <span>{{ $ins['detail'] ?? '' }}</span>
+                                        </span>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                         @if($r->status === 'pending')
                             <div style="margin:6px 0 10px 0;">
                                 @php
@@ -49,8 +78,13 @@
                                 @endphp
                                 <button type="button" onclick="showRequestDetails({{ $r->id }}, {{ json_encode([
                                     'requester' => $r->requester->use_username ? $r->requester->username : ($r->requester->firstname.' '.$r->requester->lastname),
-                                    'offering' => optional($r->trade->offeringSkill)->name,
-                                    'looking' => optional($r->trade->lookingSkill)->name,
+                                    'their_offering' => optional(optional($r->other_trade)->offeringSkill)->name,
+                                    'their_looking' => optional(optional($r->other_trade)->lookingSkill)->name,
+                                    'your_offering' => optional(optional($r->viewer_trade)->offeringSkill)->name ?? optional($r->trade->offeringSkill)->name,
+                                    'your_looking' => optional(optional($r->viewer_trade)->lookingSkill)->name ?? optional($r->trade->lookingSkill)->name,
+                                    'compatibility_score' => $r->trade->compatibility_score ?? null,
+                                    'is_compatible' => $r->trade->is_compatible ?? null,
+                                    'insights' => $r->trade->insights ?? [],
                                     'requester_rating_avg' => $reqAvg,
                                     'requester_rating_count' => $reqCount,
                                     'session_type' => $r->trade->session_type,
@@ -124,11 +158,40 @@
                         Request to: {{ $r->trade->user->use_username ? $r->trade->user->username : ($r->trade->user->firstname.' '.$r->trade->user->lastname) }}
                     </div>
                     <div style="color:#6b7280; font-size:0.9rem; margin-bottom:4px;">
-                        Trade: {{ optional($r->trade->offeringSkill)->name }} → {{ optional($r->trade->lookingSkill)->name }}
+                        <strong>Their Trade:</strong> {{ optional(optional($r->other_trade)->offeringSkill)->name ?? optional($r->trade->offeringSkill)->name }} → {{ optional(optional($r->other_trade)->lookingSkill)->name ?? optional($r->trade->lookingSkill)->name }}
                     </div>
+                    <div style="color:#6b7280; font-size:0.9rem; margin-bottom:6px;">
+                        <strong>Your Trade:</strong> {{ optional(optional($r->viewer_trade)->offeringSkill)->name ?? '—' }} → {{ optional(optional($r->viewer_trade)->lookingSkill)->name ?? '—' }}
+                    </div>
+                    @if(isset($r->trade->compatibility_score))
+                        <div style="display:flex; align-items:center; gap:8px; margin:4px 0 8px 0;">
+                            <span style="background:{{ ($r->trade->is_compatible ?? false) ? '#10b981' : '#9ca3af' }}; color:#fff; padding:2px 8px; border-radius:999px; font-size:0.8rem; font-weight:700;">
+                                {{ $r->trade->compatibility_score }}% Match
+                            </span>
+                            <span style="font-size:0.8rem; color:#6b7280;">{{ ($r->trade->is_compatible ?? false) ? 'Compatible' : 'Not compatible' }}</span>
+                        </div>
+                    @endif
                     <div style="color:#6b7280; font-size:0.9rem; margin-bottom:8px;">
                         Status: <span style="font-weight:600; color:{{ $r->status === 'pending' ? '#f59e0b' : ($r->status === 'accepted' ? '#10b981' : '#ef4444') }}">{{ strtoupper($r->status) }}</span>
                     </div>
+                    @if(isset($r->trade->insights) && is_array($r->trade->insights) && count($r->trade->insights) > 0)
+                        <div style="margin:6px 0 10px 0;">
+                            <div style="font-weight:600; color:#374151; margin-bottom:6px;">Why this match</div>
+                            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                                @foreach($r->trade->insights as $ins)
+                                    @php
+                                        $bg = '#E5E7EB'; $fg = '#374151'; $bd = '#D1D5DB';
+                                        if (($ins['status'] ?? 'neutral') === 'good') { $bg = '#DCFCE7'; $fg = '#166534'; $bd = '#86EFAC'; }
+                                        elseif (($ins['status'] ?? 'neutral') === 'bad') { $bg = '#FEE2E2'; $fg = '#991B1B'; $bd = '#FCA5A5'; }
+                                    @endphp
+                                    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 8px; background:{{ $bg }}; color:{{ $fg }}; border:1px solid {{ $bd }}; border-radius:999px; font-size:0.8rem;">
+                                        <strong>{{ $ins['label'] ?? 'Item' }}:</strong>
+                                        <span>{{ $ins['detail'] ?? '' }}</span>
+                                    </span>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                     @if($r->message)
                         <div style="background:#f9fafb; padding:8px; border-radius:4px; font-size:0.9rem;">
                             <strong>Your message:</strong> {{ $r->message }}
@@ -186,9 +249,41 @@
             return `${'★'.repeat(full)}${half?'<span style=\\"opacity:0.5\\">★</span>':''}${'☆'.repeat(empty)}`;
         };
 
+        const matchBadge = (score, isCompat) => {
+            if (score == null) return '';
+            const bg = isCompat ? '#10b981' : '#9ca3af';
+            const status = isCompat ? 'Compatible' : 'Not compatible';
+            return `
+                <div style=\"display:flex; align-items:center; gap:8px; margin:6px 0 10px 0;\">
+                    <span style=\"background:${bg}; color:#fff; padding:2px 8px; border-radius:999px; font-size:0.8rem; font-weight:700;\">${score}% Match</span>
+                    <span style=\"font-size:0.8rem; color:#6b7280;\">${status}</span>
+                </div>
+            `;
+        };
+
+        const insightChips = (items) => {
+            if (!Array.isArray(items) || items.length === 0) return '';
+            const chips = items.map(ins => {
+                const status = ins.status || 'neutral';
+                let bg = '#E5E7EB', fg = '#374151', bd = '#D1D5DB';
+                if (status === 'good') { bg = '#DCFCE7'; fg = '#166534'; bd = '#86EFAC'; }
+                else if (status === 'bad') { bg = '#FEE2E2'; fg = '#991B1B'; bd = '#FCA5A5'; }
+                return `<span style=\"display:inline-flex; align-items:center; gap:6px; padding:6px 8px; background:${bg}; color:${fg}; border:1px solid ${bd}; border-radius:999px; font-size:0.8rem;\"><strong>${ins.label || 'Item'}:</strong><span>${ins.detail || ''}</span></span>`;
+            }).join('');
+            return `
+                <div style=\"margin-top:4px;\">
+                    <div style=\"font-weight:600; color:#374151; margin-bottom:6px;\">Why this match</div>
+                    <div style=\"display:flex; flex-wrap:wrap; gap:6px;\">${chips}</div>
+                </div>
+            `;
+        };
+
         body.innerHTML = `
             ${line('Requester', data.requester)}
-            ${line('Trade', (data.offering || '—') + ' → ' + (data.looking || '—'))}
+            ${line('Their Trade', (data.their_offering || '—') + ' → ' + (data.their_looking || '—'))}
+            ${line('Your Trade', (data.your_offering || '—') + ' → ' + (data.your_looking || '—'))}
+            ${matchBadge(data.compatibility_score, !!data.is_compatible)}
+            ${insightChips(data.insights)}
             <div style=\"margin:6px 0;\"><strong>Requester Rating:</strong> <span style=\"color:#F59E0B; font-size:0.9rem;\">${stars(data.requester_rating_avg)}</span> (${data.requester_rating_count || 0})</div>
             ${line('Session Type', data.session_type)}
             ${line('Location', data.location || 'Any location')}

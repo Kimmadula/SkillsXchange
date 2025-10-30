@@ -91,6 +91,24 @@
                                 📅 {{ implode(', ', $t->preferred_days) }}
                             </div>
                         @endif
+                        @if(isset($t->insights) && is_array($t->insights) && count($t->insights) > 0)
+                            <div style="margin-top:10px;">
+                                <div style="font-weight:600; color:#374151; margin-bottom:6px;">Why this match</div>
+                                <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                                    @foreach($t->insights as $ins)
+                                        @php
+                                            $bg = '#E5E7EB'; $fg = '#374151'; $bd = '#D1D5DB';
+                                            if (($ins['status'] ?? 'neutral') === 'good') { $bg = '#DCFCE7'; $fg = '#166534'; $bd = '#86EFAC'; }
+                                            elseif (($ins['status'] ?? 'neutral') === 'bad') { $bg = '#FEE2E2'; $fg = '#991B1B'; $bd = '#FCA5A5'; }
+                                        @endphp
+                                        <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 8px; background:{{ $bg }}; color:{{ $fg }}; border:1px solid {{ $bd }}; border-radius:999px; font-size:0.8rem;">
+                                            <strong>{{ $ins['label'] ?? 'Item' }}:</strong>
+                                            <span>{{ $ins['detail'] ?? '' }}</span>
+                                        </span>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
                     </div>
                     <div style="text-align:right; margin-left:16px;">
                         <div style="background:{{ $t->is_compatible ? '#10b981' : '#9ca3af' }}; color:#fff; padding:4px 8px; border-radius:4px; font-size:0.8rem; font-weight:600;">
@@ -107,7 +125,18 @@
                         $requestFee = \App\Models\TradeFeeSetting::getFeeAmount('trade_request');
                         $userBalance = auth()->user()->token_balance ?? 0;
                     @endphp
-                    <div style="display:flex; gap:8px; align-items:center;">
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        @if(($t->has_incoming_request_from_user ?? false))
+                            <div style="padding:6px 12px; background:#fef3c7; color:#92400e; border-radius:6px; font-size:0.8rem; border:1px solid #f59e0b;">
+                                They already sent you a request. Review it in Requests.
+                                <a href="{{ route('trades.requests') }}" style="margin-left:8px; color:#1e40af; text-decoration:underline;">Open requests</a>
+                            </div>
+                        @endif
+                        @if(($t->has_outgoing_request_to_user ?? false))
+                            <div style="padding:6px 12px; background:#e0e7ff; color:#3730a3; border-radius:6px; font-size:0.8rem; border:1px solid #6366f1;">
+                                You already requested this user. Pending response.
+                            </div>
+                        @endif
                         @if($requestFee > 0 && \App\Models\TradeFeeSetting::isFeeActive('trade_request'))
                             <div style="padding:6px 12px; background:#dbeafe; color:#1e40af; border-radius:6px; font-size:0.8rem; border:1px solid #3b82f6;">
                                 <div style="font-weight:600;">Fee: {{ $requestFee }} token{{ $requestFee > 1 ? 's' : '' }} (when accepted)</div>
@@ -117,9 +146,9 @@
                         <form method="POST" action="{{ route('trades.request', $t->id) }}" style="display:inline;">
                             @csrf
                             <button type="submit"
-                                    style="padding:8px 16px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; white-space:nowrap; {{ $requestFee > 0 && $userBalance < $requestFee ? 'opacity:50; cursor:not-allowed;' : '' }}"
-                                    {{ $requestFee > 0 && $userBalance < $requestFee ? 'disabled' : '' }}>
-                                Request Trade
+                                    style="padding:8px 16px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; white-space:nowrap; {{ ($t->has_incoming_request_from_user ?? false) || ($t->has_outgoing_request_to_user ?? false) || ($requestFee > 0 && $userBalance < $requestFee) ? 'opacity:50; cursor:not-allowed;' : '' }}"
+                                    {{ (($t->has_incoming_request_from_user ?? false) || ($t->has_outgoing_request_to_user ?? false) || ($requestFee > 0 && $userBalance < $requestFee)) ? 'disabled' : '' }}>
+                                {{ ($t->has_outgoing_request_to_user ?? false) ? 'Requested' : 'Request Trade' }}
                             </button>
                         </form>
                     </div>
