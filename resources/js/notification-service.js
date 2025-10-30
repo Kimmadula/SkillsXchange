@@ -331,11 +331,8 @@ class NotificationService {
     
     updatePageTitle(title) {
         const originalTitle = document.title;
+        // Titles cannot render HTML; set plain text only
         document.title = title;
-        
-        // Add blinking effect to title
-        document.title = `<span class="page-title-call">${title}</span>`;
-        
         // Store original title for restoration
         this.originalTitle = originalTitle;
     }

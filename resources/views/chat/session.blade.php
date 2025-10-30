@@ -476,6 +476,9 @@
         }
     }
 
+    // Pending incoming offer to require explicit user Accept
+    let pendingIncomingOffer = null;
+
     async function handleVideoCallOffer(data) {
         console.log('📞 Handling video call offer:', data);
         
@@ -489,90 +492,35 @@
                 }
             }
             
-            // Use Firebase to answer the call
-            if (firebaseVideoCall) {
-                // Extract the offer from the call data
-                // The call object from Firebase has the offer in data.offer
-                const offerData = data.offer;
-                
-                if (!offerData) {
-                    throw new Error('No offer found in call data');
-                }
-                
-                // Ensure offer is an RTCSessionDescription object
-                let rtcOffer;
-                if (offerData instanceof RTCSessionDescription) {
-                    rtcOffer = offerData;
-                } else if (typeof offerData === 'object' && offerData.type && offerData.sdp) {
-                    // Create RTCSessionDescription from object
-                    rtcOffer = new RTCSessionDescription({
-                        type: offerData.type,
-                        sdp: offerData.sdp
-                    });
-                } else if (typeof offerData === 'string') {
-                    // If it's a JSON string, parse it
-                    const parsed = JSON.parse(offerData);
-                    rtcOffer = new RTCSessionDescription(parsed);
-                } else {
-                    console.error('Invalid offer format:', offerData);
-                    throw new Error('Invalid offer format: offer must have type and sdp properties');
-                }
-                
-                console.log('📞 Answering call with offer:', { type: rtcOffer.type, sdpLength: rtcOffer.sdp?.length });
-                
-                const success = await firebaseVideoCall.answerCall(rtcOffer);
-                
-                if (success) {
-                    // Stop notification sounds/alarms since call is answered
-                    if (window.notificationService && typeof window.notificationService.stopRingtone === 'function') {
-                        window.notificationService.stopRingtone();
-                    }
-                    
-                    // Setup local video display
-                    const localVideo = document.getElementById('local-video');
-                    const localVideoItem = document.getElementById('local-video-item');
-                    
-                    if (localVideoItem) {
-                        localVideoItem.style.display = 'flex';
-                        localVideoItem.style.visibility = 'visible';
-                    }
-                    
-                    if (localVideo && firebaseVideoCall.localStream) {
-                        localVideo.srcObject = firebaseVideoCall.localStream;
-                        localVideo.style.display = 'block';
-                        localVideo.style.visibility = 'visible';
-                        localVideo.style.width = '100%';
-                        localVideo.style.height = '100%';
-                        localVideo.muted = true;
-                        localVideo.autoplay = true;
-                        localVideo.playsInline = true;
-                        localVideo.play().catch(e => {
-                            console.log('Local video play error:', e.name);
-                        });
-                    }
-                    
-                    // Ensure remote video container is ready (will be populated when remote stream arrives)
-                    const remoteVideoItem = document.getElementById('remote-video-item');
-                    if (remoteVideoItem) {
-                        remoteVideoItem.style.display = 'flex';
-                        remoteVideoItem.style.visibility = 'visible';
-                    }
-                    
-                    videoCallState.isActive = true;
-                    videoCallState.isInitiator = false;
-                    videoCallState.partnerId = data.fromUserId;
-                    videoCallState.callId = data.callId;
-                    
-                    // startCallTimer is now handled inside firebaseVideoCall.answerCall()
-                    // No need to call it separately
-                    
-                    console.log('✅ Video call answered successfully with Firebase');
-                } else {
-                    throw new Error('Failed to answer call with Firebase');
-                }
+            // Store offer and wait for explicit user Accept
+            if (!firebaseVideoCall) throw new Error('Firebase video call not available');
+
+            const offerData = data.offer;
+            if (!offerData) throw new Error('No offer found in call data');
+
+            let rtcOffer;
+            if (offerData instanceof RTCSessionDescription) {
+                rtcOffer = offerData;
+            } else if (typeof offerData === 'object' && offerData.type && offerData.sdp) {
+                rtcOffer = new RTCSessionDescription({ type: offerData.type, sdp: offerData.sdp });
+            } else if (typeof offerData === 'string') {
+                const parsed = JSON.parse(offerData);
+                rtcOffer = new RTCSessionDescription(parsed);
             } else {
-                throw new Error('Firebase video call not available');
+                console.error('Invalid offer format:', offerData);
+                throw new Error('Invalid offer format: offer must have type and sdp properties');
             }
+
+            // Ring and show UI, but do not auto-answer
+            pendingIncomingOffer = { rtcOffer, fromUserId: data.fromUserId, callId: data.callId };
+            const statusElement = document.getElementById('video-status');
+            if (statusElement) statusElement.textContent = 'Incoming call...';
+            const startBtn = document.getElementById('start-call-btn');
+            const endBtn = document.getElementById('end-call-btn');
+            if (startBtn) startBtn.style.display = 'inline-block';
+            if (endBtn) endBtn.style.display = 'none';
+
+            // Ringtone handled by notificationService; stop it on accept later
             
         } catch (error) {
             console.error('Error handling offer:', error);
@@ -703,6 +651,10 @@
                         } catch (e) {
                             console.error('❌ Remote video play error:', e.name, e.message);
                             console.error('Error details:', e);
+                            if (e.name === 'AbortError') {
+                                // Ignore aborts triggered by stream changes during teardown
+                                return;
+                            }
                             
                             // Try again after user interaction
                             if (e.name === 'NotAllowedError' || e.name === 'NotSupportedError') {
@@ -2396,12 +2348,46 @@
                                     if (endBtn) endBtn.style.display = 'inline-block';
                                 }
                                 
-                                // Try to start the actual call with Firebase
+                                // If we have a pending incoming offer, treat this as Accept
+                                if (typeof pendingIncomingOffer !== 'undefined' && pendingIncomingOffer && firebaseVideoCall) {
+                                    try {
+                                        // Stop ringtone if any
+                                        if (window.notificationService && typeof window.notificationService.stopRingtone === 'function') {
+                                            window.notificationService.stopRingtone();
+                                        }
+
+                                        const { rtcOffer, fromUserId, callId } = pendingIncomingOffer;
+                                        console.log('📞 Accepting incoming call with stored offer');
+                                        const ok = await firebaseVideoCall.answerCall(rtcOffer);
+                                        if (!ok) throw new Error('Failed to answer call');
+
+                                        // Mark state as callee
+                                        videoCallState.isActive = true;
+                                        videoCallState.isInitiator = false;
+                                        videoCallState.partnerId = fromUserId;
+                                        videoCallState.callId = callId;
+
+                                        // Prepare UI for remote stream arrival
+                                        const remoteVideoItem = document.getElementById('remote-video-item');
+                                        if (remoteVideoItem) {
+                                            remoteVideoItem.style.display = 'flex';
+                                            remoteVideoItem.style.visibility = 'visible';
+                                        }
+
+                                        pendingIncomingOffer = null; // clear pending offer
+                                        return;
+                                    } catch (e) {
+                                        console.error('❌ Error accepting incoming call:', e);
+                                        alert('Failed to accept incoming call.');
+                                        return;
+                                    }
+                                }
+
+                                // Otherwise, place an outgoing call
                                 if (typeof window.startVideoCallFull === 'function') {
                                     window.startVideoCallFull();
                                 } else {
                                     console.log('startVideoCallFull not available yet, will retry...');
-                                    // Retry after a short delay
                                     setTimeout(() => {
                                         if (typeof window.startVideoCallFull === 'function') {
                                             window.startVideoCallFull();
@@ -2484,7 +2470,7 @@
                                 }
                             };
                             
-                            window.endVideoCall = function() {
+            window.endVideoCall = function() {
                                 console.log('🛑 Ending video call...');
                                 
                                 // End Firebase video call
@@ -2503,9 +2489,10 @@
                                     window.localStream = null;
                                 }
                                 
-                                // Clear remote video
+                // Clear remote video
                                 const remoteVideo = document.getElementById('remote-video');
                                 if (remoteVideo) {
+                    try { remoteVideo.pause(); } catch(e) {}
                                     if (remoteVideo.srcObject) {
                                         remoteVideo.srcObject.getTracks().forEach(track => track.stop());
                                     }
@@ -2513,6 +2500,13 @@
                                     remoteVideo.style.display = 'none';
                                     remoteVideoSet = false; // Reset flag for next call
                                 }
+
+                // Clear local video safely
+                const localVideo = document.getElementById('local-video');
+                if (localVideo) {
+                    try { localVideo.pause(); } catch(e) {}
+                    localVideo.srcObject = null;
+                }
                                 
                                 // Reset UI
                                 const startBtn = document.getElementById('start-call-btn');
