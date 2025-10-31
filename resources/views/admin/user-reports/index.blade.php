@@ -16,14 +16,15 @@
     <div class="admin-sidebar">
         <div class="sidebar-header">
             <div class="logo">
+                <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="admin-logo">
                 <span class="logo-text">SkillsXchange Admin</span>
             </div>
         </div>
 
         <nav class="sidebar-nav">
-            <a href="{{ route('admin.dashboard') }}" class="nav-item">
+            <a href="{{ route('admin.dashboard') }}" class="nav-item active">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 3h18v18H3zM9 9h6v6H9z" />
+                    <path d="M3 3h18v18H3zM9 9h6v6H9z"/>
                 </svg>
                 <span>Overview</span>
             </a>
@@ -72,13 +73,6 @@
                 </svg>
                 <span>Messages</span>
             </a>
-            <a href="{{ route('admin.user-reports.index') }}" class="nav-item active">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
-                    <line x1="4" y1="22" x2="4" y2="15"/>
-                </svg>
-                <span>User Reports</span>
-            </a>
             <a href="{{ route('admin.settings.index') }}" class="nav-item">
                 <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="3" />
@@ -111,47 +105,34 @@
         <div class="dashboard-content">
     <!-- User Reports Header -->
     <div class="metric-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-            <div>
-                <h2 style="font-size: 24px; font-weight: 600; color: #1a202c; margin: 0 0 8px 0;">User Reports</h2>
-                <p style="color: #64748b; margin: 0;">Manage and review user reports</p>
-            </div>
-            <div style="display: flex; gap: 12px;">
-                <button onclick="refreshReports()" style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 6px; color: #64748b; cursor: pointer; font-size: 14px;">
-                    🔄 Refresh
-                </button>
-                <button onclick="exportReports()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;">
-                    📊 Export
-                </button>
-            </div>
-        </div>
-
         <!-- Search and Filters -->
-        <div style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;">
-            <div style="flex: 1; min-width: 300px;">
-                <input type="text" id="reportSearch" placeholder="Search reports by reporter, reported user, or reason..."
-                       style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
-                       onkeyup="filterReports()">
-            </div>
-            <select id="statusFilter" onchange="filterReports()"
-                    style="padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
-                <option value="">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="under_review">Under Review</option>
-                <option value="resolved">Resolved</option>
-                <option value="dismissed">Dismissed</option>
-            </select>
-            <select id="reasonFilter" onchange="filterReports()"
-                    style="padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
-                <option value="">All Reasons</option>
-                <option value="harassment">Harassment</option>
-                <option value="spam">Spam</option>
-                <option value="inappropriate">Inappropriate</option>
-                <option value="fraud">Fraud</option>
-                <option value="safety">Safety</option>
-                <option value="other">Other</option>
-            </select>
-        </div>
+<div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+    <div style="flex: 1; min-width: 300px;">
+        <input type="text" id="reportSearch" placeholder="Search reports by reporter, reported user, or reason..."
+               style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
+               onkeyup="filterReports()">
+    </div>
+    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+        <select id="statusFilter" onchange="filterReports()"
+                style="padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="under_review">Under Review</option>
+            <option value="resolved">Resolved</option>
+            <option value="dismissed">Dismissed</option>
+        </select>
+        <select id="reasonFilter" onchange="filterReports()"
+                style="padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
+            <option value="">All Reasons</option>
+            <option value="harassment">Harassment</option>
+            <option value="spam">Spam</option>
+            <option value="inappropriate">Inappropriate</option>
+            <option value="fraud">Fraud</option>
+            <option value="safety">Safety</option>
+            <option value="other">Other</option>
+        </select>
+    </div>
+</div>
 
         <!-- Reports Table -->
         <div style="overflow-x: auto; background: white; border: 1px solid #e2e8f0; border-radius: 8px;">
