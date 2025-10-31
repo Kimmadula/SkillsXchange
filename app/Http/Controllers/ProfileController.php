@@ -370,4 +370,103 @@ class ProfileController extends Controller
 
         return Redirect::to('/');
     }
+
+    /**
+     * Unified endpoint to handle profile updates, photo upload, and password change
+     * via a single route for one-page setups.
+     */
+    public function saveUnified(Request $request)
+    {
+        try {
+            $intent = $request->input('intent');
+
+            if ($intent === 'photo' || $request->hasFile('photo')) {
+                return $this->updatePhoto($request);
+            }
+
+            if ($intent === 'password' || $request->has('current_password') && $request->has('password')) {
+                return $this->updatePassword($request);
+            }
+
+            // Default to profile info update
+            $user = $request->user();
+            if ($user && $user->is_verified) {
+                // Verified users: only username can be changed with password confirmation
+                $validated = $request->validate([
+                    'username' => 'required|string|max:255|unique:users,username,' . $user->id,
+                    'current_password' => ['required', 'current_password'],
+                ]);
+
+                $user->username = $validated['username'];
+                $user->save();
+
+                if ($request->ajax() || $request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Username updated successfully',
+                        'user' => [
+                            'name' => $user->name,
+                            'email' => $user->email,
+                            'username' => $user->username,
+                        ]
+                    ]);
+                }
+
+                return Redirect::route('profile.show')->with('status', 'profile-updated');
+            }
+
+            // Unverified users: allow full profile update (except email)
+            if ($user) {
+                $validated = $request->validate([
+                    'firstname' => ['required', 'string', 'max:255'],
+                    'lastname' => ['required', 'string', 'max:255'],
+                    'middlename' => ['nullable', 'string', 'max:255'],
+                    'gender' => ['required', 'in:male,female,other'],
+                    'bdate' => ['nullable', 'date'],
+                    'address' => ['nullable', 'string', 'max:255'],
+                    'username' => 'required|string|max:255|unique:users,username,' . $user->id,
+                ]);
+
+                $user->firstname = $validated['firstname'];
+                $user->lastname = $validated['lastname'];
+                $user->middlename = $validated['middlename'] ?? null;
+                $user->gender = $validated['gender'];
+                if (isset($validated['bdate'])) {
+                    $user->bdate = $validated['bdate'];
+                }
+                $user->address = $validated['address'] ?? null;
+                $user->username = $validated['username'];
+                $user->save();
+
+                if ($request->ajax() || $request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Profile updated successfully',
+                        'user' => [
+                            'name' => $user->name,
+                            'email' => $user->email,
+                            'username' => $user->username,
+                        ]
+                    ]);
+                }
+
+                return Redirect::route('profile.show')->with('status', 'profile-updated');
+            }
+
+            // Fallback
+            return Redirect::back()->withErrors(['error' => 'User not found']);
+
+        } catch (\Exception $e) {
+            Log::error('Unified profile save error: ' . $e->getMessage());
+
+            if ($request->ajax() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to save profile: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return Redirect::back()->withErrors(['error' => 'Failed to save profile.']);
+        }
+    }
 }
