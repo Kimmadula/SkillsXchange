@@ -2,6 +2,15 @@
 
 @section('content')
 <div style="padding:16px;">
+    <style>
+        /* Mobile horizontal scroll for trades table */
+        .trade-table-container { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+        .trade-table { min-width: 720px; border-collapse: collapse; width: 100%; }
+        @media (max-width: 480px) {
+            .trade-table { min-width: 640px; }
+            .trade-actions a, .trade-actions button { padding: 6px 8px !important; font-size: 12px !important; }
+        }
+    </style>
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
         <h1 style="font-size:1.25rem; margin:0;">My Trades</h1>
         <a href="{{ route('dashboard') }}" style="padding:8px 12px; background:#6b7280; color:#fff; text-decoration:none; border-radius:6px;">← Back to Dashboard</a>
@@ -13,8 +22,8 @@
         <div style="background:#fef2f2; color:#991b1b; border:1px solid #fecaca; padding:10px 12px; border-radius:6px; margin-bottom:12px;">{{ session('error') }}</div>
     @endif
 
-    <div style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden;">
-        <table style="width:100%; border-collapse:collapse;">
+    <div class="trade-table-container" style="background:#fff; border:1px solid #e5e7eb; border-radius:8px;">
+        <table class="trade-table">
             <thead style="background:#f9fafb;">
                 <tr>
                     <th style="text-align:left; padding:12px; border-bottom:1px solid #e5e7eb;">Offering</th>
@@ -41,7 +50,7 @@
                             <span style="padding:4px 8px; background:#f3f4f6; color:#4b5563; border-radius:4px; font-size:0.875rem; font-weight:500; text-transform:capitalize;">{{ $trade->status }}</span>
                         @endif
                     </td>
-                    <td style="padding:12px; border-bottom:1px solid #f3f4f6; text-align:right;">
+                    <td class="trade-actions" style="padding:12px; border-bottom:1px solid #f3f4f6; text-align:right; white-space: nowrap;">
                         @if($trade->status !== 'ongoing')
                             <a href="{{ route('trades.edit', $trade) }}" style="padding:6px 10px; background:#3b82f6; color:#fff; text-decoration:none; border-radius:6px; margin-right:6px;">Edit</a>
                             <form action="{{ route('trades.destroy', $trade) }}" method="POST" style="display:inline-block;" onsubmit="return confirm('Delete this post?');">

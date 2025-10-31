@@ -283,7 +283,13 @@ use Illuminate\Support\Facades\Storage;
                             <p class="table-subtitle">Manage user accounts and approvals</p>
                         </div>
                         <div class="table-actions">
-                            <input type="text" placeholder="Search users..." class="search-input">
+                            <input type="text" placeholder="Search users..." class="search-input" id="userSearchInput">
+                            <select id="statusFilter" class="search-input" style="width:auto;">
+                                <option value="all">All</option>
+                                <option value="verified">Verified</option>
+                                <option value="unverified">Unverified</option>
+                                <option value="new">New</option>
+                            </select>
                         </div>
                     </div>
 
@@ -295,6 +301,8 @@ use Illuminate\Support\Facades\Storage;
                                     <th>USERNAME</th>
                                     <th>EMAIL</th>
                                     <th>SKILL</th>
+                                    <th>PLAN</th>
+                                    <th>TOKENS</th>
                                     <th>STATUS</th>
                                     <th>STUDENT ID</th>
                                     <th>ACTIONS</th>
@@ -312,7 +320,9 @@ use Illuminate\Support\Facades\Storage;
                                     <td>{{ $user->username }}</td>
                                     <td>{{ $user->email }}</td>
                                     <td>{{ optional($user->skill)->name ?? '—' }}</td>
-                                    <td>
+                                    <td>{{ $user->plan ?? 'Free' }}</td>
+                                    <td>{{ number_format((int)($user->token_balance ?? 0)) }}</td>
+                                    <td data-status="{{ $user->is_verified ? 'verified' : 'unverified' }}" data-created="{{ optional($user->created_at)->timestamp ?? 0 }}">
                                         <span
                                             class="status-badge status-{{ $user->is_verified ? 'verified' : 'pending' }}">
                                             {{ $user->is_verified ? 'Verified' : 'Pending' }}
@@ -505,6 +515,8 @@ use Illuminate\Support\Facades\Storage;
             font-size: 14px;
             width: 300px;
         }
+
+        .table-actions { display: flex; align-items: center; gap: 10px; }
 
         .table-container {
             overflow-x: auto;
@@ -981,18 +993,34 @@ use Illuminate\Support\Facades\Storage;
 
         // Search functionality
         document.addEventListener('DOMContentLoaded', function() {
-            const searchInput = document.querySelector('.search-input');
-            if (searchInput) {
-                searchInput.addEventListener('input', function(e) {
-                    const searchTerm = e.target.value.toLowerCase();
-                    const rows = document.querySelectorAll('.users-table tbody tr');
+            const searchInput = document.getElementById('userSearchInput');
+            const statusFilter = document.getElementById('statusFilter');
+            const rows = document.querySelectorAll('.users-table tbody tr');
 
-        rows.forEach(row => {
-                        const text = row.textContent.toLowerCase();
-                        row.style.display = text.includes(searchTerm) ? '' : 'none';
-                    });
+            function applyUserFilters() {
+                const q = (searchInput?.value || '').toLowerCase();
+                const status = statusFilter?.value || 'all';
+                const now = Date.now() / 1000;
+                const newThreshold = now - (7 * 24 * 60 * 60); // last 7 days
+
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    const statusCell = row.querySelector('td[data-status]');
+                    const rowStatus = statusCell ? statusCell.getAttribute('data-status') : '';
+                    const created = statusCell ? parseInt(statusCell.getAttribute('data-created') || '0', 10) : 0;
+
+                    let matchesStatus = true;
+                    if (status === 'verified') matchesStatus = rowStatus === 'verified';
+                    else if (status === 'unverified') matchesStatus = rowStatus === 'unverified';
+                    else if (status === 'new') matchesStatus = created > newThreshold;
+
+                    const matchesSearch = text.includes(q);
+                    row.style.display = matchesStatus && matchesSearch ? '' : 'none';
                 });
             }
+
+            if (searchInput) searchInput.addEventListener('input', applyUserFilters);
+            if (statusFilter) statusFilter.addEventListener('change', applyUserFilters);
         });
 
         // Suspension modal functions

@@ -150,6 +150,26 @@
     </div>
   </nav>
 
+  @if(session('success'))
+  <div class="container" style="max-width: 960px;">
+    <div class="alert alert-success alert-dismissible fade show mt-3" role="alert" style="border-radius:8px;">
+      <i class="fas fa-check-circle me-2"></i>
+      {{ session('success') }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  </div>
+  <script>
+    // Auto-dismiss success alert after 5 seconds
+    setTimeout(function() {
+      var alertEl = document.querySelector('.alert.alert-success');
+      if (alertEl) {
+        var alert = new bootstrap.Alert(alertEl);
+        alert.close();
+      }
+    }, 5000);
+  </script>
+  @endif
+
   <!-- Hero Section -->
   <section class="hero-gradient py-5 d-flex align-items-center" style="min-height: 60vh;">
     <div class="container">

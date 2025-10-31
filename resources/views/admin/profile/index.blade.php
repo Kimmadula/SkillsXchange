@@ -233,7 +233,7 @@
                     <div class="profile-stats">
                         <div class="stat-item">
                             <div class="stat-value">{{ $user->created_at->format('M Y') }}</div>
-                            <div class="stat-label">Member Since</div>
+                            <div class="stat-label">Admin Since</div>
                         </div>
                         <div class="stat-item">
                             <div class="stat-value">{{ $user->is_verified ? 'Verified' : 'Pending' }}</div>
@@ -323,6 +323,14 @@
 .profile-container {
     max-width: 800px;
     margin: 0 auto;
+}
+
+/* Center the profile area within the main content */
+.dashboard-content {
+    display: flex;
+    justify-content: center;
+    padding-left: 16px;
+    padding-right: 16px;
 }
 
 .profile-header {

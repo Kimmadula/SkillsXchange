@@ -33,10 +33,10 @@ class StoreSkillRequest extends FormRequest
                     try {
                         // Normalize the skill name for comparison
                         $normalizedValue = $this->normalizeSkillName($value);
-                        
+
                         // Simple case-insensitive check
                         $existingSkill = Skill::whereRaw('LOWER(name) = ?', [strtolower($normalizedValue)])->first();
-                        
+
                         if ($existingSkill) {
                             $fail('A skill with this name already exists. Please choose a different name.');
                         }
@@ -46,20 +46,27 @@ class StoreSkillRequest extends FormRequest
                     }
                 },
             ],
+            // Either existing category or new_category must be provided
             'category' => [
-                'required',
+                'required_without:new_category',
                 'string',
                 'max:50',
                 'min:2',
                 function ($attribute, $value, $fail) {
                     // Normalize the category name
                     $normalizedValue = $this->normalizeSkillName($value);
-                    
+
                     // Check for double spaces
                     if (strpos($value, '  ') !== false) {
                         $fail('Category name cannot contain double spaces.');
                     }
                 },
+            ],
+            'new_category' => [
+                'nullable',
+                'string',
+                'max:50',
+                'min:2',
             ],
         ];
     }
@@ -76,10 +83,13 @@ class StoreSkillRequest extends FormRequest
             'name.string' => 'Skill name must be a valid text.',
             'name.max' => 'Skill name cannot exceed 50 characters.',
             'name.min' => 'Skill name must be at least 2 characters.',
-            'category.required' => 'Category is required.',
+            'category.required_without' => 'Please select a category or enter a new one.',
             'category.string' => 'Category must be a valid text.',
             'category.max' => 'Category cannot exceed 50 characters.',
             'category.min' => 'Category must be at least 2 characters.',
+            'new_category.string' => 'New category must be a valid text.',
+            'new_category.max' => 'New category cannot exceed 50 characters.',
+            'new_category.min' => 'New category must be at least 2 characters.',
         ];
     }
 
@@ -96,13 +106,13 @@ class StoreSkillRequest extends FormRequest
     {
         // Trim whitespace
         $name = trim($name);
-        
+
         // Replace multiple spaces with single space
         $name = preg_replace('/\s+/', ' ', $name);
-        
+
         // Convert to proper case (Title Case)
         $name = ucwords(strtolower($name));
-        
+
         return $name;
     }
 
@@ -117,8 +127,14 @@ class StoreSkillRequest extends FormRequest
                 'name' => $this->normalizeSkillName($this->input('name'))
             ]);
         }
-        
-        if ($this->has('category')) {
+
+        // If new_category provided, prefer it and map to category, else normalize provided category
+        $newCategory = trim((string) $this->input('new_category'));
+        if ($newCategory !== '') {
+            $this->merge([
+                'category' => $this->normalizeSkillName($newCategory),
+            ]);
+        } elseif ($this->has('category')) {
             $this->merge([
                 'category' => $this->normalizeSkillName($this->input('category'))
             ]);

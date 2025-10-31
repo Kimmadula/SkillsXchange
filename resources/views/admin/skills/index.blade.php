@@ -218,15 +218,27 @@
 
             <!-- Skills Content -->
             <div class="dashboard-content">
-                <!-- Debug Info (remove in production) -->
-                @if(config('app.debug'))
-                <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-bottom: 16px; font-size: 12px;">
-                    <strong>Debug Info:</strong>
-                    User: {{ auth()->user()->email }} |
-                    Role: {{ auth()->user()->role }} |
-                    Skills Count: {{ $skills->count() }}
+                <!-- Stats Cards -->
+                @php(
+                    $initialCategories = collect($skills)->pluck('category')->filter()->unique()
+                )
+                @php(
+                    $initialUsersTotal = collect($skills)->sum(function($s){ return $s->users_count ?? 0; })
+                )
+                <div class="stats-cards">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Skills</div>
+                        <div class="stat-value" id="skillsTotalCount">{{ $skills->count() }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Categories</div>
+                        <div class="stat-value" id="skillsCategoryCount">{{ $initialCategories->count() }}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Users Across Skills</div>
+                        <div class="stat-value" id="skillsUsersTotal">{{ $initialUsersTotal }}</div>
+                    </div>
                 </div>
-                @endif
 
                 @if(session('success'))
                 <div class="success-message">
@@ -252,10 +264,28 @@
                 </div>
                 @endif
 
-                <!-- Skills are now static - no creation allowed -->
-                <div class="alert alert-info">
-                    <h4>Skills are now static</h4>
-                    <p>Skill creation and editing has been disabled. Skills can only be viewed and managed through user profiles.</p>
+                <!-- Add Skill -->
+                <div class="add-skill-card">
+                    <form class="add-skill-form" method="POST" action="{{ route('admin.skill.store') }}">
+                        @csrf
+                        <div class="form-group">
+                            <label class="form-label" for="skillName">Name</label>
+                            <input class="form-input" id="skillName" name="name" type="text" placeholder="e.g., Web Development" required>
+                        </div>
+                        <div class="form-group combo-select">
+                            <label class="form-label" for="addCategorySelect">Category</label>
+                            <select class="form-input" id="addCategorySelect" name="category" required>
+                                <option value="">Select category</option>
+                                @php($allCategories = \App\Models\Skill::query()->select('category')->whereNotNull('category')->distinct()->orderBy('category')->pluck('category'))
+                                @foreach($allCategories as $cat)
+                                    <option value="{{ $cat }}">{{ $cat }}</option>
+                                @endforeach
+                                <option value="__new__">+ Add new category...</option>
+                            </select>
+                        </div>
+
+                        <button class="btn btn-primary" type="submit">Add Skill</button>
+                    </form>
                 </div>
 
                 <!-- All Skills Section -->
@@ -265,7 +295,31 @@
                             <h3 class="card-title">All Skills</h3>
                             <p class="table-subtitle">Manage existing skills and categories</p>
                         </div>
+                        <div class="table-actions">
+                            <div class="filters">
+                                <input id="skillSearch" class="form-input" type="text" placeholder="Search skills..." list="skillSuggestions" autocomplete="off">
+                                <datalist id="skillSuggestions"></datalist>
+                                <input type="hidden" id="skillIdHidden" value="">
+                                <select id="categoryFilter" class="form-input">
+                                    <option value="">All categories</option>
+                                    @php($__categories = collect($skills)->pluck('category')->filter()->unique()->sort())
+                                    @foreach($__categories as $__cat)
+                                        <option value="{{ $__cat }}">{{ $__cat }}</option>
+                                    @endforeach
+                                </select>
+                                <select id="sortSelect" class="form-input">
+                                    <option value="category_name">Sort: Category/Name</option>
+                                    <option value="users_desc">Sort: Highest Users</option>
+                                    <option value="users_asc">Sort: Lowest Users</option>
+                                    <option value="name">Sort: Name (A-Z)</option>
+                                </select>
+                            </div>
+
+                        </div>
                     </div>
+
+                    <!-- Toast Notification -->
+                    <div id="skill-toast" class="toast hidden" role="status" aria-live="polite"></div>
 
                     <div class="table-container">
                         <table class="skills-table">
@@ -274,19 +328,32 @@
                                     <th>NAME</th>
                                     <th>CATEGORY</th>
                                     <th>USERS COUNT</th>
-                                    <th>STATUS</th>
+                                    <th>ACTIONS</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="skillsTableBody">
                                 @forelse($skills as $skill)
-                                <tr>
+                                <tr data-id="{{ $skill->skill_id }}">
                                     <td>{{ $skill->name }}</td>
                                     <td>
                                         <span class="category-badge">{{ $skill->category }}</span>
                                     </td>
                                     <td>{{ $skill->users_count ?? 0 }} users</td>
                                     <td>
-                                        <span class="text-muted">Read-only</span>
+                                        <div class="action-buttons">
+                                            <button type="button" class="btn-edit" data-action="edit" data-id="{{ $skill->skill_id }}">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                                </svg>
+                                            </button>
+                                            <button type="button" class="btn-delete" onclick="deleteSkill({{ $skill->skill_id }}, '{{ $skill->name }}')">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <polyline points="3,6 5,6 21,6"/>
+                                                    <path d="M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 @empty
@@ -303,7 +370,433 @@
     </div>
 
     @include('admin.dashboard-styles')
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const tbody = document.getElementById('skillsTableBody');
+        const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        const addCategorySelect = document.getElementById('addCategorySelect');
+        const addSkillForm = document.querySelector('.add-skill-form');
+        const searchInput = document.getElementById('skillSearch');
+        const categorySelect = document.getElementById('categoryFilter');
+        const skillIdInput = document.getElementById('skillIdHidden');
+        const suggestions = document.getElementById('skillSuggestions');
+        const sortSelect = document.getElementById('sortSelect');
+        let currentSkills = [];
+        let isEditing = false; // Track if we're currently editing
+
+        function buildQuery() {
+            const params = new URLSearchParams();
+            if (searchInput && searchInput.value.trim() !== '') params.set('q', searchInput.value.trim());
+            if (categorySelect && categorySelect.value !== '') params.set('category', categorySelect.value);
+            if (sortSelect && sortSelect.value !== '') params.set('sort', sortSelect.value);
+            if (skillIdInput && skillIdInput.value !== '') params.set('skill_id', skillIdInput.value);
+            const qs = params.toString();
+            return qs ? ('?' + qs) : '';
+        }
+
+        async function refreshSkills() {
+            // Don't refresh if currently editing
+            if (isEditing) {
+                return;
+            }
+            try {
+                const res = await fetch('{{ route('admin.api.skills') }}' + buildQuery(), { headers: { 'Accept': 'application/json' } });
+                const data = await res.json();
+                if (!data.success) return;
+                tbody.innerHTML = '';
+                if (data.count === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="no-data">There are no matching records for your search</td></tr>';
+                    // Update stats to zero state for current filter
+                    const t = document.getElementById('skillsTotalCount');
+                    const c = document.getElementById('skillsCategoryCount');
+                    const u = document.getElementById('skillsUsersTotal');
+                    if (t) t.textContent = '0';
+                    if (c) c.textContent = '0';
+                    if (u) u.textContent = '0';
+                    return;
+                }
+                // Populate datalist suggestions with skill names
+                if (suggestions) {
+                    currentSkills = data.skills;
+                    let html = '';
+                    currentSkills.forEach(function(s) {
+                        // datalist cannot carry IDs; we'll map on selection
+                        html += `<option value="${s.name}"></option>`;
+                    });
+                    suggestions.innerHTML = html;
+                }
+                data.skills.forEach(function(s) {
+                    const tr = document.createElement('tr');
+                    tr.setAttribute('data-id', s.skill_id);
+                    tr.innerHTML = `
+                        <td>${s.name}</td>
+                        <td><span class="category-badge">${s.category ?? ''}</span></td>
+                        <td>${s.users_count ?? 0} users</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button type="button" class="btn-edit" data-action="edit" data-id="${s.skill_id}">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
+                                </button>
+                                <button type="button" class="btn-delete" onclick="deleteSkill(${s.skill_id}, '${s.name.replace(/'/g, "\\'")}')">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3,6 5,6 21,6"/>
+                                        <path d="M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                // Update stats from response
+                (function(){
+                    try {
+                        const total = data.skills.length;
+                        const categories = new Set();
+                        let users = 0;
+                        data.skills.forEach(function(s){
+                            if (s.category) categories.add(s.category);
+                            users += (s.users_count || 0);
+                        });
+                        const t = document.getElementById('skillsTotalCount');
+                        const c = document.getElementById('skillsCategoryCount');
+                        const u = document.getElementById('skillsUsersTotal');
+                        if (t) t.textContent = String(total);
+                        if (c) c.textContent = String(categories.size);
+                        if (u) u.textContent = String(users);
+                    } catch (_) {}
+                })();
+            } catch (e) {
+                // silent
+            }
+        }
+
+        // Expose for header Apply button
+        window.refreshSkills = refreshSkills;
+
+        // Wire up filter listeners with debounce for search
+        let searchDebounce;
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchDebounce);
+                searchDebounce = setTimeout(refreshSkills, 300);
+            });
+            // Trigger on Enter
+            searchInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    refreshSkills();
+                }
+            });
+        }
+        if (categorySelect) {
+            categorySelect.addEventListener('change', function() {
+                // Reset selected skill when category changes
+                if (skillIdInput) skillIdInput.value = '';
+                refreshSkills();
+            });
+        }
+
+        // When a suggestion is chosen or input matches a skill exactly, set hidden skill id
+        function updateSkillIdFromInput() {
+            const val = (searchInput?.value || '').trim().toLowerCase();
+            if (!val) {
+                if (skillIdInput) skillIdInput.value = '';
+                return;
+            }
+            const match = currentSkills.find(s => (s.name || '').toLowerCase() === val);
+            if (skillIdInput) skillIdInput.value = match ? String(match.skill_id) : '';
+        }
+
+        if (searchInput) {
+            searchInput.addEventListener('change', function(){ updateSkillIdFromInput(); refreshSkills(); });
+            searchInput.addEventListener('blur', function(){ updateSkillIdFromInput(); });
+        }
+
+        // Same dropdown acts as input via inline editor overlay
+        if (addCategorySelect) {
+            addCategorySelect.addEventListener('change', function() {
+                if (addCategorySelect.value !== '__new__') return;
+                const wrapper = addCategorySelect.closest('.combo-select') || addCategorySelect.parentElement;
+                if (!wrapper) return;
+                // Create inline input overlayed on top of the select
+                const inline = document.createElement('input');
+                inline.type = 'text';
+                inline.className = 'form-input inline-combo-input';
+                inline.placeholder = 'e.g., Technology';
+                inline.setAttribute('aria-label', 'New Category');
+                // Position absolutely over the select
+                inline.style.position = 'absolute';
+                inline.style.inset = 'auto 0 0 0';
+                inline.style.height = addCategorySelect.offsetHeight + 'px';
+                inline.style.zIndex = '3';
+                wrapper.style.position = 'relative';
+                wrapper.appendChild(inline);
+                inline.focus();
+
+                const finalize = (commit) => {
+                    const value = (inline.value || '').trim();
+                    inline.remove();
+                    if (commit && value) {
+                        // Insert new option before the "add new" option
+                        const opt = document.createElement('option');
+                        opt.value = value;
+                        opt.textContent = value;
+                        const addNewIndex = Array.from(addCategorySelect.options).findIndex(o => o.value === '__new__');
+                        const insertBefore = addNewIndex >= 0 ? addCategorySelect.options[addNewIndex] : null;
+                        addCategorySelect.add(opt, insertBefore);
+                        addCategorySelect.value = value;
+                    } else {
+                        addCategorySelect.value = '';
+                    }
+                };
+
+                inline.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        finalize(true);
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        finalize(false);
+                    }
+                });
+                inline.addEventListener('blur', function() { finalize(inline.value.trim() !== ''); });
+            });
+        }
+
+        // Block submit if category not selected or "add new" not completed
+        if (addSkillForm && addCategorySelect) {
+            addSkillForm.addEventListener('submit', function(e) {
+                const val = addCategorySelect.value;
+                if (!val || val === '__new__') {
+                    e.preventDefault();
+                    if (typeof showSkillToast === 'function') {
+                        showSkillToast('Please select a category (or add a new one).', 'error');
+                    }
+                    addCategorySelect.focus();
+                    return false;
+                }
+            });
+        }
+        if (sortSelect) {
+            sortSelect.addEventListener('change', refreshSkills);
+        }
+
+        // Inline edit handler - check for edit button specifically
+        tbody.addEventListener('click', function(e) {
+            // Only handle if clicking the edit button or its SVG
+            const btn = e.target.closest('button[data-action="edit"]');
+            if (!btn) return;
+
+            // Prevent any other handlers
+            e.stopPropagation();
+
+            const id = btn.getAttribute('data-id');
+            const row = btn.closest('tr');
+            const nameCell = row.children[0];
+            const categoryCell = row.children[1];
+
+            // Check if already in edit mode
+            if (nameCell.querySelector('input')) {
+                return; // Already editing, don't trigger again
+            }
+
+            // Set editing flag to prevent auto-refresh
+            isEditing = true;
+
+            const currentName = nameCell.textContent.trim();
+            const currentCategory = categoryCell.querySelector('.category-badge') ? categoryCell.querySelector('.category-badge').textContent.trim() : categoryCell.textContent.trim();
+
+            nameCell.innerHTML = `<input class="form-input" value="${currentName}">`;
+            categoryCell.innerHTML = `<input class="form-input" value="${currentCategory}">`;
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"></polyline></svg>';
+            btn.dataset.action = 'save';
+            btn.title = 'Save';
+        });
+
+        // Save handler - check for save button specifically
+        tbody.addEventListener('click', async function(e) {
+            // Only handle if clicking the save button or its SVG
+            const btn = e.target.closest('button[data-action="save"]');
+            if (!btn) return;
+
+            // Prevent any other handlers
+            e.stopPropagation();
+            e.preventDefault();
+
+            const row = btn.closest('tr');
+            const id = row.getAttribute('data-id');
+
+            // Get input values
+            const nameInput = row.children[0].querySelector('input');
+            const categoryInput = row.children[1].querySelector('input');
+
+            if (!nameInput || !categoryInput) {
+                return; // Inputs not found, something went wrong
+            }
+
+            const name = nameInput.value.trim();
+            const category = categoryInput.value.trim();
+
+            if (!name || !category) {
+                alert('Name and category are required.');
+                return;
+            }
+
+            try {
+                // Disable button during save
+                btn.disabled = true;
+
+                const res = await fetch(`/admin/skills/${id}`, {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body: new URLSearchParams({ _method: 'PUT', name, category })
+                });
+
+                // Reset editing flag before refresh
+                isEditing = false;
+
+                if (res.ok) {
+                    const result = await res.json();
+                    await refreshSkills();
+                    if (typeof showSkillToast === 'function') {
+                        showSkillToast('Skill updated successfully.', 'success');
+                    }
+                } else {
+                    alert('Failed to update skill. Please try again.');
+                    btn.disabled = false;
+                    isEditing = true; // Keep editing mode on error
+                }
+            } catch (err) {
+                console.error('Save error:', err);
+                alert('An error occurred while saving. Please try again.');
+                btn.disabled = false;
+                isEditing = true; // Keep editing mode on error
+            }
+        });
+    });
+
+    // Toast helper (global)
+    function showSkillToast(message, type = 'success') {
+        const toast = document.getElementById('skill-toast');
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.remove('hidden', 'toast-success', 'toast-error');
+        toast.classList.add(type === 'success' ? 'toast-success' : 'toast-error', 'show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+            // Delay adding hidden to allow transition out
+            setTimeout(() => toast.classList.add('hidden'), 300);
+        }, 2500);
+    }
+
+    // Delete Skill Function
+    function deleteSkill(id, name) {
+        if (confirm('Are you sure you want to delete the skill "' + name + '"? This action cannot be undone.')) {
+            const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            fetch('/admin/skills/' + id, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    if (typeof showSkillToast === 'function') {
+                        showSkillToast(result.message || 'Skill deleted successfully.', 'success');
+                    }
+                    // Refresh table after delete
+                    if (typeof refreshSkills === 'function') {
+                        refreshSkills();
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    if (typeof showSkillToast === 'function') {
+                        showSkillToast(result.message || 'Failed to delete skill', 'error');
+                    } else {
+                        alert('Error: ' + (result.message || 'Failed to delete skill'));
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (typeof showSkillToast === 'function') {
+                    showSkillToast('An error occurred while deleting the skill.', 'error');
+                } else {
+                    alert('An error occurred while deleting the skill.');
+                }
+                // Attempt to sync state
+                if (typeof refreshSkills === 'function') {
+                    refreshSkills();
+                } else {
+                    location.reload();
+                }
+            });
+        }
+    }
+    </script>
     <style>
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: 88px; /* below admin header */
+            right: 24px;
+            background: #10b981; /* success default */
+            color: white;
+            padding: 10px 14px;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-6px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            font-size: 14px;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast.hidden { display: none; }
+        .toast-success { background: #10b981; }
+        .toast-error { background: #ef4444; }
+
+        /* Combo select overlay input */
+        .combo-select { position: relative; }
+        .inline-combo-input {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+
+        /* Stats Cards */
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid #eef2f7;
+        }
+        .stat-label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+        .stat-value { font-size: 22px; font-weight: 700; color: #111827; margin-top: 6px; }
+        @media (max-width: 768px) {
+            .stats-cards { grid-template-columns: 1fr; }
+        }
         /* Success and Error Messages */
         .success-message {
             background: #d1fae5;
@@ -404,15 +897,63 @@
             background: #2563eb;
         }
 
+        /* Small button utility */
+        .btn-sm {
+            padding: 6px 10px;
+            font-size: 12px;
+            border-radius: 6px;
+        }
+
+        .btn-sm .btn-icon {
+            width: 14px;
+            height: 14px;
+            margin-right: 6px;
+        }
+
+        /* Action Buttons - Matching Token Management Style */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-edit {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .btn-edit:hover {
+            background: #d97706;
+        }
+
         .btn-delete {
             background: #ef4444;
             color: white;
-            padding: 6px 12px;
-            font-size: 12px;
+            border: none;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
         }
 
         .btn-delete:hover {
             background: #dc2626;
+        }
+
+        .btn-edit svg,
+        .btn-delete svg {
+            width: 16px;
+            height: 16px;
         }
 
         /* Skills Table Card */
@@ -428,6 +969,43 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 24px;
+        }
+
+        .table-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .table-actions .filters {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .table-actions .filters .form-input {
+            height: 36px;
+            padding: 6px 10px;
+            min-width: 160px;
+            line-height: 22px;
+            box-sizing: border-box;
+        }
+
+        /* Normalize native select/input heights in header filters */
+        .table-actions .filters select.form-input,
+        .table-actions .filters input.form-input {
+            height: 36px;
+            line-height: 22px;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+
+        #skillSearch.form-input,
+        #categoryFilter.form-input,
+        #sortSelect.form-input {
+            min-width: 220px;
+            height: 36px; /* ensure same height as dropdowns */
         }
 
         .table-title-section {
@@ -495,8 +1073,47 @@
                 align-items: flex-start;
             }
 
+            .table-actions {
+                width: 100%;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .table-actions .filters {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+
+            .table-actions .filters .form-input {
+                flex: 1 1 180px;
+            }
+
             .table-container {
                 overflow-x: auto;
+            }
+
+            .btn-edit,
+            .btn-delete {
+                padding: 6px;
+            }
+
+            .btn-edit svg,
+            .btn-delete svg {
+                width: 14px;
+                height: 14px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .btn-edit,
+            .btn-delete {
+                padding: 5px;
+            }
+
+            .btn-edit svg,
+            .btn-delete svg {
+                width: 12px;
+                height: 12px;
             }
         }
     </style>

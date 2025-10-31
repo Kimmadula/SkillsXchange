@@ -833,10 +833,107 @@ class AdminController extends Controller
         return $name;
     }
 
-    public function deleteSkill(Skill $skill)
+    public function deleteSkill(Request $request, Skill $skill)
     {
-        $skill->delete();
-        return back()->with('success', 'Skill deleted.');
+        try {
+            $skillName = $skill->name;
+            $skill->delete();
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Skill '{$skillName}' deleted successfully."
+                ]);
+            }
+
+            return back()->with('success', 'Skill deleted.');
+        } catch (\Exception $e) {
+            Log::error('Error deleting skill', [
+                'error' => $e->getMessage(),
+                'skill_id' => $skill->skill_id,
+                'admin_user' => auth()->user()->email
+            ]);
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An error occurred while deleting the skill.'
+                ], 500);
+            }
+
+            return back()->with('error', 'Failed to delete skill.');
+        }
+    }
+
+    /**
+     * Update an existing skill
+     */
+    public function updateSkill(Request $request, Skill $skill)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:skills,name,' . $skill->skill_id . ',skill_id',
+            'category' => 'required|string|max:255',
+        ]);
+
+        // Normalize name similar to creation flow
+        $validated['name'] = $this->normalizeSkillName($validated['name']);
+
+        $skill->update($validated);
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'skill' => $skill->fresh()]);
+        }
+
+        return redirect()->route('admin.skills.index')->with('success', 'Skill updated successfully.');
+    }
+
+    /**
+     * Real-time skills JSON for admin page
+     */
+    public function apiSkills(Request $request)
+    {
+        $search = trim((string) $request->query('q', ''));
+        $category = trim((string) $request->query('category', ''));
+        $sort = (string) $request->query('sort', 'category_name'); // category_name | users_desc | users_asc | name
+        $skillId = (string) $request->query('skill_id', '');
+
+        $query = Skill::withCount('users');
+
+        if ($search !== '') {
+            $query->where('name', 'like', "%{$search}%");
+        }
+
+        if ($category !== '') {
+            $query->where('category', $category);
+        }
+
+        if ($skillId !== '') {
+            $query->where('skill_id', $skillId);
+        }
+
+        switch ($sort) {
+            case 'users_desc':
+                $query->orderBy('users_count', 'desc')->orderBy('name');
+                break;
+            case 'users_asc':
+                $query->orderBy('users_count', 'asc')->orderBy('name');
+                break;
+            case 'name':
+                $query->orderBy('name');
+                break;
+            case 'category_name':
+            default:
+                $query->orderBy('category')->orderBy('name');
+                break;
+        }
+
+        $skills = $query->get(['skill_id', 'name', 'category']);
+
+        return response()->json([
+            'success' => true,
+            'count' => $skills->count(),
+            'skills' => $skills,
+        ]);
     }
 
     /**

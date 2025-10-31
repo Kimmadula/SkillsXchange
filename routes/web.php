@@ -865,10 +865,13 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         Route::get('/admin/messages', [AdminController::class, 'messagesIndex'])->name('admin.messages.index');
         Route::get('/admin/settings', [AdminController::class, 'settingsIndex'])->name('admin.settings.index');
 
-        // Skills management - DISABLED (skills are now static)
-        // Route::get('/admin/skills/create', [AdminController::class, 'createSkill'])->name('admin.skill.create');
-        // Route::post('/admin/skills', [AdminController::class, 'storeSkill'])->name('admin.skill.store');
-        // Route::delete('/admin/skills/{skill}', [AdminController::class, 'deleteSkill'])->name('admin.skill.delete');
+        // Skills management
+        Route::get('/admin/skills/create', [AdminController::class, 'createSkill'])->name('admin.skill.create');
+        Route::post('/admin/skills', [AdminController::class, 'storeSkill'])->name('admin.skill.store');
+        Route::put('/admin/skills/{skill}', [AdminController::class, 'updateSkill'])->name('admin.skill.update');
+        Route::delete('/admin/skills/{skill}', [AdminController::class, 'deleteSkill'])->name('admin.skill.delete');
+        // Real-time skills data (JSON)
+        Route::get('/admin/api/skills', [AdminController::class, 'apiSkills'])->name('admin.api.skills');
 
         // User management
         Route::patch('/admin/approve/{user}', [AdminController::class, 'approve'])->name('admin.approve');
