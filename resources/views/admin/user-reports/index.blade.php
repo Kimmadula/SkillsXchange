@@ -102,37 +102,37 @@
         </div>
 
         <!-- Content -->
-        <div class="dashboard-content">
+<div class="dashboard-content">
     <!-- User Reports Header -->
     <div class="metric-card">
         <!-- Search and Filters -->
-<div style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
-    <div style="flex: 1; min-width: 300px;">
-        <input type="text" id="reportSearch" placeholder="Search reports by reporter, reported user, or reason..."
-               style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
-               onkeyup="filterReports()">
-    </div>
-    <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-        <select id="statusFilter" onchange="filterReports()"
-                style="padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
-            <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="under_review">Under Review</option>
-            <option value="resolved">Resolved</option>
-            <option value="dismissed">Dismissed</option>
-        </select>
-        <select id="reasonFilter" onchange="filterReports()"
-                style="padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
-            <option value="">All Reasons</option>
-            <option value="harassment">Harassment</option>
-            <option value="spam">Spam</option>
-            <option value="inappropriate">Inappropriate</option>
-            <option value="fraud">Fraud</option>
-            <option value="safety">Safety</option>
-            <option value="other">Other</option>
-        </select>
-    </div>
-</div>
+        <div class="flex flex-col gap-4 mb-6 bg-white p-5 rounded-lg border border-slate-200 relative z-10">
+        <div style="flex: 1; min-width: 300px;">
+                <input type="text" id="reportSearch" placeholder="Search reports by reporter, reported user, or reason..."
+                       style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
+                       onkeyup="filterReports()">
+            </div>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                <select id="statusFilter" onchange="filterReports()"
+                        style="padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
+                    <option value="">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="resolved">Resolved</option>
+                    <option value="dismissed">Dismissed</option>
+                </select>
+                <select id="reasonFilter" onchange="filterReports()"
+                        style="padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
+                    <option value="">All Reasons</option>
+                    <option value="harassment">Harassment</option>
+                    <option value="spam">Spam</option>
+                    <option value="inappropriate">Inappropriate</option>
+                    <option value="fraud">Fraud</option>
+                    <option value="safety">Safety</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+        </div>
 
         <!-- Reports Table -->
         <div style="overflow-x: auto; background: white; border: 1px solid #e2e8f0; border-radius: 8px;">

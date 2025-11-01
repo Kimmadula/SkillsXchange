@@ -1,3 +1,15 @@
+/**
+ * app.js
+ * Main entry point for the chat session application
+ * 
+ * TODO: Extract and implement:
+ * - Initialize all managers and renderers
+ * - Set up global event handlers
+ * - Initialize Laravel Echo and Firebase
+ * - Handle session lifecycle events
+ * - Application state management
+ */
+
 import './bootstrap';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 

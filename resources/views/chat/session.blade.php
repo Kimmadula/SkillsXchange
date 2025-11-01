@@ -1625,7 +1625,6 @@
             </div>
         </div>
     </div>
-
     <!-- Main Content -->
     <div style="flex: 1; display: flex; overflow: hidden;" class="main-content-container">
         <!-- Session Chat (Left Panel) -->
