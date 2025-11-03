@@ -658,14 +658,17 @@ use Illuminate\Support\Facades\Storage;
         }
 
         .btn {
-            padding: 6px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 500;
-            text-decoration: none;
+            padding: 12px 24px;  /* CHANGED: More padding */
             border: none;
+            border-radius: 8px;  /* CHANGED: Larger radius */
             cursor: pointer;
-            transition: all 0.2s;
+            font-size: 14px;
+            font-weight: 600;  /* CHANGED: Bolder */
+            transition: all 0.2s ease;  /* NEW: Transitions */
+            display: inline-flex;  /* NEW: Flex for icons */
+            align-items: center;
+            gap: 8px;  /* NEW: Gap for icons */
+            text-decoration: none;
         }
 
         .btn-view {
@@ -689,9 +692,9 @@ use Illuminate\Support\Facades\Storage;
         .btn-deny {
             background: #ef4444;
             color: white;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 8px;
         }
 
         .btn-deny:hover {
@@ -701,9 +704,9 @@ use Illuminate\Support\Facades\Storage;
         .btn-revoke {
             background: #f59e0b;
             color: white;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 8px;
         }
 
         .btn-revoke:hover {
@@ -1027,11 +1030,14 @@ use Illuminate\Support\Facades\Storage;
         function openSuspendModal(userId, userName) {
             document.getElementById('suspendUserId').value = userId;
             document.getElementById('suspendUserName').textContent = userName;
-            document.getElementById('suspendModal').style.display = 'block';
+            const modal = document.getElementById('suspendModal');
+            modal.style.display = 'flex'; // use flex to center
+            document.body.style.overflow = 'hidden'; // prevent background scroll
         }
 
         function closeSuspendModal() {
             document.getElementById('suspendModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
             document.getElementById('suspendForm').reset();
         }
 
@@ -1130,11 +1136,37 @@ use Illuminate\Support\Facades\Storage;
     <!-- Suspension Modal -->
     <div id="suspendModal" class="modal" style="display: none;">
         <div class="modal-content">
-            <div class="modal-header">
+            <div class="modal-header-content">
+            <div class="modal-icon">
+                <svg>...</svg> <!-- Replace with actual SVG icon -->
+            </div>
+            <div class="modal-title-wrapper">
                 <h3>Suspend User</h3>
+                <p>Take action against user violations</p>
+            </div>
                 <span class="close" onclick="closeSuspendModal()">&times;</span>
             </div>
             <div class="modal-body">
+                <div class="user-info-card">
+                    <div class="user-avatar-large">JD</div>
+                    <div class="user-info-text">
+                        <strong id="suspendUserName">John Doe</strong>
+                        <span>@johndoe • Member since Jan 2024</span>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    <svg>...</svg>
+                    <div class="warning-box-content">
+                        <strong>Important Notice</strong>
+                        <p>This action will restrict the user's access...</p>
+                    </div>
+                </div>
+
+                <div class="form-help-text">
+                    <svg>...</svg>
+                    Select the appropriate action based on violation severity
+                </div>
                 <form id="suspendForm">
                     <input type="hidden" id="suspendUserId" name="user_id">
 
@@ -1204,31 +1236,45 @@ use Illuminate\Support\Facades\Storage;
     <style>
         .modal {
             position: fixed;
-            z-index: 1000;
+            z-index: 20000; /* Raised above sidebar/header */
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
             background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);  /* NEW: Blur effect */
+            display: none;
+            align-items: center;  /* NEW: Center alignment */
+            justify-content: center;  /* NEW: Center alignment */
+            animation: fadeIn 0.3s ease;  /* NEW: Fade animation */
         }
 
         .modal-content {
-            background-color: #fefefe;
-            margin: 5% auto;
-            padding: 0;
-            border: none;
+            background: white;
             width: 90%;
-            max-width: 500px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 520px;
+            max-height: 90vh; /* ensure fits viewport */
+            border-radius: 16px;  /* CHANGED: Larger radius */
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);  /* CHANGED: Deeper shadow */
+            animation: slideUp 0.3s ease;  /* NEW: Slide animation */
+            display: flex;              /* NEW: layout for header/body/footer */
+            flex-direction: column;     /* NEW */
         }
 
-        .modal-header {
-            padding: 20px;
-            border-bottom: 1px solid #dee2e6;
+        .modal-header, .modal-header-content {
+            padding: 28px 32px;  /* CHANGED: More padding */
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);  /* NEW: Gradient */
+            color: white;  /* NEW: White text */
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-bottom: none;  /* REMOVED: Border */
+        }
+
+        /* Ensure body scrolls while header/footer stay visible */
+        .modal-body {
+            overflow: auto;
+            max-height: calc(90vh - 160px); /* approximate header+footer height */
         }
 
         .modal-header h3 {
@@ -1251,12 +1297,71 @@ use Illuminate\Support\Facades\Storage;
             padding: 20px;
         }
 
+        /* NEW: User Info Card */
+        .user-info-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar-large {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1e40af;
+            color: white;
+            font-weight: 700;
+        }
+
+        .user-info-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            color: #334155;
+        }
+
+        /* NEW: Warning Box */
+        .warning-box {
+            background: #fef3c7;
+            border: 1px solid #fbbf24;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .warning-box-content strong {
+            display: block;
+            color: #92400e;
+            margin-bottom: 4px;
+        }
+
+        /* NEW: Form Help Text */
+        .form-help-text {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #475569;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
         .modal-footer {
-            padding: 20px;
-            border-top: 1px solid #dee2e6;
+            padding: 24px 32px;  /* CHANGED: More padding */
+            background: #f8fafc;  /* NEW: Background color */
+            border-top: 1px solid #e2e8f0;  /* CHANGED: Lighter border */
             display: flex;
             justify-content: flex-end;
-            gap: 10px;
+            gap: 12px;  /* CHANGED: More gap */
         }
 
         .form-group {
@@ -1270,37 +1375,61 @@ use Illuminate\Support\Facades\Storage;
             color: #495057;
         }
 
-        .form-group select,
-        .form-group textarea {
+        .form-control {
             width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ced4da;
-            border-radius: 4px;
+            padding: 12px 16px;  /* CHANGED: More padding */
+            border: 2px solid #e2e8f0;  /* CHANGED: Thicker border */
+            border-radius: 8px;  /* CHANGED: Larger radius */
             font-size: 14px;
+            color: #1e293b;
+            transition: all 0.2s ease;  /* NEW: Transitions */
+            background: #f8fafc;  /* NEW: Light background */
         }
 
-        .form-group textarea {
-            resize: vertical;
-            min-height: 80px;
+        .form-control:focus {
+            outline: none;
+            border-color: #f59e0b;  /* NEW: Orange focus */
+            background: white;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);  /* NEW: Focus ring */
+        }
+
+/* NEW: Custom dropdown arrow */
+        select.form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml,...");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            padding-right: 40px;
         }
 
         .btn {
-            padding: 8px 16px;
+            padding: 12px 24px;  /* CHANGED: More padding */
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;  /* CHANGED: Larger radius */
             cursor: pointer;
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 600;  /* CHANGED: Bolder */
+            transition: all 0.2s ease;  /* NEW: Transitions */
+            display: inline-flex;  /* NEW: Flex for icons */
+            align-items: center;
+            gap: 8px;  /* NEW: Gap for icons */
         }
 
         .btn-secondary {
-            background-color: #6c757d;
-            color: white;
+            background-color: white;  /* CHANGED: White background */
+            color: #64748b;
+            border: 2px solid #e2e8f0;  /* NEW: Border */
         }
 
         .btn-warning {
-            background-color: #ffc107;
-            color: #212529;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);  /* NEW: Gradient */
+            color: white;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);  /* NEW: Shadow */
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);  /* NEW: Lift effect */
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
         }
 
         .btn:hover {

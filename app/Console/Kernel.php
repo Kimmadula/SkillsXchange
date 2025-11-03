@@ -17,6 +17,12 @@ class Kernel extends ConsoleKernel
     {
         // Run session expiration every hour
         $schedule->command('sessions:expire')->hourly();
+
+        // Pre-session reminders (run every 15 minutes)
+        $schedule->command('notifications:send-pre-session-reminders')->everyFifteenMinutes();
+
+        // Expiration warnings (run hourly)
+        $schedule->command('notifications:send-expiration-warnings')->hourly();
     }
 
     /**
