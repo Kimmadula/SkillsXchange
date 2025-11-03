@@ -67,6 +67,12 @@
             overflow-y: auto;
         }
 
+        /* Compact auth card for simple forms */
+        .auth-card.compact {
+            max-width: 420px;
+            padding: 2rem;
+        }
+
         /* Login form specific styles */
         .auth-card.login-form {
             max-width: 400px;
@@ -327,14 +333,14 @@
        <script src="{{ asset('firebase-config.js') }}"></script>
 </head>
 
-<body class="font-sans text-gray-900 antialiased">
+<body class="font-sans text-gray-900 antialia    sed">
     <div class="auth-container">
         <div class="auth-logo">
             <img src="{{ asset('logo.png') }}" alt="SkillsXchange Logo" class="logo-medium"
                 style="width: 100%; height: 100%; object-fit: contain;">
         </div>
 
-        <div class="auth-card {{ request()->routeIs('login') ? 'login-form' : '' }}">
+        <div class="auth-card {{ request()->routeIs('login') ? 'login-form' : '' }} {{ request()->routeIs('password.request') || request()->routeIs('password.reset') || request()->routeIs('verification.notice') ? 'compact' : '' }}">
             {{ $slot }}
         </div>
     </div>
