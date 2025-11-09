@@ -385,6 +385,10 @@
                             $clickUrl = isset($n->data['status']) && $n->data['status'] === 'accepted' ? route('trades.ongoing') : route('trades.matches');
                         } elseif($n->type === 'match_found') {
                             $clickUrl = route('trades.matches');
+                        } elseif($n->type === 'pre_session_reminder' || $n->type === 'session_expiration_warning') {
+                            // Link to ongoing trades or specific trade chat if trade_id exists
+                            $tradeId = $n->data['trade_id'] ?? null;
+                            $clickUrl = $tradeId ? route('chat.show', $tradeId) : route('trades.ongoing');
                         } else {
                             $clickUrl = route('trades.notifications');
                         }
@@ -427,6 +431,28 @@
                                     @else
                                     A compatible trade with <strong>{{ $partner }}</strong>
                                     @endif
+                                </div>
+                                @elseif($n->type === 'pre_session_reminder')
+                                <div class="fw-semibold text-dark">⏰ Session Starting Soon</div>
+                                <div class="text-muted small">
+                                    @php
+                                    $minutes = $n->data['minutes_before'] ?? 0;
+                                    $offering = $n->data['offering_skill'] ?? 'Unknown';
+                                    $looking = $n->data['looking_skill'] ?? 'Unknown';
+                                    @endphp
+                                    Your session starts in <strong>{{ $minutes }} minutes</strong><br>
+                                    <small>{{ $offering }} ↔ {{ $looking }}</small>
+                                </div>
+                                @elseif($n->type === 'session_expiration_warning')
+                                <div class="fw-semibold text-dark">⚠️ Session Expiring Soon</div>
+                                <div class="text-muted small">
+                                    @php
+                                    $hours = $n->data['hours_before'] ?? 0;
+                                    $offering = $n->data['offering_skill'] ?? 'Unknown';
+                                    $looking = $n->data['looking_skill'] ?? 'Unknown';
+                                    @endphp
+                                    Your session will expire in <strong>{{ $hours }} {{ $hours == 1 ? 'hour' : 'hours' }}</strong><br>
+                                    <small>{{ $offering }} ↔ {{ $looking }}</small>
                                 </div>
                                 @else
                                 <div class="fw-semibold text-dark">🔔 Notification</div>

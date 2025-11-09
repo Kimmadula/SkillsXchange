@@ -3,10 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Models\Trade;
-use App\Notifications\PreSessionReminder;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class SendPreSessionReminders extends Command
@@ -49,8 +49,32 @@ class SendPreSessionReminders extends Command
                     $cacheKey = "reminder:pre_session:trade:{$trade->id}:user:{$user->id}:min:{$minutesBefore}";
                     if (Cache::add($cacheKey, true, now()->addHours(6))) { // prevent duplicates for 6h
                         try {
-                            // Prefer database notifications; guard in try/catch
-                            $user->notify(new PreSessionReminder($trade, $minutesBefore));
+                            // Check if notification already exists
+                            $exists = DB::table('user_notifications')
+                                ->where('user_id', $user->id)
+                                ->where('type', 'pre_session_reminder')
+                                ->where('data', 'like', '%"trade_id":' . $trade->id . '%')
+                                ->where('data', 'like', '%"minutes_before":' . $minutesBefore . '%')
+                                ->exists();
+
+                            if (!$exists) {
+                                DB::table('user_notifications')->insert([
+                                    'user_id' => $user->id,
+                                    'type' => 'pre_session_reminder',
+                                    'data' => json_encode([
+                                        'trade_id' => $trade->id,
+                                        'minutes_before' => $minutesBefore,
+                                        'message' => "Your session starts in {$minutesBefore} minutes.",
+                                        'start_date' => $trade->start_date,
+                                        'available_from' => $trade->available_from,
+                                        'offering_skill' => optional($trade->offeringSkill)->name,
+                                        'looking_skill' => optional($trade->lookingSkill)->name,
+                                    ]),
+                                    'read' => false,
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ]);
+                            }
                         } catch (\Throwable $e) {
                             Log::warning('Pre-session reminder notify failed', [
                                 'trade_id' => $trade->id,

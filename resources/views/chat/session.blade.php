@@ -1,6 +1,8 @@
 @extends('layouts.chat')
 
 @section('content')
+{{-- New modern design CSS --}}
+<link rel="stylesheet" href="{{ asset('css/session.css') }}">
 <script>
     // Initialize global variables for the chat session
     window.currentUserId = parseInt('{{ auth()->id() }}');
