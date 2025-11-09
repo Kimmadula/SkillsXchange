@@ -4,6 +4,7 @@
             <div class="status-dot"></div>
             <span>Partner is online</span>
         </div>
+        <span id="new-message-indicator" style="display: none; background: #ef4444; color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; animation: pulse 2s infinite;">NEW</span>
         <div class="chat-actions">
             <button class="action-btn" id="attach-file-btn" title="Attach file">📎</button>
             <button class="action-btn" id="send-image-btn" title="Send image">📷</button>

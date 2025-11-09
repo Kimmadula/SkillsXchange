@@ -1,12 +1,492 @@
-/**
- * ChatManager.js
- * 
- * TODO: Extract and implement chat management functionality:
- * - Laravel Echo connection initialization
- * - Message sending and receiving
- * - Real-time message listeners
- * - Typing indicators
- * - Connection status management
- * - Message queue handling
- */
+export class ChatManager {
+    constructor(tradeId, userId, echo, partnerName) {
+        this.tradeId = tradeId;
+        this.userId = userId;
+        this.echo = echo;
+        this.partnerName = partnerName;
+        this.messagesContainer = document.getElementById('messages');
+        this.messageForm = document.getElementById('message-form');
+        this.messageInput = document.getElementById('message-input');
+        this.sendButton = document.getElementById('send-button');
+        this.presenceStatus = document.getElementById('presence-status');
+        
+        // State management
+        this.isSending = false;
+        this.lastMessageCount = 0;
+        this.messagePollingInterval = null;
+        this.pollingFrequency = 10000; // 10 seconds
+        this.lastActivity = Date.now();
+        this.consecutiveEmptyPolls = 0;
+        
+        // CSRF token
+        this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                        document.querySelector('[name="csrf-token"]')?.content;
+    }
 
+    initialize() {
+        this.setupEventListeners();
+        this.setupEchoListeners();
+        this.setupPollingFallback();
+        this.scrollToBottom();
+    }
+
+    setupEventListeners() {
+        // Handle form submission
+        this.messageForm?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.sendMessage();
+        });
+
+        // Handle Enter key (send), Shift+Enter (new line)
+        this.messageInput?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                this.sendMessage();
+            }
+        });
+
+        // Track user activity for polling optimization
+        ['click', 'keypress', 'mousemove', 'scroll'].forEach(event => {
+            document.addEventListener(event, () => {
+                this.lastActivity = Date.now();
+                
+                // If user becomes active and polling is slow, speed it up
+                if (this.pollingFrequency > 8000) {
+                    this.pollingFrequency = 8000;
+                    this.startSmartMessagePolling();
+                }
+            }, { passive: true });
+        });
+    }
+
+    setupEchoListeners() {
+        if (!this.echo) {
+            console.warn('Laravel Echo not available, using polling fallback');
+            this.startSmartMessagePolling();
+            return;
+        }
+
+        // Connection status listeners
+        if (this.echo.connector?.pusher?.connection) {
+            this.echo.connector.pusher.connection.bind('connected', () => {
+                this.updateConnectionStatus('connected');
+            });
+
+            this.echo.connector.pusher.connection.bind('disconnected', () => {
+                this.updateConnectionStatus('disconnected');
+            });
+
+            this.echo.connector.pusher.connection.bind('error', () => {
+                this.updateConnectionStatus('error');
+            });
+
+            this.echo.connector.pusher.connection.bind('connecting', () => {
+                this.updateConnectionStatus('connecting');
+            });
+        }
+
+        // Listen for new messages
+        this.echo.channel(`trade-${this.tradeId}`)
+            .listen('new-message', (data) => {
+                console.log('Received new message event:', data);
+                
+                // Only add if it's not from the current user (to avoid duplicates)
+                if (data.message.sender_id !== this.userId) {
+                    this.addMessage(data.message, data.sender_name, data.timestamp, false);
+                } else {
+                    // For our own messages, just update the timestamp if needed
+                    const existingMessage = document.querySelector('[data-confirmed="true"]');
+                    if (existingMessage) {
+                        const timestampElement = existingMessage.querySelector('.message-time');
+                        if (timestampElement && data.timestamp) {
+                            timestampElement.textContent = data.timestamp;
+                        }
+                    }
+                }
+            });
+    }
+
+    setupPollingFallback() {
+        // Only start polling if Echo is not available
+        if (!this.echo) {
+            console.log('🔄 Laravel Echo not available, starting smart message polling...');
+            this.startSmartMessagePolling();
+        }
+    }
+
+    async sendMessage() {
+        const message = this.messageInput?.value.trim();
+        
+        if (!message || this.isSending) {
+            return;
+        }
+
+        this.isSending = true;
+        
+        // Show loading state
+        const originalText = this.sendButton?.textContent;
+        if (this.sendButton) {
+            this.sendButton.textContent = 'Sending...';
+            this.sendButton.disabled = true;
+        }
+
+        // Add message to UI immediately (optimistic update)
+        const tempId = 'temp_' + Date.now();
+        const currentUserName = document.querySelector('[data-user-name]')?.getAttribute('data-user-name') || 'You';
+        this.addMessage(message, currentUserName, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), true, tempId);
+
+        // Clear input
+        if (this.messageInput) {
+            this.messageInput.value = '';
+            this.messageInput.style.height = 'auto';
+        }
+
+        try {
+            const url = `/chat/${this.tradeId}/message`;
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': this.csrfToken,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ message }),
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('📨 Response data:', data);
+
+            if (data.success) {
+                console.log('✅ Message sent successfully');
+                // Update the temporary message with the real one and mark it as confirmed
+                this.updateMessageInChat(tempId, data.message);
+                
+                // Mark this message as confirmed to prevent duplicate Echo events
+                const messageElement = document.querySelector(`[data-temp-id="${tempId}"]`);
+                if (messageElement) {
+                    messageElement.setAttribute('data-confirmed', 'true');
+                    messageElement.removeAttribute('data-temp-id');
+                }
+            } else {
+                throw new Error(data.error || 'Failed to send message');
+            }
+        } catch (error) {
+            console.error('Send message error:', error);
+            // Remove the temporary message if it failed
+            this.removeMessageFromChat(tempId);
+            this.showError('Failed to send message. Please try again.');
+        } finally {
+            // Reset button state
+            if (this.sendButton) {
+                this.sendButton.disabled = false;
+                this.sendButton.textContent = originalText || 'Send';
+            }
+            
+            // Prevent rapid sending (300ms cooldown)
+            setTimeout(() => {
+                this.isSending = false;
+            }, 300);
+        }
+    }
+
+    addMessage(message, senderName, timestamp, isOwn, tempId = null) {
+        // Check for duplicate messages to prevent double display
+        if (isOwn) {
+            const messageText = typeof message === 'string' ? message : message.message;
+            const existingMessages = this.messagesContainer?.querySelectorAll('.message');
+            const lastMessage = existingMessages?.[existingMessages.length - 1];
+            
+            if (lastMessage) {
+                const lastMessageText = lastMessage.querySelector('.message-text')?.textContent;
+                if (lastMessageText === messageText) {
+                    console.log('Duplicate message detected, skipping...');
+                    return lastMessage;
+                }
+            }
+        }
+
+        if (!this.messagesContainer) {
+            console.error('Messages container not found');
+            return;
+        }
+
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${isOwn ? 'own' : ''}`;
+        
+        if (tempId) {
+            messageDiv.setAttribute('data-temp-id', tempId);
+        }
+
+        // Handle both string messages and message objects
+        const messageText = typeof message === 'string' ? message : message.message;
+        const messageTime = timestamp || (message.created_at ? 
+            new Date(message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 
+            new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+
+        // Check if message contains image or video
+        let messageContent = '';
+        if (messageText.includes('[IMAGE:') && messageText.includes(']')) {
+            const fileName = messageText.match(/\[IMAGE:(.+?)\]/)?.[1] || 'image';
+            messageContent = `
+                <div class="message-bubble">
+                    <div class="message-text">
+                        <img src="${window.tempImageData || '#'}" alt="${fileName}" class="chat-image" onerror="this.style.display='none'" style="max-width: 200px; border-radius: 8px;">
+                        <div style="font-size: 0.75rem; opacity: 0.8; margin-top: 4px;">${this.escapeHtml(fileName)}</div>
+                    </div>
+                    <div class="message-time">${messageTime}</div>
+                </div>
+            `;
+        } else if (messageText.includes('[VIDEO:') && messageText.includes(']')) {
+            const fileName = messageText.match(/\[VIDEO:(.+?)\]/)?.[1] || 'video';
+            messageContent = `
+                <div class="message-bubble">
+                    <div class="message-text">
+                        <video controls style="max-width: 200px; max-height: 200px; border-radius: 8px;">
+                            <source src="${window.tempVideoData || '#'}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                        <div style="font-size: 0.75rem; opacity: 0.8; margin-top: 4px;">${this.escapeHtml(fileName)}</div>
+                    </div>
+                    <div class="message-time">${messageTime}</div>
+                </div>
+            `;
+        } else {
+            messageContent = `
+                <div class="message-bubble">
+                    <div class="message-text">${this.escapeHtml(messageText)}</div>
+                    <div class="message-time">${messageTime}</div>
+                </div>
+            `;
+        }
+
+        messageDiv.innerHTML = messageContent;
+        this.messagesContainer.appendChild(messageDiv);
+        this.scrollToBottom();
+
+        // Flash effect for new messages (only for incoming messages, not your own)
+        if (!isOwn) {
+            console.log('🆕 New message added dynamically:', messageText);
+            this.flashChatArea();
+            this.showNewMessageIndicator();
+        }
+
+        return messageDiv;
+    }
+
+    updateMessageInChat(tempId, message) {
+        const messageElement = document.querySelector(`[data-temp-id="${tempId}"]`);
+        if (!messageElement) return;
+
+        const time = new Date(message.created_at).toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+
+        const messageText = message.message;
+        const messageBubble = messageElement.querySelector('.message-bubble');
+        
+        if (messageBubble) {
+            messageBubble.innerHTML = `
+                <div class="message-text">${this.escapeHtml(messageText)}</div>
+                <div class="message-time">${time}</div>
+            `;
+        }
+    }
+
+    removeMessageFromChat(tempId) {
+        const messageElement = document.querySelector(`[data-temp-id="${tempId}"]`);
+        if (messageElement) {
+            messageElement.remove();
+        }
+    }
+
+    scrollToBottom() {
+        if (this.messagesContainer) {
+            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        }
+    }
+
+    updateConnectionStatus(status) {
+        const statusDot = this.presenceStatus?.querySelector('.status-dot');
+        const statusText = this.presenceStatus?.querySelector('span:last-child');
+        
+        if (!statusDot || !statusText) return;
+
+        switch(status) {
+            case 'connected':
+                statusDot.style.background = '#10b981';
+                statusDot.classList.remove('offline');
+                statusText.textContent = 'Partner is online';
+                break;
+            case 'disconnected':
+                statusDot.style.background = '#f59e0b';
+                statusDot.classList.add('offline');
+                statusText.textContent = 'Partner is offline';
+                break;
+            case 'error':
+                statusDot.style.background = '#ef4444';
+                statusDot.classList.add('offline');
+                statusText.textContent = 'Connection Error';
+                break;
+            default:
+                statusDot.style.background = '#6b7280';
+                statusDot.classList.add('offline');
+                statusText.textContent = 'Connecting...';
+        }
+    }
+
+    // Polling fallback methods
+    startSmartMessagePolling() {
+        if (this.messagePollingInterval) {
+            clearInterval(this.messagePollingInterval);
+        }
+        
+        this.messagePollingInterval = setInterval(() => {
+            this.checkForNewMessages();
+        }, this.pollingFrequency);
+    }
+
+    async checkForNewMessages() {
+        try {
+            const response = await fetch(`/chat/${this.tradeId}/messages`);
+            const data = await response.json();
+            
+            if (data.success && data.count > this.lastMessageCount) {
+                // Get only the new messages
+                const newMessages = data.messages.slice(this.lastMessageCount);
+                this.lastMessageCount = data.count;
+                
+                // Reset activity tracking
+                this.lastActivity = Date.now();
+                this.consecutiveEmptyPolls = 0;
+
+                // Add only new messages to chat
+                newMessages.forEach(msg => {
+                    if (msg.sender_id !== this.userId) {
+                        const senderName = msg.sender ? 
+                            `${msg.sender.firstname} ${msg.sender.lastname}` : 
+                            this.partnerName;
+                        const timestamp = new Date(msg.created_at).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        });
+                        this.addMessage(msg, senderName, timestamp, false);
+                    }
+                });
+            } else {
+                this.consecutiveEmptyPolls++;
+            }
+        } catch (error) {
+            console.error('Error checking for new messages:', error);
+        }
+    }
+
+    flashChatArea() {
+        if (!this.messagesContainer) return;
+
+        // Create flash overlay
+        const flashOverlay = document.createElement('div');
+        flashOverlay.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(59, 130, 246, 0.3), rgba(16, 185, 129, 0.3));
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        
+        // Position the overlay relative to chat messages
+        this.messagesContainer.style.position = 'relative';
+        this.messagesContainer.appendChild(flashOverlay);
+        
+        // Trigger flash animation
+        setTimeout(() => {
+            flashOverlay.style.opacity = '1';
+        }, 50);
+        
+        setTimeout(() => {
+            flashOverlay.style.opacity = '0';
+        }, 150);
+        
+        // Remove overlay after animation
+        setTimeout(() => {
+            if (flashOverlay.parentNode) {
+                flashOverlay.parentNode.removeChild(flashOverlay);
+            }
+        }, 500);
+    }
+
+    showNewMessageIndicator() {
+        const indicator = document.getElementById('new-message-indicator');
+        if (indicator) {
+            indicator.style.display = 'inline-block';
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    showError(message) {
+        console.error('Error:', message);
+        
+        // Create error notification
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ef4444;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+        `;
+        errorDiv.textContent = message;
+        
+        document.body.appendChild(errorDiv);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            errorDiv.style.opacity = '0';
+            errorDiv.style.transition = 'opacity 0.3s';
+            setTimeout(() => {
+                if (errorDiv.parentNode) {
+                    errorDiv.parentNode.removeChild(errorDiv);
+                }
+            }, 300);
+        }, 5000);
+    }
+
+    destroy() {
+        // Cleanup
+        if (this.messagePollingInterval) {
+            clearInterval(this.messagePollingInterval);
+        }
+        
+        if (this.echo) {
+            this.echo.leave(`trade-${this.tradeId}`);
+        }
+    }
+}

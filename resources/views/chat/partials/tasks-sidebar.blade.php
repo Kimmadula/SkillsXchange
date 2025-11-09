@@ -23,9 +23,9 @@
                 </div>
             </div>
             
-            <div class="task-list">
+            <div class="task-list" id="my-tasks">
                 @foreach($myTasks as $task)
-                    <div class="task-card">
+                    <div class="task-item" data-task-id="{{ $task->id }}">
                         <div class="task-header">
                             <input type="checkbox" class="task-checkbox" 
                                 {{ $task->completed ? 'checked' : '' }}
@@ -63,9 +63,9 @@
                 </div>
             </div>
             
-            <div class="task-list">
+            <div class="task-list" id="partner-tasks">
                 @foreach($partnerTasks as $task)
-                    <div class="task-card">
+                    <div class="task-item" data-task-id="{{ $task->id }}">
                         <div class="task-header">
                             <input type="checkbox" class="task-checkbox" 
                                 {{ $task->completed ? 'checked' : '' }}
