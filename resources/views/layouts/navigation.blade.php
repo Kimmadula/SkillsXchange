@@ -468,13 +468,37 @@
                             @endif
                         </div>
                     <div class="d-none d-lg-block text-end">
-                        <div class="fw-semibold text-dark">{{ Auth::user()->firstname }} {{ Auth::user()->lastname }}</div>
+                        <div class="fw-semibold text-dark d-flex align-items-center gap-2">
+                            <span>{{ Auth::user()->firstname }} {{ Auth::user()->lastname }}</span>
+                            @if(Auth::user()->plan === 'premium')
+                                <span class="badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color:#fff; font-size:0.65rem; padding:2px 6px; border-radius:8px; display:inline-flex; align-items:center; gap:2px;">
+                                    <i class="fas fa-crown" style="font-size:0.6rem;"></i>
+                                    Premium
+                                </span>
+                            @else
+                                <span class="badge" style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color:#fff; font-size:0.65rem; padding:2px 6px; border-radius:8px; display:inline-flex; align-items:center; gap:2px;">
+                                    <i class="fas fa-user" style="font-size:0.6rem;"></i>
+                                    Free
+                                </span>
+                            @endif
+                        </div>
                             <small class="text-muted">{{ Auth::user()->email }}</small>
                         </div>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{{ route('profile.show') }}">
-                                <i class="fas fa-user me-2"></i>Profile
+                        <li><a class="dropdown-item d-flex align-items-center justify-content-between" href="{{ route('profile.show') }}">
+                                <span><i class="fas fa-user me-2"></i>Profile</span>
+                                @if(Auth::user()->plan === 'premium')
+                                    <span class="badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color:#fff; font-size:0.65rem; padding:2px 6px; border-radius:8px; display:inline-flex; align-items:center; gap:2px;">
+                                        <i class="fas fa-crown" style="font-size:0.6rem;"></i>
+                                        Premium
+                                    </span>
+                                @else
+                                    <span class="badge" style="background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color:#fff; font-size:0.65rem; padding:2px 6px; border-radius:8px; display:inline-flex; align-items:center; gap:2px;">
+                                        <i class="fas fa-user" style="font-size:0.6rem;"></i>
+                                        Free
+                                    </span>
+                                @endif
                             </a></li>
                     <li><hr class="dropdown-divider"></li>
                         <li>
@@ -571,6 +595,12 @@
                 Token History
             </a>
         </li>
+        <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('trades.history') ? 'active' : '' }}"
+               href="{{ route('trades.history') }}">
+                Trade History
+            </a>
+        </li>
         @endif
     </ul>
 </div>
@@ -589,73 +619,210 @@
             <div class="modal-header" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); color: #1f2937; border-bottom: 0;">
                 <h5 class="modal-title d-flex align-items-center gap-2" id="buyTokensModalLabel" style="font-weight: 600;">
                     <i class="fas fa-coins" style="color:#6366f1;"></i>
-                    Buy Tokens
+                    <span id="modalTitle">Buy Tokens</span>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="buyTokensForm" method="POST" action="{{ route('tokens.purchase') }}">
-                @csrf
-                <div class="modal-body">
-                    <!-- Current Balance Display -->
-                    <div class="d-flex align-items-center justify-content-between p-3 rounded-3 mb-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd;">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="fas fa-coins text-warning"></i>
-                            <div class="fw-semibold" style="color:#0f172a;">Current Balance</div>
-                        </div>
-                        <div class="badge bg-white text-dark border" style="font-size: .9rem;">{{ auth()->user()->token_balance ?? 0 }} tokens</div>
-                    </div>
 
-                    @php
-                        $tokenPrice = \App\Models\TradeFeeSetting::getFeeAmount('token_price') ?: 5;
-                        $minQty = max(1, (int) ceil(100 / max($tokenPrice, 0.01))); // PayMongo min ₱100
-                        $maxQty = 100;
-                        $minAmt = $minQty * $tokenPrice;
-                    @endphp
+            <!-- Tabs Navigation -->
+            <ul class="nav nav-tabs border-0 px-3 pt-2" id="purchaseTabs" role="tablist" style="background: #f8fafc;">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="tokens-tab" data-bs-toggle="tab" data-bs-target="#tokens-pane" type="button" role="tab" aria-controls="tokens-pane" aria-selected="true">
+                        <i class="fas fa-coins me-2"></i>Buy Tokens
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="premium-tab" data-bs-toggle="tab" data-bs-target="#premium-pane" type="button" role="tab" aria-controls="premium-pane" aria-selected="false">
+                        <i class="fas fa-crown me-2"></i>Subscribe Premium
+                    </button>
+                </li>
+            </ul>
 
-                    <!-- Quantity Selection -->
-                    <div class="mb-3">
-                        <label for="tokenQuantity" class="form-label fw-semibold">Number of Tokens</label>
-                        <div class="input-group input-group-lg">
-                            <button type="button" class="btn btn-outline-secondary" id="decreaseQuantity">-</button>
-                            <input type="number" class="form-control text-center" id="tokenQuantity" name="quantity" value="{{ $minQty }}" min="{{ $minQty }}" max="100" required>
-                            <button type="button" class="btn btn-outline-secondary" id="increaseQuantity">+</button>
-                        </div>
-                        <div class="form-text">Minimum: ₱100.00 ({{ $minQty }} tokens at ₱{{ number_format($tokenPrice, 2) }} each) • Max: 100 tokens</div>
-                    </div>
-
-                    <!-- Price Display -->
-                    <div class="mb-3">
-                        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #ecfeff 0%, #dbeafe 100%);">
-                            <div class="card-body d-flex justify-content-between align-items-center">
+            <div class="tab-content" id="purchaseTabContent">
+                <!-- Buy Tokens Tab -->
+                <div class="tab-pane fade show active" id="tokens-pane" role="tabpanel" aria-labelledby="tokens-tab">
+                    <form id="buyTokensForm" method="POST" action="{{ route('tokens.purchase') }}">
+                        @csrf
+                        <div class="modal-body">
+                            <!-- Current Balance Display -->
+                            <div class="d-flex align-items-center justify-content-between p-3 rounded-3 mb-3" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd;">
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="text-muted">Tokens</span>
-                                    <span class="fw-semibold" id="displayQuantity">{{ $minQty }}</span>
+                                    <i class="fas fa-coins text-warning"></i>
+                                    <div class="fw-semibold" style="color:#0f172a;">Current Balance</div>
                                 </div>
-                                <div class="fs-5 fw-bold" style="color:#1e293b;">
-                                    ₱<span id="totalPrice">{{ number_format($minAmt, 2) }}</span>
+                                <div class="badge bg-white text-dark border" style="font-size: .9rem;">{{ auth()->user()->token_balance ?? 0 }} tokens</div>
+                            </div>
+
+                            @php
+                                $tokenPrice = \App\Models\TradeFeeSetting::getFeeAmount('token_price') ?: 5;
+                                $minQty = max(1, (int) ceil(100 / max($tokenPrice, 0.01))); // PayMongo min ₱100
+                                $maxQty = 100;
+                                $minAmt = $minQty * $tokenPrice;
+                            @endphp
+
+                            <!-- Quantity Selection -->
+                            <div class="mb-3">
+                                <label for="tokenQuantity" class="form-label fw-semibold">Number of Tokens</label>
+                                <div class="input-group input-group-lg">
+                                    <button type="button" class="btn btn-outline-secondary" id="decreaseQuantity">-</button>
+                                    <input type="number" class="form-control text-center" id="tokenQuantity" name="quantity" value="{{ $minQty }}" min="{{ $minQty }}" max="100" required>
+                                    <button type="button" class="btn btn-outline-secondary" id="increaseQuantity">+</button>
+                                </div>
+                                <div class="form-text">Minimum: ₱100.00 ({{ $minQty }} tokens at ₱{{ number_format($tokenPrice, 2) }} each) • Max: 100 tokens</div>
+                            </div>
+
+                            <!-- Price Display -->
+                            <div class="mb-3">
+                                <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #ecfeff 0%, #dbeafe 100%);">
+                                    <div class="card-body d-flex justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="text-muted">Tokens</span>
+                                            <span class="fw-semibold" id="displayQuantity">{{ $minQty }}</span>
+                                        </div>
+                                        <div class="fs-5 fw-bold" style="color:#1e293b;">
+                                            ₱<span id="totalPrice">{{ number_format($minAmt, 2) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Terms and Conditions -->
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                                    <label class="form-check-label" for="agreeTerms">
+                                        I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms and Conditions</a>
+                                    </label>
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-
-                    <!-- Terms and Conditions -->
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="agreeTerms" required>
-                            <label class="form-check-label" for="agreeTerms">
-                                I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms and Conditions</a>
-                            </label>
+                        <div class="modal-footer d-flex justify-content-between">
+                            <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn" id="purchaseBtn" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color:#fff;">
+                                <i class="fas fa-credit-card me-2"></i>Pay now
+                            </button>
                         </div>
-                    </div>
+                    </form>
                 </div>
-                <div class="modal-footer d-flex justify-content-between">
-                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn" id="purchaseBtn" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color:#fff;">
-                        <i class="fas fa-credit-card me-2"></i>Pay now
-                    </button>
+
+                <!-- Subscribe Premium Tab -->
+                <div class="tab-pane fade" id="premium-pane" role="tabpanel" aria-labelledby="premium-tab">
+                    <form id="subscribePremiumForm" method="POST" action="{{ route('tokens.subscribe') }}">
+                        @csrf
+                        <div class="modal-body">
+                            @php
+                                $premiumPrice = \App\Models\TradeFeeSetting::getFeeAmount('premium_price') ?: 299;
+                                $currentPlan = auth()->user()->plan ?? 'free';
+                                $isPremium = $currentPlan === 'premium';
+                            @endphp
+
+                            <!-- Current Plan Display -->
+                            <div class="d-flex align-items-center justify-content-between p-3 rounded-3 mb-3" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fcd34d;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="fas fa-{{ $isPremium ? 'crown text-warning' : 'user text-secondary' }}"></i>
+                                    <div class="fw-semibold" style="color:#0f172a;">Current Plan</div>
+                                </div>
+                                <div class="badge bg-white text-dark border" style="font-size: .9rem; text-transform: capitalize;">
+                                    {{ $currentPlan }}
+                                    @if($isPremium)
+                                        <i class="fas fa-check-circle text-success ms-1"></i>
+                                    @endif
+                                </div>
+                            </div>
+
+                            @if($isPremium)
+                                <div class="alert alert-warning mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    You are currently on Premium. Pay again to renew your subscription for another month.
+                                </div>
+                            @endif
+
+                            <!-- Premium Features -->
+                            <div class="mb-4">
+                                <h6 class="fw-bold mb-3">Premium Benefits</h6>
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        <div class="d-flex align-items-start gap-2 p-2 rounded" style="background: #f8fafc;">
+                                            <i class="fas fa-check-circle text-success mt-1"></i>
+                                            <div>
+                                                <strong>Unlimited Trade Requests</strong>
+                                                <small class="d-block text-muted">No token fees for trade requests</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="d-flex align-items-start gap-2 p-2 rounded" style="background: #f8fafc;">
+                                            <i class="fas fa-check-circle text-success mt-1"></i>
+                                            <div>
+                                                <strong>Priority Matching</strong>
+                                                <small class="d-block text-muted">Get matched with trades faster</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="d-flex align-items-start gap-2 p-2 rounded" style="background: #f8fafc;">
+                                            <i class="fas fa-check-circle text-success mt-1"></i>
+                                            <div>
+                                                <strong>Advanced Analytics</strong>
+                                                <small class="d-block text-muted">Track your skill learning progress</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="d-flex align-items-start gap-2 p-2 rounded" style="background: #f8fafc;">
+                                            <i class="fas fa-check-circle text-success mt-1"></i>
+                                            <div>
+                                                <strong>Premium Badge</strong>
+                                                <small class="d-block text-muted">Showcase your premium status</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="d-flex align-items-start gap-2 p-2 rounded" style="background: #f8fafc;">
+                                            <i class="fas fa-check-circle text-success mt-1"></i>
+                                            <div>
+                                                <strong>Monthly Subscription</strong>
+                                                <small class="d-block text-muted">Manual renewal - pay monthly to maintain premium</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Price Display -->
+                            <div class="mb-3">
+                                <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">
+                                    <div class="card-body text-center">
+                                        <div class="mb-2">
+                                            <span class="text-muted">Premium Subscription</span>
+                                        </div>
+                                        <div class="fs-3 fw-bold" style="color:#1e293b;">
+                                            ₱<span id="premiumPrice">{{ number_format($premiumPrice, 2) }}</span>
+                                            <small class="fs-6 text-muted">/month</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Terms and Conditions -->
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="agreePremiumTerms" required>
+                                    <label class="form-check-label" for="agreePremiumTerms">
+                                        I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms and Conditions</a> and understand this is a monthly subscription (manual renewal)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer d-flex justify-content-between">
+                            <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn" id="subscribeBtn" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color:#fff;">
+                                <i class="fas fa-crown me-2"></i>{{ $isPremium ? 'Renew Subscription' : 'Subscribe Now' }}
+                            </button>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
@@ -775,6 +942,37 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize display
     updateDisplay();
+
+    // Tab switching - update modal title
+    const tokensTab = document.getElementById('tokens-tab');
+    const premiumTab = document.getElementById('premium-tab');
+    const modalTitle = document.getElementById('modalTitle');
+
+    tokensTab.addEventListener('shown.bs.tab', function() {
+        modalTitle.textContent = 'Buy Tokens';
+    });
+
+    premiumTab.addEventListener('shown.bs.tab', function() {
+        modalTitle.textContent = 'Subscribe Premium';
+    });
+
+    // Premium subscription form handling
+    const subscribeForm = document.getElementById('subscribePremiumForm');
+    const subscribeBtn = document.getElementById('subscribeBtn');
+
+    if (subscribeForm && subscribeBtn) {
+        subscribeForm.addEventListener('submit', function(e) {
+            if (!document.getElementById('agreePremiumTerms').checked) {
+                e.preventDefault();
+                alert('Please agree to the Terms and Conditions');
+                return;
+            }
+
+            // Show loading state
+            subscribeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
+            subscribeBtn.disabled = true;
+        });
+    }
 });
 
 // Mobile sidebar toggle function

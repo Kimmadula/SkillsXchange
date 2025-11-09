@@ -677,6 +677,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/trades/matches', [\App\Http\Controllers\TradeController::class, 'matches'])->name('trades.matches');
         Route::get('/trades/requests', [\App\Http\Controllers\TradeController::class, 'requests'])->name('trades.requests');
         Route::get('/trades/ongoing', [\App\Http\Controllers\TradeController::class, 'ongoing'])->name('trades.ongoing');
+        Route::get('/trades/history', [\App\Http\Controllers\TradeController::class, 'history'])->name('trades.history');
         Route::get('/trades/notifications', [\App\Http\Controllers\TradeController::class, 'notify'])->name('trades.notifications');
         Route::get('/announcements', [\App\Http\Controllers\TradeController::class, 'announcements'])->name('announcements.index');
 
@@ -903,6 +904,7 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
 
     // Token Purchase Routes
     Route::post('/tokens/purchase', [\App\Http\Controllers\TokenController::class, 'purchase'])->name('tokens.purchase');
+    Route::post('/tokens/subscribe', [\App\Http\Controllers\TokenController::class, 'subscribe'])->name('tokens.subscribe');
     Route::get('/tokens/history', [\App\Http\Controllers\TokenController::class, 'history'])->name('tokens.history');
     Route::get('/api/tokens/balance', [\App\Http\Controllers\TokenController::class, 'getBalance'])->name('api.tokens.balance');
 

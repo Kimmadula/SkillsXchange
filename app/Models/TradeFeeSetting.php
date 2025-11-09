@@ -18,7 +18,7 @@ class TradeFeeSetting extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        'fee_amount' => 'integer',
+        'fee_amount' => 'float', // Changed to float to support PHP prices with decimals
     ];
 
     /**

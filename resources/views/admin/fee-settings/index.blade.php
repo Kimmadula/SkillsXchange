@@ -99,13 +99,6 @@
                 <p class="page-subtitle">Manage token fees for trade requests and acceptance</p>
             </div>
             <div class="header-right">
-                <button type="button" class="btn-primary" data-bs-toggle="modal" data-bs-target="#createFeeModal">
-                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"/>
-                        <line x1="5" y1="12" x2="19" y2="12"/>
-                    </svg>
-                    Add New Fee Setting
-                </button>
                 <div class="notifications" x-data="{ notificationsOpen: false }">
                     <div class="notification-icon" @click="notificationsOpen = !notificationsOpen">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -277,11 +270,12 @@
                 </div>
             </div>
 
-            <div class="fee-settings-table-card">
+            <!-- Token Fees Section -->
+            <div class="fee-settings-table-card" style="margin-bottom: 32px;">
                 <div class="table-header">
                     <div class="table-title-section">
-                        <h3 class="card-title">Current Fee Settings</h3>
-                        <p class="table-subtitle">Manage token fees for trade requests and acceptance</p>
+                        <h3 class="card-title">Token Fees (Paid in Tokens)</h3>
+                        <p class="table-subtitle">Fees charged to users in tokens for trade requests and acceptance</p>
                     </div>
                 </div>
 
@@ -298,7 +292,24 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($feeSettings as $feeSetting)
+                            @php
+                                // Filter token fees: known types or custom types that don't contain 'price'
+                                // Exclude premium_duration_months and default_tokens_for_new_user as they are settings, not token fees
+                                $tokenFees = $feeSettings->filter(function($setting) {
+                                    $knownTokenFees = ['trade_request', 'trade_acceptance'];
+                                    if (in_array($setting->fee_type, $knownTokenFees)) {
+                                        return true;
+                                    }
+                                    // Exclude premium_duration_months, default_tokens_for_new_user, and PHP prices
+                                    if (in_array($setting->fee_type, ['premium_duration_months', 'default_tokens_for_new_user'])) {
+                                        return false;
+                                    }
+                                    // Custom types: if it doesn't contain 'price', assume it's a token fee
+                                    return !in_array($setting->fee_type, ['token_price', 'premium_price'])
+                                        && stripos($setting->fee_type, 'price') === false;
+                                });
+                            @endphp
+                            @forelse($tokenFees as $feeSetting)
                                 <tr>
                                     <td>
                                         <div class="fee-type">
@@ -337,11 +348,125 @@
                                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                                                 </svg>
                                             </button>
-                                            <button type="button" class="btn-delete"
-                                                    onclick="deleteFeeSetting({{ $feeSetting->id }}, '{{ $feeSetting->fee_type }}')">
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="empty-state">
+                                        <div class="empty-content">
+                                            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M9 12l2 2 4-4"/>
+                                                <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"/>
+                                                <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"/>
+                                            </svg>
+                                            <h4>No token fees found</h4>
+                                            <p>Token fees will appear here when created</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PHP Prices Section (Token Price & Premium Subscription) -->
+            <div class="fee-settings-table-card">
+                <div class="table-header">
+                    <div class="table-title-section">
+                        <h3 class="card-title">PHP Prices (Paid in Real Money)</h3>
+                        <p class="table-subtitle">Prices users pay in PHP pesos to buy tokens or subscribe to premium</p>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="fee-settings-table">
+                        <thead>
+                            <tr>
+                                <th>Price Type</th>
+                                <th>Amount (PHP)</th>
+                                <th>Status</th>
+                                <th>Description</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @php
+                                // Filter PHP prices: known types or custom types that contain 'price'
+                                $phpPrices = $feeSettings->filter(function($setting) {
+                                    $knownPhpPrices = ['token_price', 'premium_price'];
+                                    if (in_array($setting->fee_type, $knownPhpPrices)) {
+                                        return true;
+                                    }
+                                    // Custom types: if it contains 'price', assume it's a PHP price
+                                    return stripos($setting->fee_type, 'price') !== false;
+                                });
+
+                                // Filter premium settings (duration)
+                                $premiumSettings = $feeSettings->filter(function($setting) {
+                                    return $setting->fee_type === 'premium_duration_months';
+                                });
+
+                                // Filter default tokens for new user setting
+                                $defaultTokensSettings = $feeSettings->filter(function($setting) {
+                                    return $setting->fee_type === 'default_tokens_for_new_user';
+                                });
+                            @endphp
+                            @forelse($phpPrices as $feeSetting)
+                                <tr>
+                                    <td>
+                                        <div class="fee-type">
+                                            <span class="fee-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff;">
+                                                @if($feeSetting->fee_type === 'token_price')
+                                                    <i class="fas fa-coins" style="margin-right: 4px;"></i>Token Price
+                                                @elseif($feeSetting->fee_type === 'premium_price')
+                                                    <i class="fas fa-crown" style="margin-right: 4px;"></i>Premium Price
+                                                @else
+                                                    {{ ucwords(str_replace('_', ' ', $feeSetting->fee_type)) }}
+                                                @endif
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="fee-amount">
+                                            <span class="amount-value">₱{{ number_format($feeSetting->fee_amount, 2) }}</span>
+                                            <span class="amount-label">
+                                                @if($feeSetting->fee_type === 'token_price')
+                                                    per token
+                                                @elseif($feeSetting->fee_type === 'premium_price')
+                                                    per month
+                                                @else
+                                                    (PHP price)
+                                                @endif
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if($feeSetting->is_active)
+                                            <span class="status-badge active">Active</span>
+                                        @else
+                                            <span class="status-badge inactive">Inactive</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <div class="description">
+                                            {{ $feeSetting->description ?: 'No description' }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="date">
+                                            {{ $feeSetting->created_at->format('M d, Y') }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button type="button" class="btn-edit"
+                                                    onclick="editFeeSetting({{ $feeSetting->id }}, '{{ $feeSetting->fee_type }}', {{ $feeSetting->fee_amount }}, {{ $feeSetting->is_active ? 'true' : 'false' }}, '{{ addslashes($feeSetting->description) }}')">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                    <polyline points="3,6 5,6 21,6"/>
-                                                    <path d="M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
+                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                                                 </svg>
                                             </button>
                                         </div>
@@ -356,8 +481,180 @@
                                                 <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"/>
                                                 <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"/>
                                             </svg>
-                                            <h4>No fee settings found</h4>
-                                            <p>Create your first fee setting to get started</p>
+                                            <h4>No PHP prices found</h4>
+                                            <p>Token price and premium price settings will appear here</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Premium Duration Setting Section -->
+            <div class="fee-settings-table-card" style="margin-top: 32px;">
+                <div class="table-header">
+                    <div class="table-title-section">
+                        <h3 class="card-title">Premium Subscription Settings</h3>
+                        <p class="table-subtitle">Configure premium subscription duration</p>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="fee-settings-table">
+                        <thead>
+                            <tr>
+                                <th>Setting Type</th>
+                                <th>Value</th>
+                                <th>Status</th>
+                                <th>Description</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($premiumSettings as $feeSetting)
+                                <tr>
+                                    <td>
+                                        <div class="fee-type">
+                                            <span class="fee-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff;">
+                                                <i class="fas fa-calendar-alt" style="margin-right: 4px;"></i>Premium Duration
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="fee-amount">
+                                            <span class="amount-value">{{ $feeSetting->fee_amount }}</span>
+                                            <span class="amount-label">month{{ $feeSetting->fee_amount > 1 ? 's' : '' }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if($feeSetting->is_active)
+                                            <span class="status-badge active">Active</span>
+                                        @else
+                                            <span class="status-badge inactive">Inactive</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <div class="description">
+                                            {{ $feeSetting->description ?: 'No description' }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="date">
+                                            {{ $feeSetting->created_at->format('M d, Y') }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button type="button" class="btn-edit"
+                                                    onclick="editFeeSetting({{ $feeSetting->id }}, '{{ $feeSetting->fee_type }}', {{ $feeSetting->fee_amount }}, {{ $feeSetting->is_active ? 'true' : 'false' }}, '{{ addslashes($feeSetting->description) }}')">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="empty-state">
+                                        <div class="empty-content">
+                                            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M9 12l2 2 4-4"/>
+                                                <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"/>
+                                                <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"/>
+                                            </svg>
+                                            <h4>No premium duration setting found</h4>
+                                            <p>Premium duration setting will appear here</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Default Tokens for New Users Section -->
+            <div class="fee-settings-table-card" style="margin-top: 32px;">
+                <div class="table-header">
+                    <div class="table-title-section">
+                        <h3 class="card-title">New User Settings</h3>
+                        <p class="table-subtitle">Configure default tokens given to new users upon registration</p>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="fee-settings-table">
+                        <thead>
+                            <tr>
+                                <th>Setting Type</th>
+                                <th>Value</th>
+                                <th>Status</th>
+                                <th>Description</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($defaultTokensSettings as $feeSetting)
+                                <tr>
+                                    <td>
+                                        <div class="fee-type">
+                                            <span class="fee-badge" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff;">
+                                                <i class="fas fa-user-plus" style="margin-right: 4px;"></i>Default Tokens for New Users
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="fee-amount">
+                                            <span class="amount-value">{{ $feeSetting->fee_amount }}</span>
+                                            <span class="amount-label">token{{ $feeSetting->fee_amount != 1 ? 's' : '' }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if($feeSetting->is_active)
+                                            <span class="status-badge active">Active</span>
+                                        @else
+                                            <span class="status-badge inactive">Inactive</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <div class="description">
+                                            {{ $feeSetting->description ?: 'No description' }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="date">
+                                            {{ $feeSetting->created_at->format('M d, Y') }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button type="button" class="btn-edit"
+                                                    onclick="editFeeSetting({{ $feeSetting->id }}, '{{ $feeSetting->fee_type }}', {{ $feeSetting->fee_amount }}, {{ $feeSetting->is_active ? 'true' : 'false' }}, '{{ addslashes($feeSetting->description) }}')">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="empty-state">
+                                        <div class="empty-content">
+                                            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M9 12l2 2 4-4"/>
+                                                <path d="M21 12c-1 0-3-1-3-3s2-3 3-3 3 1 3 3-2 3-3 3"/>
+                                                <path d="M3 12c1 0 3-1 3-3s-2-3-3-3-3 1-3 3 2 3 3 3"/>
+                                            </svg>
+                                            <h4>No default tokens setting found</h4>
+                                            <p>Default tokens setting will appear here</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -471,9 +768,18 @@
     letter-spacing: 0.05em;
 }
 
+.fee-settings-table th:last-child {
+    text-align: center;
+    width: 100px;
+}
+
 .fee-settings-table td {
     padding: 12px;
     border-bottom: 1px solid #f3f4f6;
+}
+
+.fee-settings-table td:last-child {
+    text-align: center;
 }
 
 .fee-settings-table tr:hover {
@@ -541,6 +847,8 @@
 .action-buttons {
     display: flex;
     gap: 8px;
+    justify-content: center;
+    align-items: center;
 }
 
 .btn-edit {
@@ -900,6 +1208,11 @@
         font-size: 13px;
     }
 
+    .fee-settings-table th:last-child,
+    .fee-settings-table td:last-child {
+        text-align: center;
+    }
+
     .fee-badge {
         font-size: 11px;
         padding: 4px 8px;
@@ -1116,56 +1429,6 @@
 }
 </style>
 
-<!-- Create Fee Setting Modal -->
-<div class="modal-overlay" id="createFeeModal" style="display: none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Create New Fee Setting</h3>
-            <button type="button" class="modal-close" onclick="closeModal('createFeeModal')">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"/>
-                    <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-            </button>
-        </div>
-        <form id="createFeeForm">
-            @csrf
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="create_fee_type">Fee Type</label>
-                    <select id="create_fee_type_select">
-                        @foreach($availableFeeTypes as $type)
-                            <option value="{{ $type }}">{{ $type }}</option>
-                        @endforeach
-                        <option value="__custom__">Custom...</option>
-                    </select>
-                    <input type="text" id="create_fee_type_custom" placeholder="Enter custom fee type" style="display:none; margin-top:8px;" />
-                    <small>Select an existing type or choose Custom to enter a new one</small>
-                </div>
-                <div class="form-group">
-                    <label for="create_fee_amount">Fee Amount (Tokens)</label>
-                    <input type="number" id="create_fee_amount" name="fee_amount" min="0" max="1000" required value="1">
-                </div>
-                <div class="form-group">
-                    <label for="create_is_active">Status</label>
-                    <select id="create_is_active" name="is_active">
-                        <option value="1">Active</option>
-                        <option value="0">Inactive</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="create_description">Description</label>
-                    <textarea id="create_description" name="description" rows="3" placeholder="Optional description"></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closeModal('createFeeModal')">Cancel</button>
-                <button type="submit" class="btn-primary">Create Fee Setting</button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <!-- Edit Fee Setting Modal -->
 <div class="modal-overlay" id="editFeeModal" style="display: none;">
     <div class="modal-content">
@@ -1188,8 +1451,12 @@
                     <input type="hidden" id="edit_fee_id" name="fee_id">
                 </div>
                 <div class="form-group">
-                    <label for="edit_fee_amount">Fee Amount (Tokens)</label>
-                    <input type="number" id="edit_fee_amount" name="fee_amount" min="0" max="1000" required>
+                    <label for="edit_fee_amount" id="edit_fee_amount_label">Fee Amount (Tokens)</label>
+                    <div style="position: relative;">
+                        <span id="edit_currency_prefix" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6b7280; font-weight: 500;"></span>
+                        <input type="number" id="edit_fee_amount" name="fee_amount" min="0" max="10000" step="0.01" required style="padding-left: 40px;">
+                    </div>
+                    <small id="edit_fee_amount_help" style="color: #6b7280;">Enter the amount</small>
                 </div>
                 <div class="form-group">
                     <label for="edit_is_active">Status</label>
@@ -1234,103 +1501,53 @@
         // Set the form action URL
         document.getElementById('editFeeForm').action = '/admin/fee-settings/' + id;
 
+        // Update label and input based on fee type
+        const isPhpPrice = type === 'token_price' || type === 'premium_price';
+        const isPremiumDuration = type === 'premium_duration_months';
+        const isDefaultTokens = type === 'default_tokens_for_new_user';
+        const label = document.getElementById('edit_fee_amount_label');
+        const input = document.getElementById('edit_fee_amount');
+        const prefix = document.getElementById('edit_currency_prefix');
+        const help = document.getElementById('edit_fee_amount_help');
+
+        if (isPremiumDuration) {
+            label.textContent = 'Duration (Months)';
+            prefix.textContent = '';
+            prefix.style.display = 'none';
+            input.style.paddingLeft = '12px';
+            input.setAttribute('step', '1');
+            input.setAttribute('min', '1');
+            input.setAttribute('max', '12');
+            help.textContent = 'Enter the subscription duration in months (e.g., 1 = 1 month, 3 = 3 months)';
+        } else if (isDefaultTokens) {
+            label.textContent = 'Default Tokens';
+            prefix.textContent = '';
+            prefix.style.display = 'none';
+            input.style.paddingLeft = '12px';
+            input.setAttribute('step', '1');
+            input.setAttribute('min', '0');
+            input.setAttribute('max', '1000');
+            help.textContent = 'Enter the number of tokens to give new users upon registration (0-1000)';
+        } else if (isPhpPrice) {
+            label.textContent = type === 'token_price' ? 'Price per Token (PHP)' : 'Premium Subscription Price (PHP)';
+            prefix.textContent = '₱';
+            prefix.style.display = 'block';
+            input.style.paddingLeft = '40px';
+            input.setAttribute('step', '0.01');
+            input.setAttribute('max', '10000');
+            help.textContent = type === 'token_price' ? 'Enter the price in PHP pesos per token' : 'Enter the monthly subscription price in PHP pesos';
+                } else {
+            label.textContent = 'Fee Amount (Tokens)';
+            prefix.textContent = '';
+            prefix.style.display = 'none';
+            input.style.paddingLeft = '12px';
+            input.setAttribute('step', '1');
+            input.setAttribute('max', '1000');
+            help.textContent = 'Enter the amount in tokens';
+        }
+
         openModal('editFeeModal');
     }
-
-    // Delete Fee Setting Function
-    function deleteFeeSetting(id, type) {
-        if (confirm('Are you sure you want to delete the fee setting "' + type + '"? This action cannot be undone.')) {
-            fetch('/admin/fee-settings/' + id, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    alert(result.message);
-                    location.reload();
-                } else {
-                    alert('Error: ' + result.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while deleting the fee setting.');
-            });
-        }
-    }
-
-    // Handle Create Fee Form Submission
-    // Toggle custom fee type field visibility
-    (function() {
-        const select = document.getElementById('create_fee_type_select');
-        const custom = document.getElementById('create_fee_type_custom');
-        if (select) {
-            select.addEventListener('change', function() {
-                if (this.value === '__custom__') {
-                    custom.style.display = 'block';
-                    custom.required = true;
-                    custom.focus();
-                } else {
-                    custom.style.display = 'none';
-                    custom.required = false;
-                }
-            });
-        }
-    })();
-
-    document.getElementById('createFeeForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-
-        const formData = new FormData(this);
-        const data = Object.fromEntries(formData.entries());
-
-        // Resolve fee_type from dropdown/custom input
-        const selectedType = document.getElementById('create_fee_type_select').value;
-        const customType = document.getElementById('create_fee_type_custom').value.trim();
-        data.fee_type = selectedType === '__custom__' ? customType : selectedType;
-
-        if (!data.fee_type) {
-            alert('Please select or enter a fee type.');
-            return;
-        }
-
-        // Convert string values to proper types
-        data.fee_amount = parseInt(data.fee_amount);
-        data.is_active = data.is_active === '1' ? true : false;
-
-        fetch('/admin/fee-settings', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(data)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(result => {
-            if (result.success) {
-                alert(result.message);
-                closeModal('createFeeModal');
-                location.reload();
-            } else {
-                alert('Error: ' + result.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while creating the fee setting.');
-        });
-    });
 
     // Handle Edit Fee Form Submission
     document.getElementById('editFeeForm').addEventListener('submit', function(e) {
@@ -1345,12 +1562,6 @@
         for (let [key, value] of formData.entries()) {
             console.log(key + ': ' + value);
         }
-    });
-
-    // Open create modal when button is clicked
-    document.querySelector('[data-bs-target="#createFeeModal"]').addEventListener('click', function(e) {
-        e.preventDefault();
-        openModal('createFeeModal');
     });
 
     // Close modals when clicking outside

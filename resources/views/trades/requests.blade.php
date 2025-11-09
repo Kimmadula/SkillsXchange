@@ -111,9 +111,17 @@
                         @php
                             $acceptanceFee = \App\Models\TradeFeeSetting::getFeeAmount('trade_acceptance');
                             $userBalance = auth()->user()->token_balance ?? 0;
+                            $isPremium = auth()->user()->plan === 'premium';
                         @endphp
                         <div style="margin-left:16px;">
-                            @if($acceptanceFee > 0 && \App\Models\TradeFeeSetting::isFeeActive('trade_acceptance'))
+                            @if($isPremium)
+                                <div style="margin-bottom:8px; padding:6px 10px; background:#fef3c7; color:#92400e; border-radius:4px; font-size:0.8rem; border:1px solid #f59e0b;">
+                                    <div style="font-weight:600;">✨ Premium Member - No acceptance fee required!</div>
+                                    <div style="font-size:0.7rem; color:#92400e; margin-top:2px;">
+                                        <i>You can accept unlimited requests as a Premium member</i>
+                                    </div>
+                                </div>
+                            @elseif($acceptanceFee > 0 && \App\Models\TradeFeeSetting::isFeeActive('trade_acceptance'))
                                 <div style="margin-bottom:8px; padding:6px 10px; background:#fef3c7; color:#92400e; border-radius:4px; font-size:0.8rem; border:1px solid #f59e0b;">
                                     <div style="font-weight:600;">Acceptance Fee: {{ $acceptanceFee }} token{{ $acceptanceFee > 1 ? 's' : '' }}</div>
                                     <div style="font-size:0.75rem;">Your balance: {{ $userBalance }} tokens</div>
@@ -127,8 +135,8 @@
                                     @csrf
                                     <input type="hidden" name="action" value="accept">
                                     <button type="submit"
-                                            style="padding:6px 12px; background:#10b981; color:#fff; border:none; border-radius:4px; cursor:pointer; {{ $acceptanceFee > 0 && $userBalance < $acceptanceFee ? 'opacity:50; cursor:not-allowed;' : '' }}"
-                                            {{ $acceptanceFee > 0 && $userBalance < $acceptanceFee ? 'disabled' : '' }}>
+                                            style="padding:6px 12px; background:#10b981; color:#fff; border:none; border-radius:4px; cursor:pointer; {{ !$isPremium && $acceptanceFee > 0 && $userBalance < $acceptanceFee ? 'opacity:50; cursor:not-allowed;' : '' }}"
+                                            {{ !$isPremium && $acceptanceFee > 0 && $userBalance < $acceptanceFee ? 'disabled' : '' }}>
                                         Accept
                                     </button>
                                 </form>

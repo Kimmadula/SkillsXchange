@@ -1215,8 +1215,23 @@ class AdminController extends Controller
                 'admin_user' => auth()->user()->email
             ]);
 
+            // For PHP prices (token_price, premium_price), allow decimals. For premium_duration_months, use integers (1-12). For default_tokens_for_new_user, use integers (0-1000). For token fees, use integers.
+            $isPhpPrice = in_array($feeSetting->fee_type, ['token_price', 'premium_price']);
+            $isPremiumDuration = $feeSetting->fee_type === 'premium_duration_months';
+            $isDefaultTokens = $feeSetting->fee_type === 'default_tokens_for_new_user';
+
+            if ($isPremiumDuration) {
+                $feeAmountRule = 'required|integer|min:1|max:12';
+            } elseif ($isDefaultTokens) {
+                $feeAmountRule = 'required|integer|min:0|max:1000';
+            } elseif ($isPhpPrice) {
+                $feeAmountRule = 'required|numeric|min:0|max:10000';
+            } else {
+                $feeAmountRule = 'required|integer|min:0|max:1000';
+            }
+
             $request->validate([
-                'fee_amount' => 'required|integer|min:0|max:1000',
+                'fee_amount' => $feeAmountRule,
                 'is_active' => 'required|boolean',
                 'description' => 'nullable|string|max:500'
             ]);
@@ -1271,9 +1286,24 @@ class AdminController extends Controller
     public function createFeeSetting(Request $request)
     {
         try {
+            // For PHP prices (token_price, premium_price), allow decimals. For premium_duration_months, use integers (1-12). For default_tokens_for_new_user, use integers (0-1000). For token fees, use integers.
+            $isPhpPrice = in_array($request->fee_type, ['token_price', 'premium_price']);
+            $isPremiumDuration = $request->fee_type === 'premium_duration_months';
+            $isDefaultTokens = $request->fee_type === 'default_tokens_for_new_user';
+
+            if ($isPremiumDuration) {
+                $feeAmountRule = 'required|integer|min:1|max:12';
+            } elseif ($isDefaultTokens) {
+                $feeAmountRule = 'required|integer|min:0|max:1000';
+            } elseif ($isPhpPrice) {
+                $feeAmountRule = 'required|numeric|min:0|max:10000';
+            } else {
+                $feeAmountRule = 'required|integer|min:0|max:1000';
+            }
+
             $request->validate([
                 'fee_type' => 'required|string|max:100|unique:trade_fee_settings,fee_type',
-                'fee_amount' => 'required|integer|min:0|max:1000',
+                'fee_amount' => $feeAmountRule,
                 'is_active' => 'required|boolean',
                 'description' => 'nullable|string|max:500'
             ]);

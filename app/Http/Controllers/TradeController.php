@@ -22,8 +22,25 @@ class TradeController extends Controller
             return redirect()->route('admin.dashboard')->with('error', 'Admin users cannot access user trading functionality.');
         }
 
+        // Get all skills for "looking for" dropdown
         $skills = Skill::orderBy('category')->orderBy('name')->get();
-        return view('trades.create', compact('user', 'skills'));
+
+        // Get user's registered skills (from user_skills table)
+        $registeredSkills = $user->skills()->orderBy('category')->orderBy('name')->get();
+
+        // Get user's acquired skills (from skill_acquisition_history)
+        $acquiredSkills = $user->getAcquiredSkills();
+
+        // Merge registered and acquired skills, remove duplicates, and sort
+        $userAllSkills = $registeredSkills
+            ->merge($acquiredSkills)
+            ->unique('skill_id')
+            ->sortBy(function($skill) {
+                return $skill->category . '|' . $skill->name;
+            })
+            ->values();
+
+        return view('trades.create', compact('user', 'skills', 'userAllSkills'));
     }
 
     public function show(Trade $trade)
@@ -51,7 +68,20 @@ class TradeController extends Controller
         }
 
         $validated = $request->validate([
-            'offering_skill_id' => ['required', 'exists:skills,skill_id'],
+            'offering_skill_id' => [
+                'required',
+                'exists:skills,skill_id',
+                function ($attribute, $value, $fail) use ($user) {
+                    // Check if user has this skill registered OR acquired
+                    $hasRegistered = $user->skills()->where('skill_id', $value)->exists();
+                    $acquiredSkills = $user->getAcquiredSkills();
+                    $hasAcquired = $acquiredSkills->pluck('skill_id')->contains($value);
+
+                    if (!$hasRegistered && !$hasAcquired) {
+                        $fail('You can only offer skills that you have registered or acquired in your profile.');
+                    }
+                },
+            ],
             'looking_skill_id' => ['required', 'exists:skills,skill_id'],
             'start_date' => ['required', 'date', 'after_or_equal:today'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
@@ -671,8 +701,43 @@ class TradeController extends Controller
         if ($trade->user_id !== $user->id) {
             return redirect()->route('trades.manage')->with('error', 'Unauthorized');
         }
+
+        // Get all skills for "looking for" dropdown
         $skills = Skill::orderBy('category')->orderBy('name')->get();
-        return view('trades.edit', compact('trade', 'skills'));
+
+        // Get user's registered skills (from user_skills table)
+        $registeredSkills = $user->skills()->orderBy('category')->orderBy('name')->get();
+
+        // Get user's acquired skills (from skill_acquisition_history)
+        $acquiredSkills = $user->getAcquiredSkills();
+
+        // Merge registered and acquired skills, remove duplicates, and sort
+        $userAllSkills = $registeredSkills
+            ->merge($acquiredSkills)
+            ->unique('skill_id')
+            ->sortBy(function($skill) {
+                return $skill->category . '|' . $skill->name;
+            })
+            ->values();
+
+        // Check if trade has active requests (pending or accepted) OR if trade is ongoing
+        // Ongoing trades have accepted requests and skills should not be changed
+        $hasActiveRequests = $trade->status === 'ongoing' ||
+            $trade->requests()
+                ->whereIn('status', ['pending', 'accepted'])
+                ->exists();
+
+        // Get request count for display
+        $activeRequestCount = 0;
+        if ($hasActiveRequests) {
+            if ($trade->status === 'ongoing') {
+                $activeRequestCount = $trade->requests()->where('status', 'accepted')->count();
+            } else {
+                $activeRequestCount = $trade->requests()->whereIn('status', ['pending', 'accepted'])->count();
+            }
+        }
+
+        return view('trades.edit', compact('trade', 'skills', 'userAllSkills', 'hasActiveRequests', 'activeRequestCount'));
     }
 
     public function update(Request $request, Trade $trade)
@@ -681,6 +746,34 @@ class TradeController extends Controller
         if ($trade->user_id !== $user->id) {
             return redirect()->route('trades.manage')->with('error', 'Unauthorized');
         }
+
+        // Check if trade has active requests OR is ongoing - if so, prevent skill changes
+        // Ongoing trades have active sessions and skills should not be changed
+        $hasActiveRequests = $trade->status === 'ongoing' ||
+            $trade->requests()
+                ->whereIn('status', ['pending', 'accepted'])
+                ->exists();
+
+        if ($hasActiveRequests) {
+            // Check if user is trying to change skills
+            $offeringChanged = $request->offering_skill_id != $trade->offering_skill_id;
+            $lookingChanged = $request->looking_skill_id != $trade->looking_skill_id;
+
+            if ($offeringChanged || $lookingChanged) {
+                $message = $trade->status === 'ongoing'
+                    ? 'Cannot change skills while the trade session is ongoing. The session must be completed or closed first.'
+                    : 'Cannot change skills while there are active requests on this trade. Please respond to or cancel all requests first.';
+
+                return redirect()->back()
+                    ->withErrors([
+                        'offering_skill_id' => $offeringChanged ? ($trade->status === 'ongoing' ? 'Cannot change offering skill while session is ongoing.' : 'Cannot change offering skill while there are active requests on this trade.') : null,
+                        'looking_skill_id' => $lookingChanged ? ($trade->status === 'ongoing' ? 'Cannot change looking-for skill while session is ongoing.' : 'Cannot change looking-for skill while there are active requests on this trade.') : null,
+                    ])
+                    ->with('warning', $message)
+                    ->withInput();
+            }
+        }
+
         $validated = $request->validate([
             'offering_skill_id' => ['required', 'exists:skills,skill_id'],
             'looking_skill_id' => ['required', 'exists:skills,skill_id', 'different:offering_skill_id'],
@@ -697,9 +790,15 @@ class TradeController extends Controller
             'use_username' => ['nullable', 'boolean'],
         ]);
 
-        // Always enforce offering skill to be the user's registered skill (same as create UI)
-        if ($user->skill) {
-            $validated['offering_skill_id'] = $user->skill->skill_id;
+        // Validate that the offering skill is either registered or acquired
+        $hasRegistered = $user->skills()->where('skill_id', $validated['offering_skill_id'])->exists();
+        $acquiredSkills = $user->getAcquiredSkills();
+        $hasAcquired = $acquiredSkills->pluck('skill_id')->contains($validated['offering_skill_id']);
+
+        if (!$hasRegistered && !$hasAcquired) {
+            return redirect()->back()
+                ->withErrors(['offering_skill_id' => 'You can only offer skills that you have registered or acquired in your profile.'])
+                ->withInput();
         }
 
         // Normalize checkbox/array inputs
@@ -770,8 +869,11 @@ class TradeController extends Controller
         }
 
         // Check if user has sufficient tokens for future acceptance (but don't charge yet)
+        // Premium users have unlimited requests - skip token check
         $requestFee = TradeFeeSetting::getFeeAmount('trade_request');
-        if ($requestFee > 0 && TradeFeeSetting::isFeeActive('trade_request')) {
+        $isPremium = $user->plan === 'premium';
+
+        if (!$isPremium && $requestFee > 0 && TradeFeeSetting::isFeeActive('trade_request')) {
             if ($user->token_balance < $requestFee) {
                 return redirect()->back()->with('error', "Insufficient tokens. You need {$requestFee} tokens to request this trade. Current balance: {$user->token_balance} tokens.");
             }
@@ -803,7 +905,9 @@ class TradeController extends Controller
         ]);
 
         $successMessage = 'Trade request sent successfully!';
-        if ($requestFee > 0) {
+        if ($isPremium) {
+            $successMessage .= " As a Premium member, no token fees will be charged.";
+        } elseif ($requestFee > 0) {
             $successMessage .= " {$requestFee} token fee will be charged when the trade is accepted.";
         }
 
@@ -856,21 +960,25 @@ class TradeController extends Controller
             $requester = $tradeRequest->requester;
             $accepter = $user;
 
+            // Check if users are premium (premium users have unlimited requests)
+            $requesterIsPremium = $requester->plan === 'premium';
+            $accepterIsPremium = $accepter->plan === 'premium';
+
             // Get fee amounts
             $requestFee = TradeFeeSetting::getFeeAmount('trade_request');
             $acceptanceFee = TradeFeeSetting::getFeeAmount('trade_acceptance');
 
-            // Check if both users have sufficient tokens
+            // Check if both users have sufficient tokens (skip for premium users)
             $totalFeeRequired = 0;
-            if ($requestFee > 0 && TradeFeeSetting::isFeeActive('trade_request')) {
+            if (!$requesterIsPremium && $requestFee > 0 && TradeFeeSetting::isFeeActive('trade_request')) {
                 $totalFeeRequired += $requestFee;
             }
-            if ($acceptanceFee > 0 && TradeFeeSetting::isFeeActive('trade_acceptance')) {
+            if (!$accepterIsPremium && $acceptanceFee > 0 && TradeFeeSetting::isFeeActive('trade_acceptance')) {
                 $totalFeeRequired += $acceptanceFee;
             }
 
-            // Check requester's balance
-            if ($requestFee > 0 && TradeFeeSetting::isFeeActive('trade_request')) {
+            // Check requester's balance (skip for premium users)
+            if (!$requesterIsPremium && $requestFee > 0 && TradeFeeSetting::isFeeActive('trade_request')) {
                 if ($requester->token_balance < $requestFee) {
                     // Revert the request status if insufficient tokens
                     $tradeRequest->update(['status' => 'pending', 'responded_at' => null]);
@@ -878,8 +986,8 @@ class TradeController extends Controller
                 }
             }
 
-            // Check accepter's balance
-            if ($acceptanceFee > 0 && TradeFeeSetting::isFeeActive('trade_acceptance')) {
+            // Check accepter's balance (skip for premium users)
+            if (!$accepterIsPremium && $acceptanceFee > 0 && TradeFeeSetting::isFeeActive('trade_acceptance')) {
                 if ($accepter->token_balance < $acceptanceFee) {
                     // Revert the request status if insufficient tokens
                     $tradeRequest->update(['status' => 'pending', 'responded_at' => null]);
@@ -887,8 +995,8 @@ class TradeController extends Controller
                 }
             }
 
-            // Charge fees to both users
-            if ($requestFee > 0 && TradeFeeSetting::isFeeActive('trade_request')) {
+            // Charge fees to both users (skip for premium users)
+            if (!$requesterIsPremium && $requestFee > 0 && TradeFeeSetting::isFeeActive('trade_request')) {
                 // Charge requester
                 $requester->token_balance -= $requestFee;
                 $requester->save();
@@ -904,7 +1012,7 @@ class TradeController extends Controller
                 ]);
             }
 
-            if ($acceptanceFee > 0 && TradeFeeSetting::isFeeActive('trade_acceptance')) {
+            if (!$accepterIsPremium && $acceptanceFee > 0 && TradeFeeSetting::isFeeActive('trade_acceptance')) {
                 // Charge accepter
                 $accepter->token_balance -= $acceptanceFee;
                 $accepter->save();
@@ -927,16 +1035,35 @@ class TradeController extends Controller
         $successMessage = "Trade request {$statusText} successfully!";
 
         if ($status === 'accepted') {
+            $requester = $tradeRequest->requester;
+            $accepter = $user;
+            $requesterIsPremium = $requester->plan === 'premium';
+            $accepterIsPremium = $accepter->plan === 'premium';
+
             $totalFeesCharged = 0;
-            if ($requestFee > 0 && TradeFeeSetting::isFeeActive('trade_request')) {
+            $premiumUsers = [];
+
+            if (!$requesterIsPremium && $requestFee > 0 && TradeFeeSetting::isFeeActive('trade_request')) {
                 $totalFeesCharged += $requestFee;
+            } else if ($requesterIsPremium) {
+                $premiumUsers[] = $requester->name;
             }
-            if ($acceptanceFee > 0 && TradeFeeSetting::isFeeActive('trade_acceptance')) {
+
+            if (!$accepterIsPremium && $acceptanceFee > 0 && TradeFeeSetting::isFeeActive('trade_acceptance')) {
                 $totalFeesCharged += $acceptanceFee;
+            } else if ($accepterIsPremium) {
+                $premiumUsers[] = $accepter->name;
             }
 
             if ($totalFeesCharged > 0) {
-                $successMessage .= " Token fees charged: {$totalFeesCharged} tokens total (both users).";
+                $successMessage .= " Token fees charged: {$totalFeesCharged} tokens total.";
+            }
+
+            if (!empty($premiumUsers)) {
+                $premiumMessage = count($premiumUsers) === 2
+                    ? "Both users are Premium members - no token fees charged."
+                    : implode(' and ', $premiumUsers) . " is a Premium member - no token fees charged for them.";
+                $successMessage .= " " . $premiumMessage;
             }
         }
 
@@ -954,5 +1081,98 @@ class TradeController extends Controller
             ->update(['read' => true]);
 
         return redirect()->back()->with('success', 'Notification marked as read.');
+    }
+
+    /**
+     * Display user's trade history (completed/closed trades)
+     */
+    public function history(Request $request)
+    {
+        $user = Auth::user();
+
+        // Get all trades where user is involved (owner or participant)
+        $query = Trade::where(function($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('requests', function($subQuery) use ($user) {
+                      $subQuery->where('requester_id', $user->id)
+                               ->where('status', 'accepted');
+                  });
+            })
+            ->where('status', 'closed')
+            ->with(['offeringSkill', 'lookingSkill', 'user', 'requests' => function($q) {
+                $q->where('status', 'accepted')->with('requester');
+            }]);
+
+        // Optional date filters
+        $fromDate = $request->get('from_date');
+        $toDate = $request->get('to_date');
+        $quick = $request->get('range'); // e.g., 1w, 3m
+
+        // Apply quick range if provided (only if custom dates are not set)
+        // Custom dates take priority over quick filters
+        if ($quick && !$fromDate && !$toDate) {
+            switch ($quick) {
+                case '1w':
+                    $fromDate = now()->subWeek()->toDateString();
+                    break;
+                case '3m':
+                    $fromDate = now()->subMonths(3)->toDateString();
+                    break;
+            }
+            $toDate = now()->toDateString(); // Always set toDate to today for quick filters
+        }
+
+        // Apply date filters
+        if ($fromDate) {
+            $query->whereDate('updated_at', '>=', $fromDate);
+        }
+        if ($toDate) {
+            $query->whereDate('updated_at', '<=', $toDate);
+        }
+
+        // Paginate with query string preservation
+        $trades = $query->orderBy('updated_at', 'desc')->paginate(15)->withQueryString();
+
+        // Calculate statistics
+        $totalCompleted = Trade::where(function($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('requests', function($subQuery) use ($user) {
+                      $subQuery->where('requester_id', $user->id)
+                               ->where('status', 'accepted');
+                  });
+            })
+            ->where('status', 'closed')
+            ->count();
+
+        $thisMonth = Trade::where(function($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('requests', function($subQuery) use ($user) {
+                      $subQuery->where('requester_id', $user->id)
+                               ->where('status', 'accepted');
+                  });
+            })
+            ->where('status', 'closed')
+            ->whereMonth('updated_at', now()->month)
+            ->whereYear('updated_at', now()->year)
+            ->count();
+
+        $thisYear = Trade::where(function($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereHas('requests', function($subQuery) use ($user) {
+                      $subQuery->where('requester_id', $user->id)
+                               ->where('status', 'accepted');
+                  });
+            })
+            ->where('status', 'closed')
+            ->whereYear('updated_at', now()->year)
+            ->count();
+
+        $stats = [
+            'total_completed' => $totalCompleted,
+            'this_month' => $thisMonth,
+            'this_year' => $thisYear,
+        ];
+
+        return view('trades.history', compact('trades', 'stats'));
     }
 }

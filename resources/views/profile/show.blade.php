@@ -202,11 +202,26 @@
                                 @endif
                             </form>
                 <div>
-                    <h2 style="margin:0 0 4px; font-size:1.25rem; color:#1f2937;">{{ $user->name }}</h2>
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                        <h2 style="margin:0; font-size:1.25rem; color:#1f2937;">{{ $user->name }}</h2>
+                        @if($user->plan === 'premium')
+                            <span class="premium-badge" style="display:inline-flex; align-items:center; gap:4px; padding:4px 10px; background:linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color:#fff; border-radius:12px; font-size:0.75rem; font-weight:600; box-shadow:0 2px 4px rgba(245,158,11,0.3);">
+                                <i class="fas fa-crown" style="font-size:0.7rem;"></i>
+                                Premium
+                            </span>
+                        @else
+                            <span class="free-badge" style="display:inline-flex; align-items:center; gap:4px; padding:4px 10px; background:linear-gradient(135deg, #6b7280 0%, #4b5563 100%); color:#fff; border-radius:12px; font-size:0.75rem; font-weight:600; box-shadow:0 2px 4px rgba(107,114,128,0.3);">
+                                <i class="fas fa-user" style="font-size:0.7rem;"></i>
+                                Free
+                            </span>
+                        @endif
+                    </div>
                     <p style="margin:0 0 8px; color:#6b7280; font-size:0.875rem;">{{ $user->email }}</p>
                     <div>
                         <span class="skill-pill skill-pill-registered">{{ ucfirst($user->role) }}</span>
-                        <span class="skill-pill skill-pill-acquired">{{ ucfirst($user->plan) }} Plan</span>
+                        @if($user->plan !== 'premium')
+                            <span class="skill-pill skill-pill-acquired">{{ ucfirst($user->plan) }} Plan</span>
+                        @endif
                         </div>
                             </div>
                         </div>

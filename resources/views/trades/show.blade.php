@@ -148,8 +148,23 @@
                         <div class="text-right">
                             @php
                                 $requestFee = \App\Models\TradeFeeSetting::getFeeAmount('trade_request');
+                                $isPremium = $user->plan === 'premium';
                             @endphp
-                            @if($requestFee > 0 && \App\Models\TradeFeeSetting::isFeeActive('trade_request'))
+                            @if($isPremium)
+                                <div class="mb-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                    <div class="flex items-center text-yellow-800">
+                                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                        </svg>
+                                        <span class="text-sm font-medium">
+                                            Premium Member - No token fees required!
+                                        </span>
+                                    </div>
+                                    <div class="text-xs text-yellow-700 mt-1">
+                                        You can send unlimited trade requests as a Premium member.
+                                    </div>
+                                </div>
+                            @elseif($requestFee > 0 && \App\Models\TradeFeeSetting::isFeeActive('trade_request'))
                                 <div class="mb-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                     <div class="flex items-center text-blue-800">
                                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -167,8 +182,8 @@
                             <form action="{{ route('trades.request', $trade->id) }}" method="POST" class="inline">
                                 @csrf
                                 <button type="submit"
-                                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded {{ $requestFee > 0 && $user->token_balance < $requestFee ? 'opacity-50 cursor-not-allowed' : '' }}"
-                                        {{ $requestFee > 0 && $user->token_balance < $requestFee ? 'disabled' : '' }}>
+                                        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded {{ !$isPremium && $requestFee > 0 && $user->token_balance < $requestFee ? 'opacity-50 cursor-not-allowed' : '' }}"
+                                        {{ !$isPremium && $requestFee > 0 && $user->token_balance < $requestFee ? 'disabled' : '' }}>
                                     Request This Trade
                                 </button>
                             </form>

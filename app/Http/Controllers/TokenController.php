@@ -95,6 +95,88 @@ class TokenController extends Controller
         }
     }
 
+    /**
+     * Handle premium subscription
+     */
+    public function subscribe(Request $request)
+    {
+        $user = Auth::user();
+
+        // Allow premium users to renew their subscription (manual renewal)
+        // Premium users can pay again to extend their subscription
+
+        // Get premium price from settings (default ₱299/month)
+        $premiumPrice = (float) (TradeFeeSetting::getFeeAmount('premium_price') ?: 299);
+
+        // Ensure minimum amount for PayMongo Links (₱100 minimum)
+        if ($premiumPrice < 100) {
+            return redirect()->back()->withErrors(['amount' => 'Premium subscription price must be at least ₱100.00']);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Create PayMongo payment link
+            $paymentLink = $this->createPayMongoPaymentIntent($premiumPrice, $user);
+
+            if (!$paymentLink) {
+                DB::rollback();
+                return redirect()->back()->withErrors(['payment' => 'Failed to create payment link. Please try again.']);
+            }
+
+            // Create transaction record for premium subscription
+            $transactionId = DB::table('token_transactions')->insertGetId([
+                'user_id' => $user->id,
+                'quantity' => 0, // No tokens for premium subscription
+                'amount' => $premiumPrice,
+                'payment_method' => 'paymongo',
+                'payment_intent_id' => $paymentLink['reference_number'],
+                'status' => 'pending',
+                'notes' => 'Premium subscription payment',
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // Store subscription info in transaction notes (we'll use this in webhook)
+            DB::table('token_transactions')
+                ->where('id', $transactionId)
+                ->update(['notes' => json_encode([
+                    'type' => 'premium_subscription',
+                    'transaction_id' => $transactionId
+                ])]);
+
+            DB::commit();
+
+            // Redirect to PayMongo checkout
+            if (isset($paymentLink['checkout_url']) && !empty($paymentLink['checkout_url'])) {
+                Log::info('Redirecting to PayMongo checkout for premium subscription', [
+                    'checkout_url' => $paymentLink['checkout_url'],
+                    'link_id' => $paymentLink['id'],
+                    'user_id' => $user->id
+                ]);
+                return redirect($paymentLink['checkout_url'])
+                    ->with('success', 'Redirecting to payment for Premium subscription...');
+            } else {
+                Log::error('No checkout URL received from PayMongo for premium subscription', [
+                    'link_id' => $paymentLink['id'] ?? 'unknown',
+                    'payment_link' => $paymentLink,
+                    'user_id' => $user->id
+                ]);
+
+                return redirect()->route('tokens.history')
+                    ->withErrors(['payment' => 'Unable to create payment checkout. Please try again or contact support.']);
+            }
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            Log::error('Premium subscription failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return redirect()->back()->withErrors(['error' => 'Subscription failed. Please try again.']);
+        }
+    }
 
     /**
      * Handle PayMongo webhook for payment confirmation
@@ -229,22 +311,75 @@ class TokenController extends Controller
                 'updated_at' => now()
             ]);
 
-        // Add tokens to user's account
         $user = DB::table('users')->where('id', $transaction->user_id)->first();
-        $newBalance = ($user->token_balance ?? 0) + $transaction->quantity;
 
-        DB::table('users')
-            ->where('id', $transaction->user_id)
-            ->update(['token_balance' => $newBalance]);
+        // Check if this is a premium subscription
+        $notes = $transaction->notes ?? '';
+        $isPremiumSubscription = false;
 
-        Log::info('Token purchase completed', [
-            'user_id' => $transaction->user_id,
-            'quantity' => $transaction->quantity,
-            'amount' => $transaction->amount,
-            'new_balance' => $newBalance,
-            'test_mode' => $isTestMode,
-            'payment_intent_id' => $paymentIntentId
-        ]);
+        // Try to parse JSON notes
+        if (!empty($notes)) {
+            $notesData = json_decode($notes, true);
+            if (is_array($notesData) && isset($notesData['type']) && $notesData['type'] === 'premium_subscription') {
+                $isPremiumSubscription = true;
+            } elseif (stripos($notes, 'premium') !== false && stripos($notes, 'subscription') !== false) {
+                $isPremiumSubscription = true;
+            }
+        }
+
+        if ($isPremiumSubscription) {
+            // Get premium duration from settings (default 1 month)
+            $durationMonths = (int) (TradeFeeSetting::getFeeAmount('premium_duration_months') ?: 1);
+            if ($durationMonths < 1) {
+                $durationMonths = 1; // Ensure at least 1 month
+            }
+
+            // Calculate expiration date
+            $expiresAt = now()->addMonths($durationMonths);
+
+            // If user already has premium, extend from current expiration date (if not expired)
+            $currentUser = DB::table('users')->where('id', $transaction->user_id)->first();
+            if ($currentUser && $currentUser->plan === 'premium' && $currentUser->premium_expires_at) {
+                $currentExpiresAt = \Carbon\Carbon::parse($currentUser->premium_expires_at);
+                // If current expiration is in the future, extend from there
+                if ($currentExpiresAt->isFuture()) {
+                    $expiresAt = $currentExpiresAt->addMonths($durationMonths);
+                }
+            }
+
+            // Update user plan to premium with expiration date
+            DB::table('users')
+                ->where('id', $transaction->user_id)
+                ->update([
+                    'plan' => 'premium',
+                    'premium_expires_at' => $expiresAt
+                ]);
+
+            Log::info('Premium subscription activated', [
+                'user_id' => $transaction->user_id,
+                'amount' => $transaction->amount,
+                'duration_months' => $durationMonths,
+                'expires_at' => $expiresAt->toDateTimeString(),
+                'test_mode' => $isTestMode,
+                'payment_intent_id' => $paymentIntentId
+            ]);
+        } else {
+            // Add tokens to user's account (regular token purchase)
+            $newBalance = ($user->token_balance ?? 0) + $transaction->quantity;
+
+            DB::table('users')
+                ->where('id', $transaction->user_id)
+                ->update(['token_balance' => $newBalance]);
+
+            Log::info('Token purchase completed', [
+                'user_id' => $transaction->user_id,
+                'quantity' => $transaction->quantity,
+                'amount' => $transaction->amount,
+                'new_balance' => $newBalance,
+                'test_mode' => $isTestMode,
+                'payment_intent_id' => $paymentIntentId
+            ]);
+        }
     }
 
     /**

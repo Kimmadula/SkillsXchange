@@ -23,6 +23,9 @@ class Kernel extends ConsoleKernel
 
         // Expiration warnings (run hourly)
         $schedule->command('notifications:send-expiration-warnings')->hourly();
+
+        // Expire premium subscriptions (run daily at midnight)
+        $schedule->command('premium:expire')->daily();
     }
 
     /**

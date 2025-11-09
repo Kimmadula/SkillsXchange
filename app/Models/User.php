@@ -34,6 +34,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'photo',
         'role',
         'plan',
+        'premium_expires_at',
         'token_balance',
         'skill_id',
         'is_verified',
@@ -57,12 +58,13 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'premium_expires_at' => 'datetime',
         'bdate' => 'date',
     ];
 
     /**
      * Get the user's primary skill.
-     * 
+     *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function skill()
@@ -72,7 +74,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Get all skills associated with the user.
-     * 
+     *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany|\App\Models\Skill[]
      */
     public function skills()
@@ -82,7 +84,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Get the user's skill acquisition history.
-     * 
+     *
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function skillAcquisitions()
@@ -172,7 +174,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     /**
      * Get unique skills acquired through trading.
-     * 
+     *
      * @return \Illuminate\Database\Eloquent\Collection
      */
     public function getAcquiredSkills()
@@ -196,6 +198,24 @@ class User extends Authenticatable implements MustVerifyEmail
             \Log::error('Error getting acquired skills for user ' . $this->id . ': ' . $e->getMessage());
             return collect();
         }
+    }
+
+    /**
+     * Check if user has active premium subscription (not expired)
+     */
+    public function isPremium()
+    {
+        if ($this->plan !== 'premium') {
+            return false;
+        }
+
+        // If no expiration date, consider it active (backward compatibility)
+        if (!$this->premium_expires_at) {
+            return true;
+        }
+
+        // Check if expiration date is in the future
+        return $this->premium_expires_at->isFuture();
     }
 
     /**

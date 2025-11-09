@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use App\Models\TradeFeeSetting;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
@@ -125,7 +126,7 @@ class RegisteredUserController extends Controller
                 'email_verified_at' => null, // Email not verified yet - Laravel will handle this
                 'role' => 'user',
                 'plan' => 'free',
-                'token_balance' => 0,
+                'token_balance' => (int) (TradeFeeSetting::getFeeAmount('default_tokens_for_new_user') ?: 0),
             ]);
 
             // Attach all selected skills to the user

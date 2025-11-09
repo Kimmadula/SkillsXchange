@@ -47,27 +47,38 @@
         </div>
 
         <div>
-            <label for="offering_skill_id" style="display:block; font-weight:600; margin-bottom:4px;">Offering (Your Registered Skill)</label>
-            <select id="offering_skill_id" name="offering_skill_id" required class="w-100" style="padding:10px; border:1px solid #ddd; border-radius:6px; background:#f9fafb;" disabled>
-                @if($user->skill)
-                    <option value="{{ $user->skill->skill_id }}" selected>
-                        {{ $user->skill->category }} - {{ $user->skill->name }}
-                    </option>
-                @else
-                    <option value="">No skill registered</option>
+            <label for="offering_skill_category" style="display:block; font-weight:600; margin-bottom:4px;">Skill Category (What you're offering)</label>
+            <select id="offering_skill_category" required class="w-100" style="padding:10px; border:1px solid #ddd; border-radius:6px;">
+                <option value="">Select a category first</option>
+                @if(isset($userAllSkills) && $userAllSkills->count() > 0)
+                    @foreach($userAllSkills->groupBy('category') as $category => $group)
+                        <option value="{{ $category }}">{{ $category }} ({{ $group->count() }} skills)</option>
+                    @endforeach
                 @endif
             </select>
-            @if($user->skill)
-                <input type="hidden" name="offering_skill_id" value="{{ $user->skill->skill_id }}">
-                <div style="color:#059669; font-size:0.875rem; margin-top:4px;">
-                    ✓ Your registered skill: <strong>{{ $user->skill->category }} - {{ $user->skill->name }}</strong>
-                </div>
-                <div style="color:#6b7280; font-size:0.8rem; margin-top:2px;">
-                    You can only offer your registered skill. Change it in your profile.
-                </div>
-            @else
+            <small class="wrap-anywhere" style="color:#6b7280; font-size:0.75rem;">Select a category to see your registered and acquired skills</small>
+            @if(!isset($userAllSkills) || $userAllSkills->count() === 0)
                 <div style="color:#e53e3e; font-size:0.875rem; margin-top:4px;">
-                    ⚠️ You need to register a skill first to post trades.
+                    ⚠️ You need to register or acquire a skill first to post trades. <a href="{{ route('profile.edit') }}">Add skills to your profile</a>.
+                </div>
+            @endif
+        </div>
+
+        <div>
+            <label for="offering_skill_id" style="display:block; font-weight:600; margin-bottom:4px;">Skill Name (What you're offering)</label>
+            <select id="offering_skill_id" name="offering_skill_id" required class="w-100" style="padding:10px; border:1px solid #ddd; border-radius:6px;" disabled>
+                <option value="">Select a category first</option>
+                @if(isset($userAllSkills) && $userAllSkills->count() > 0)
+                    @foreach($userAllSkills as $skill)
+                        <option value="{{ $skill->skill_id }}" data-category="{{ $skill->category }}">
+                            {{ $skill->name }}
+                        </option>
+                    @endforeach
+                @endif
+            </select>
+            @if(isset($userAllSkills) && $userAllSkills->count() > 0)
+                <div style="color:#6b7280; font-size:0.8rem; margin-top:2px;">
+                    Your registered and acquired skills are shown. <a href="{{ route('profile.edit') }}">Manage your skills</a>.
                 </div>
             @endif
             @error('offering_skill_id')<div style="color:#e53e3e; font-size:0.875rem;">{{ $message }}</div>@enderror
@@ -178,49 +189,46 @@
 
 
     <script>
-        // Skill category selection with debugging
+        // Skill category selection for both "offering" and "looking for"
         document.addEventListener('DOMContentLoaded', function() {
-            const categorySelect = document.getElementById('looking_skill_category');
-            const skillSelect = document.getElementById('looking_skill_id');
-            const allOptions = Array.from(skillSelect.options);
+            // Function to handle category-based skill filtering
+            function setupSkillFilter(categorySelectId, skillSelectId) {
+                const categorySelect = document.getElementById(categorySelectId);
+                const skillSelect = document.getElementById(skillSelectId);
+                const allOptions = Array.from(skillSelect.options);
 
-            console.log('🔧 Skill selection initialized');
-            console.log('📊 Total skill options:', allOptions.length);
-            console.log('📋 All options:', allOptions.map(opt => ({value: opt.value, category: opt.getAttribute('data-category'), text: opt.textContent})));
+                categorySelect.addEventListener('change', function() {
+                    const selectedCategory = this.value;
+                    skillSelect.innerHTML = '<option value="">Select a skill</option>';
 
-            categorySelect.addEventListener('change', function() {
-                const selectedCategory = this.value;
-                console.log('🎯 Category selected:', selectedCategory);
+                    if (selectedCategory) {
+                        skillSelect.disabled = false;
+                        let addedCount = 0;
 
-                skillSelect.innerHTML = '<option value="">Select a skill</option>';
+                        allOptions.forEach(option => {
+                            if (!option.value) return; // skip placeholder
+                            const optionCategory = option.getAttribute('data-category');
 
-                if (selectedCategory) {
-                    skillSelect.disabled = false;
-                    let addedCount = 0;
+                            if (optionCategory === selectedCategory) {
+                                skillSelect.appendChild(option.cloneNode(true));
+                                addedCount++;
+                            }
+                        });
 
-                    allOptions.forEach(option => {
-                        if (!option.value) return; // skip placeholder
-                        const optionCategory = option.getAttribute('data-category');
-                        console.log('🔍 Checking option:', option.textContent, 'Category:', optionCategory);
-
-                        if (optionCategory === selectedCategory) {
-                            skillSelect.appendChild(option.cloneNode(true));
-                            addedCount++;
-                            console.log('✅ Added skill:', option.textContent);
+                        if (addedCount === 0) {
+                            skillSelect.innerHTML = '<option value="">No skills found for this category</option>';
                         }
-                    });
-
-                    console.log('📈 Added', addedCount, 'skills for category:', selectedCategory);
-
-                    if (addedCount === 0) {
-                        skillSelect.innerHTML = '<option value="">No skills found for this category</option>';
-                        console.log('⚠️ No skills found for category:', selectedCategory);
+                    } else {
+                        skillSelect.disabled = true;
                     }
-                } else {
-                    skillSelect.disabled = true;
-                    console.log('🔒 Skill select disabled');
-                }
-            });
+                });
+            }
+
+            // Setup for "offering" skill
+            setupSkillFilter('offering_skill_category', 'offering_skill_id');
+
+            // Setup for "looking for" skill
+            setupSkillFilter('looking_skill_category', 'looking_skill_id');
         });
 
         // Location suggestions for Cebu

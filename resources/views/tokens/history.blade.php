@@ -97,14 +97,39 @@
                     </thead>
                     <tbody>
                         @foreach($transactions as $transaction)
+                        @php
+                            // Check if this is a premium subscription
+                            $notes = $transaction->notes ?? '';
+                            $isPremiumSubscription = false;
+                            if (!empty($notes)) {
+                                $notesData = json_decode($notes, true);
+                                if (is_array($notesData) && isset($notesData['type']) && $notesData['type'] === 'premium_subscription') {
+                                    $isPremiumSubscription = true;
+                                } elseif (stripos($notes, 'premium') !== false && stripos($notes, 'subscription') !== false) {
+                                    $isPremiumSubscription = true;
+                                }
+                            }
+                        @endphp
                         <tr>
                             <td>{{ \Carbon\Carbon::parse($transaction->created_at)->format('M d, Y H:i') }}</td>
                             <td>
-                                <span class="badge bg-primary">
-                                    <i class="fas fa-coins me-1"></i>Token Purchase
-                                </span>
+                                @if($isPremiumSubscription)
+                                    <span class="badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff;">
+                                        <i class="fas fa-crown me-1"></i>Premium Subscription
+                                    </span>
+                                @else
+                                    <span class="badge bg-primary">
+                                        <i class="fas fa-coins me-1"></i>Token Purchase
+                                    </span>
+                                @endif
                             </td>
-                            <td>{{ $transaction->quantity }} tokens</td>
+                            <td>
+                                @if($isPremiumSubscription)
+                                    <span class="text-muted">N/A</span>
+                                @else
+                                    {{ $transaction->quantity }} tokens
+                                @endif
+                            </td>
                             <td>₱{{ number_format($transaction->amount, 2) }}</td>
                             <td>
                                 @switch($transaction->status)
@@ -157,13 +182,13 @@
 
         <!-- Quick Actions -->
         <div class="dashboard-card dashboard-card--stats slide-up mt-4">
-            <h3 class="h5 fw-bold text-gradient mb-3">Quick Actions</h3>
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#buyTokensModal">
-                        <i class="fas fa-coins me-2"></i>Buy More Tokens
-                    </button>
-                </div>
+            <div class="mb-2">
+                <small class="text-muted">Click to buy tokens or subscribe to premium</small>
+            </div>
+            <div class="d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#buyTokensModal" style="cursor: pointer;">
+                <i class="fas fa-coins text-warning"></i>
+                <small class="text-muted fw-semibold">Tokens</small>
+                <span class="badge bg-secondary-subtle text-dark border">{{ auth()->user()->token_balance ?? 0 }}</span>
             </div>
         </div>
     </div>

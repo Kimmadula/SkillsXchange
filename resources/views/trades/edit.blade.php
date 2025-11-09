@@ -29,6 +29,12 @@
         </div>
     @endif
 
+    @if(session('warning'))
+        <div style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:10px 12px; border-radius:6px; margin-bottom:16px;">
+            ⚠️ {{ session('warning') }}
+        </div>
+    @endif
+
     @if($errors->any())
         <div style="background:#fef2f2; color:#991b1b; border:1px solid #fecaca; padding:10px 12px; border-radius:6px; margin-bottom:16px;">
             <ul style="margin:0; padding-left:18px;">
@@ -36,6 +42,30 @@
                     <li>{{ $error }}</li>
                 @endforeach
             </ul>
+        </div>
+    @endif
+
+    @php($hasActiveRequests = isset($hasActiveRequests) ? $hasActiveRequests : false)
+    @php($activeRequestCount = isset($activeRequestCount) ? $activeRequestCount : 0)
+
+    @if($hasActiveRequests)
+        <div style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; padding:12px 16px; border-radius:6px; margin-bottom:16px; border-left:4px solid #f59e0b;">
+            <div style="display:flex; align-items:start; gap:8px;">
+                <span style="font-size:1.2rem;">⚠️</span>
+                <div style="flex:1;">
+                    <strong style="display:block; margin-bottom:4px;">Skills Cannot Be Changed</strong>
+                    <p style="margin:0; font-size:0.9rem;">
+                        @if($trade->status === 'ongoing')
+                            This trade session is currently ongoing.
+                            You cannot change the offering or looking-for skills until the session is completed or closed.
+                        @else
+                            This trade has {{ $activeRequestCount }} active request(s) (pending or accepted).
+                            You cannot change the offering or looking-for skills until all requests are responded to or cancelled.
+                            <a href="{{ route('trades.requests') }}" style="color:#92400e; text-decoration:underline; font-weight:600;">Manage requests</a>
+                        @endif
+                    </p>
+                </div>
+            </div>
         </div>
     @endif
 
@@ -54,39 +84,80 @@
             </div>
         </div>
 
+        @php($currentOfferingCategory = optional($trade->offeringSkill)->category)
         <div>
-            <label for="offering_skill_id" style="display:block; font-weight:600; margin-bottom:4px;">Offering (Your Registered Skill)</label>
-            <select id="offering_skill_id" name="offering_skill_id" required class="w-100" style="padding:10px; border:1px solid #ddd; border-radius:6px; background:#f9fafb;" disabled>
-                @if($user->skill)
-                    <option value="{{ $user->skill->skill_id }}" selected>{{ $user->skill->category }} - {{ $user->skill->name }}</option>
-                @else
-                    <option value="">No skill registered</option>
+            <label for="offering_skill_category" style="display:block; font-weight:600; margin-bottom:4px;">Skill Category (What you're offering)</label>
+            <select id="offering_skill_category" required class="w-100" style="padding:10px; border:1px solid #ddd; border-radius:6px; {{ $hasActiveRequests ? 'background:#f3f4f6; cursor:not-allowed;' : '' }}" {{ $hasActiveRequests ? 'disabled' : '' }}>
+                <option value="">Select a category first</option>
+                @if(isset($userAllSkills) && $userAllSkills->count() > 0)
+                    @foreach($userAllSkills->groupBy('category') as $category => $group)
+                        <option value="{{ $category }}" {{ $currentOfferingCategory === $category ? 'selected' : '' }}>{{ $category }} ({{ $group->count() }} skills)</option>
+                    @endforeach
                 @endif
             </select>
-            @if($user->skill)
-                <input type="hidden" name="offering_skill_id" value="{{ $user->skill->skill_id }}">
-                <div style="color:#059669; font-size:0.875rem; margin-top:4px;">✓ Your registered skill: <strong>{{ $user->skill->category }} - {{ $user->skill->name }}</strong></div>
-                <div style="color:#6b7280; font-size:0.8rem; margin-top:2px;">You can only offer your registered skill. Change it in your profile.</div>
+            @if($hasActiveRequests)
+                <input type="hidden" name="offering_skill_id" value="{{ $trade->offering_skill_id }}">
+                <small class="wrap-anywhere" style="color:#92400e; font-size:0.75rem; display:block; margin-top:4px;">
+                    🔒 Locked: Cannot change while there are active requests
+                </small>
             @else
-                <div style="color:#e53e3e; font-size:0.875rem; margin-top:4px;">⚠️ You need to register a skill first to post trades.</div>
+                <small class="wrap-anywhere" style="color:#6b7280; font-size:0.75rem;">Select a category to see your registered and acquired skills</small>
             @endif
+            @if(!isset($userAllSkills) || $userAllSkills->count() === 0)
+                <div style="color:#e53e3e; font-size:0.875rem; margin-top:4px;">
+                    ⚠️ You need to register or acquire a skill first to post trades. <a href="{{ route('profile.edit') }}">Add skills to your profile</a>.
+                </div>
+            @endif
+        </div>
+
+        <div>
+            <label for="offering_skill_id" style="display:block; font-weight:600; margin-bottom:4px;">Skill Name (What you're offering)</label>
+            <select id="offering_skill_id" name="offering_skill_id" required class="w-100" style="padding:10px; border:1px solid #ddd; border-radius:6px; {{ $hasActiveRequests ? 'background:#f3f4f6; cursor:not-allowed;' : '' }}" {{ $hasActiveRequests || !$currentOfferingCategory ? 'disabled' : '' }}>
+                @if(!$currentOfferingCategory)
+                    <option value="">Select a category first</option>
+                @endif
+                @if(isset($userAllSkills) && $userAllSkills->count() > 0)
+                    @foreach($userAllSkills as $skill)
+                        <option value="{{ $skill->skill_id }}" data-category="{{ $skill->category }}" {{ $trade->offering_skill_id == $skill->skill_id ? 'selected' : '' }}>
+                            {{ $skill->name }}
+                        </option>
+                    @endforeach
+                @endif
+            </select>
+            @if($hasActiveRequests)
+                <div style="color:#92400e; font-size:0.8rem; margin-top:2px;">
+                    🔒 This field is locked because there are active requests on this trade.
+                </div>
+            @elseif(isset($userAllSkills) && $userAllSkills->count() > 0)
+                <div style="color:#6b7280; font-size:0.8rem; margin-top:2px;">
+                    Your registered and acquired skills are shown. <a href="{{ route('profile.edit') }}">Manage your skills</a>.
+                </div>
+            @endif
+            @error('offering_skill_id')<div style="color:#e53e3e; font-size:0.875rem;">{{ $message }}</div>@enderror
         </div>
 
         @php($currentCategory = optional($trade->lookingSkill)->category)
         <div>
             <label for="looking_skill_category" style="display:block; font-weight:600; margin-bottom:4px;">Skill Category (What you want to learn)</label>
-            <select id="looking_skill_category" required class="w-100" style="padding:10px; border:1px solid #ddd; border-radius:6px;">
+            <select id="looking_skill_category" required class="w-100" style="padding:10px; border:1px solid #ddd; border-radius:6px; {{ $hasActiveRequests ? 'background:#f3f4f6; cursor:not-allowed;' : '' }}" {{ $hasActiveRequests ? 'disabled' : '' }}>
                 <option value="">Select a category first</option>
                 @foreach($skills->groupBy('category') as $category => $group)
                     <option value="{{ $category }}" {{ $currentCategory === $category ? 'selected' : '' }}>{{ $category }} ({{ $group->count() }} skills)</option>
                 @endforeach
             </select>
-            <small class="wrap-anywhere" style="color:#6b7280; font-size:0.75rem;">Select a category to see available skills</small>
+            @if($hasActiveRequests)
+                <input type="hidden" name="looking_skill_id" value="{{ $trade->looking_skill_id }}">
+                <small class="wrap-anywhere" style="color:#92400e; font-size:0.75rem; display:block; margin-top:4px;">
+                    🔒 Locked: Cannot change while there are active requests
+                </small>
+            @else
+                <small class="wrap-anywhere" style="color:#6b7280; font-size:0.75rem;">Select a category to see available skills</small>
+            @endif
         </div>
 
         <div>
             <label for="looking_skill_id" style="display:block; font-weight:600; margin-bottom:4px;">Skill Name (What you want to learn)</label>
-            <select id="looking_skill_id" name="looking_skill_id" required class="w-100" style="padding:10px; border:1px solid #ddd; border-radius:6px;" {{ $currentCategory ? '' : 'disabled' }}>
+            <select id="looking_skill_id" name="looking_skill_id" required class="w-100" style="padding:10px; border:1px solid #ddd; border-radius:6px; {{ $hasActiveRequests ? 'background:#f3f4f6; cursor:not-allowed;' : '' }}" {{ $hasActiveRequests || !$currentCategory ? 'disabled' : '' }}>
                 @if(!$currentCategory)
                     <option value="">Select a category first</option>
                 @endif
@@ -94,6 +165,11 @@
                     <option value="{{ $s->skill_id }}" data-category="{{ $s->category }}" {{ $trade->looking_skill_id == $s->skill_id ? 'selected' : '' }} {{ ($user->skill_id ?? null) == $s->skill_id ? 'disabled' : '' }}>{{ $s->name }}</option>
                 @endforeach
             </select>
+            @if($hasActiveRequests)
+                <div style="color:#92400e; font-size:0.8rem; margin-top:2px;">
+                    🔒 This field is locked because there are active requests on this trade.
+                </div>
+            @endif
             @error('looking_skill_id')<div style="color:#e53e3e; font-size:0.875rem;">{{ $message }}</div>@enderror
         </div>
 
@@ -166,45 +242,74 @@
     </form>
 
     <script>
+        // Skill category selection for both "offering" and "looking for"
         document.addEventListener('DOMContentLoaded', function() {
-            const categorySelect = document.getElementById('looking_skill_category');
-            const skillSelect = document.getElementById('looking_skill_id');
-            const allOptions = Array.from(skillSelect.options);
-            const currentCategory = categorySelect.value;
+            const hasActiveRequests = @json($hasActiveRequests ?? false);
 
-            function repopulateSkills(category) {
+            // Function to handle category-based skill filtering
+            function setupSkillFilter(categorySelectId, skillSelectId) {
+                const categorySelect = document.getElementById(categorySelectId);
+                const skillSelect = document.getElementById(skillSelectId);
+
+                // Don't setup if fields are disabled due to active requests
+                if (hasActiveRequests && (categorySelect.disabled || skillSelect.disabled)) {
+                    return;
+                }
+
+                const allOptions = Array.from(skillSelect.options);
+                const currentCategory = categorySelect.value;
                 const currentSelected = skillSelect.value;
-                skillSelect.innerHTML = '';
-                let placeholder = document.createElement('option');
-                placeholder.value = '';
-                placeholder.textContent = category ? 'Select a skill' : 'Select a category first';
-                if (!category) placeholder.selected = true;
-                skillSelect.appendChild(placeholder);
 
-                if (!category) return;
-                allOptions.forEach(option => {
-                    if (!option.value) return;
-                    if (option.getAttribute('data-category') === category) {
-                        const clone = option.cloneNode(true);
-                        skillSelect.appendChild(clone);
+                function repopulateSkills(category) {
+                    skillSelect.innerHTML = '';
+                    let placeholder = document.createElement('option');
+                    placeholder.value = '';
+                    placeholder.textContent = category ? 'Select a skill' : 'Select a category first';
+                    if (!category) placeholder.selected = true;
+                    skillSelect.appendChild(placeholder);
+
+                    if (!category) {
+                        skillSelect.disabled = true;
+                        return;
+                    }
+
+                    skillSelect.disabled = false;
+                    allOptions.forEach(option => {
+                        if (!option.value) return;
+                        if (option.getAttribute('data-category') === category) {
+                            const clone = option.cloneNode(true);
+                            skillSelect.appendChild(clone);
+                        }
+                    });
+
+                    // Try to re-select existing value
+                    if (currentSelected) {
+                        const toSelect = Array.from(skillSelect.options).find(o => o.value === currentSelected);
+                        if (toSelect) toSelect.selected = true;
+                    }
+                }
+
+                // Initial population by current category
+                if (currentCategory) {
+                    repopulateSkills(currentCategory);
+                }
+
+                categorySelect.addEventListener('change', function() {
+                    if (!hasActiveRequests) {
+                        repopulateSkills(this.value);
                     }
                 });
-
-                // Try to re-select existing value
-                if (currentSelected) {
-                    const toSelect = Array.from(skillSelect.options).find(o => o.value === currentSelected);
-                    if (toSelect) toSelect.selected = true;
-                }
             }
 
-            // Initial population by current category
-            if (currentCategory) {
-                repopulateSkills(currentCategory);
+            // Setup for "offering" skill (only if not locked)
+            if (!hasActiveRequests) {
+                setupSkillFilter('offering_skill_category', 'offering_skill_id');
             }
 
-            categorySelect.addEventListener('change', function() {
-                repopulateSkills(this.value);
-            });
+            // Setup for "looking for" skill (only if not locked)
+            if (!hasActiveRequests) {
+                setupSkillFilter('looking_skill_category', 'looking_skill_id');
+            }
         });
 
         // Location suggestions for Cebu
