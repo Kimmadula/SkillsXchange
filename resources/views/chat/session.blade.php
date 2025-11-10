@@ -3,6 +3,7 @@
 @section('content')
 {{-- New modern design CSS --}}
 <link rel="stylesheet" href="{{ asset('css/session.css') }}">
+<link rel="stylesheet" href="{{ asset('css/video.css') }}">
 <script>
     // Initialize global variables for the chat session
     window.currentUserId = parseInt('{{ auth()->id() }}');
@@ -11,6 +12,56 @@
     window.partnerId = parseInt('{{ $partner->id }}');
     window.partnerName = '{{ addslashes(($partner->firstname ?? "Unknown") . " " . ($partner->lastname ?? "User")) }}';
     window.initialMessageCount = parseInt('{{ $messages->count() }}');
+    
+    // Define openVideoChat immediately as a fallback (will be overridden by app.js if it loads)
+    window.openVideoChat = function() {
+        console.log('🎥 Opening video chat modal (fallback function)...');
+        const videoModal = document.getElementById('video-chat-modal');
+        if (videoModal) {
+            videoModal.style.display = 'flex';
+            console.log('✅ Video chat modal opened');
+            
+            // Initialize video status
+            const videoStatus = document.getElementById('video-status');
+            if (videoStatus) {
+                videoStatus.textContent = 'Ready to start call';
+            }
+            
+            // Show start call button, hide end call button
+            const startCallBtn = document.getElementById('start-call-btn');
+            const endCallBtn = document.getElementById('end-call-btn');
+            if (startCallBtn) startCallBtn.style.display = 'inline-block';
+            if (endCallBtn) endCallBtn.style.display = 'none';
+        } else {
+            console.error('❌ Video chat modal not found');
+            alert('Video chat modal not found. Please refresh the page.');
+        }
+    };
+    
+    // Define closeVideoChat immediately as a fallback
+    window.closeVideoChat = function() {
+        console.log('❌ Closing video chat modal (fallback function)...');
+        const videoModal = document.getElementById('video-chat-modal');
+        if (videoModal) {
+            videoModal.style.display = 'none';
+            console.log('✅ Video chat modal closed');
+            
+            // Stop any active streams
+            if (window.localStream) {
+                window.localStream.getTracks().forEach(track => track.stop());
+                window.localStream = null;
+            }
+            
+            const localVideo = document.getElementById('local-video');
+            const remoteVideo = document.getElementById('remote-video');
+            if (localVideo) {
+                localVideo.srcObject = null;
+            }
+            if (remoteVideo) {
+                remoteVideo.srcObject = null;
+            }
+        }
+    };
     
 
     // Emoji picker functions
@@ -973,295 +1024,6 @@
         line-height: 1.4 !important;
     }
 
-    /* Video Chat Styles */
-    .video-chat-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.95);
-        z-index: 9999;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .video-chat-container {
-        background: #1a1a1a;
-        border-radius: 12px;
-        padding: 0;
-        max-width: 95vw;
-        width: 95vw;
-        max-height: 95vh;
-        height: 95vh;
-        overflow: hidden;
-        position: relative;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .video-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-        flex: 1;
-        padding: 10px;
-        min-height: 0;
-    }
-
-    .video-grid.maximized {
-        grid-template-columns: 1fr;
-    }
-
-    .video-item {
-        position: relative;
-        background: #000;
-        border-radius: 8px;
-        overflow: hidden;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .video-item.maximized {
-        grid-column: 1 / -1;
-        grid-row: 1 / -1;
-    }
-
-    .video-item video {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        flex: 1;
-    }
-
-    /* Default state for local video - no mirroring by default */
-    #local-video {
-        transform: scaleX(1);
-    }
-
-    .video-item.remote {
-        border: 2px solid #3b82f6;
-    }
-
-    .video-item.local {
-        border: 2px solid #10b981;
-    }
-
-    .video-item.local.minimized {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        width: 200px;
-        height: 150px;
-        z-index: 10;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-
-    .video-controls {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 12px;
-        padding: 20px;
-        background: rgba(0, 0, 0, 0.8);
-        border-top: 1px solid #333;
-    }
-
-    .video-btn {
-        padding: 12px;
-        border: none;
-        border-radius: 50%;
-        cursor: pointer;
-        font-weight: 600;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 48px;
-        min-height: 48px;
-        font-size: 18px;
-    }
-
-    .video-btn.primary {
-        background: #3b82f6;
-        color: white;
-    }
-
-    .video-btn.primary:hover {
-        background: #2563eb;
-        transform: scale(1.05);
-    }
-
-    .video-btn.danger {
-        background: #ef4444;
-        color: white;
-    }
-
-    .video-btn.danger:hover {
-        background: #dc2626;
-        transform: scale(1.05);
-    }
-
-    .video-btn.success {
-        background: #10b981;
-        color: white;
-    }
-
-    .video-btn.success:hover {
-        background: #059669;
-        transform: scale(1.05);
-    }
-
-    .video-btn.secondary {
-        background: #6b7280;
-        color: white;
-    }
-
-    .video-btn.secondary:hover {
-        background: #4b5563;
-        transform: scale(1.05);
-    }
-
-    .video-btn.muted {
-        background: #ef4444 !important;
-    }
-
-    .video-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none !important;
-    }
-
-    .video-btn.maximize {
-        background: #8b5cf6;
-        color: white;
-    }
-
-    .video-btn.maximize:hover {
-        background: #7c3aed;
-        transform: scale(1.05);
-    }
-
-    .video-status {
-        text-align: center;
-        padding: 15px;
-        font-weight: 600;
-        color: #e5e7eb;
-        background: rgba(0, 0, 0, 0.5);
-        border-bottom: 1px solid #333;
-    }
-
-    .call-timer {
-        text-align: center;
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #3b82f6;
-        padding: 10px;
-        background: rgba(0, 0, 0, 0.3);
-        border-bottom: 1px solid #333;
-    }
-
-    .close-video {
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        border: none;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        cursor: pointer;
-        font-size: 1.2rem;
-        z-index: 1000;
-        transition: all 0.2s;
-    }
-
-    .close-video:hover {
-        background: rgba(239, 68, 68, 0.8);
-        transform: scale(1.1);
-    }
-
-    .connection-status {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        backdrop-filter: blur(10px);
-        z-index: 10;
-    }
-
-    .connection-status.connected {
-        background: rgba(16, 185, 129, 0.9);
-        color: white;
-    }
-
-    .connection-status.connecting {
-        background: rgba(245, 158, 11, 0.9);
-        color: white;
-    }
-
-    .connection-status.disconnected {
-        background: rgba(239, 68, 68, 0.9);
-        color: white;
-    }
-
-    .video-overlay {
-        position: absolute;
-        bottom: 10px;
-        left: 10px;
-        right: 10px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        z-index: 10;
-    }
-
-    .user-name {
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        padding: 6px 12px;
-        border-radius: 20px;
-        font-size: 0.875rem;
-        font-weight: 500;
-        backdrop-filter: blur(10px);
-    }
-
-    .video-controls-overlay {
-        display: flex;
-        gap: 8px;
-    }
-
-    .control-btn {
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        border: none;
-        border-radius: 50%;
-        width: 36px;
-        height: 36px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        transition: all 0.2s;
-        backdrop-filter: blur(10px);
-    }
-
-    .control-btn:hover {
-        background: rgba(0, 0, 0, 0.9);
-        transform: scale(1.1);
-    }
-
-    .control-btn.active {
-        background: rgba(239, 68, 68, 0.9);
-    }
 
     /* Emoji button hover effect */
     #emoji-button:hover {
@@ -1404,60 +1166,7 @@
     }
 </style>
 
-<!-- Video Chat Modal -->
-<div id="video-chat-modal" class="video-chat-modal">
-    <div class="video-chat-container">
-        <button class="close-video" id="close-video-btn" title="Close Video Chat" aria-label="Close video chat">×</button>
-
-        <div class="video-status" id="video-status" role="status" aria-live="polite">Initializing video chat...</div>
-        <div class="call-timer" id="call-timer" style="display: none;" aria-label="Call duration">00:00</div>
-
-        <div class="video-grid" id="video-grid" role="region" aria-label="Video call participants">
-            <div class="video-item local" id="local-video-item" role="region" aria-label="Your video">
-                <video id="local-video" autoplay muted playsinline aria-label="Your video feed"></video>
-                <div class="connection-status" id="local-status" aria-label="Your connection status">Local</div>
-                <div class="video-overlay">
-                    <div class="user-name" aria-label="Your name">{{ Auth::user()->firstname }} {{ Auth::user()->lastname }}</div>
-                    <div class="video-controls-overlay">
-                        <button class="control-btn" id="local-maximize-btn" onclick="maximizeVideo('local')"
-                            title="Maximize your video" aria-label="Maximize your video">⛶</button>
-                    </div>
-                </div>
-            </div>
-            <div class="video-item remote" id="remote-video-item" role="region" aria-label="Partner's video">
-                <video id="remote-video" autoplay playsinline aria-label="Partner's video feed"></video>
-                <div class="connection-status" id="remote-status" aria-label="Partner's connection status">Waiting...</div>
-                <div class="video-overlay">
-                    <div class="user-name" id="remote-user-name" aria-label="Partner's name">{{ $partner->firstname ?? 'Partner' }} {{
-                        $partner->lastname ?? '' }}</div>
-                    <div class="video-controls-overlay">
-                        <button class="control-btn" id="remote-maximize-btn" onclick="maximizeVideo('remote')"
-                            title="Maximize partner's video" aria-label="Maximize partner's video">⛶</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="video-controls" role="toolbar" aria-label="Video call controls">
-            <div id="presence-status" role="status" aria-live="polite"
-                style="color: #6b7280; font-size: 0.875rem; margin: 0 8px; display: flex; align-items: center;">🔴
-                Partner is offline</div>
-            <button id="start-call-btn" class="video-btn primary" title="Start Call" aria-label="Start video call">📞</button>
-            <button id="end-call-btn" class="video-btn danger" style="display: none;" title="End Call" aria-label="End video call">📞</button>
-            <button id="toggle-audio-btn" class="video-btn success" style="display: none;"
-                title="Mute/Unmute" aria-label="Toggle microphone">🎤</button>
-            <button id="toggle-video-btn" class="video-btn success" style="display: none;"
-                title="Turn Video On/Off" aria-label="Toggle camera">📹</button>
-            <button id="mirror-video-btn" class="video-btn secondary" style="display: none;"
-                title="Mirror Video" aria-label="Mirror video display">🪞</button>
-            <button id="screen-share-btn" class="video-btn secondary" style="display: none;"
-                title="Share Screen" aria-label="Share your screen">🖥️</button>
-            <button id="maximize-btn" class="video-btn maximize" style="display: none;" title="Maximize" aria-label="Maximize video display">⛶</button>
-            <button id="chat-toggle-btn" class="video-btn secondary" style="display: none;"
-                title="Toggle Chat" aria-label="Toggle chat panel">💬</button>
-        </div>
-    </div>
-</div>
+@include('chat.partials.video-modal')
 
 <div style="height: 100vh; display: flex; flex-direction: column;">
     @include('chat.partials.session-header')
@@ -2093,7 +1802,8 @@
                             }
                             
                             // Define video chat functions immediately after DOM is loaded
-                            console.log('🔧 Defining video chat functions...');
+                            console.log('🔧 Video chat functions are handled by VideoCallManager in app.js');
+                            // Note: openVideoChat and closeVideoChat are defined in app.js after VideoCallManager initialization
                             
                             // Consolidated video call functions
                             window.startVideoCall = async function() {

@@ -7,55 +7,40 @@ use Illuminate\Database\Seeder;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
-class AdditionalUserSeeder extends Seeder
+class DwightUsersSeeder extends Seeder
 {
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
-        // Create additional users with different skills
+        // Create users 4 and 5 (dwight and dwight123) needed for TradeSeeder
         $users = [
             [
-                'id' => 6,
-                'firstname' => 'maria',
-                'middlename' => 'cruz',
-                'lastname' => 'santos',
-                'username' => 'maria_cook',
-                'email' => 'maria@example.com',
+                'id' => 4,
+                'firstname' => 'dwight',
+                'middlename' => null,
+                'lastname' => 'schrute',
+                'username' => 'dwight',
+                'email' => 'dwight@example.com',
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
-                'skill_id' => 3, // Cooking
+                'skill_id' => 1, // Web Development
                 'is_verified' => 1,
                 'role' => 'user',
                 'plan' => 'free',
                 'token_balance' => 0
             ],
             [
-                'id' => 7,
-                'firstname' => 'juan',
-                'middlename' => 'dela',
-                'lastname' => 'cruz',
-                'username' => 'juan_knife',
-                'email' => 'juan@example.com',
+                'id' => 5,
+                'firstname' => 'dwight',
+                'middlename' => null,
+                'lastname' => 'schrute',
+                'username' => 'dwight123',
+                'email' => 'dwight123@example.com',
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
-                'skill_id' => 4, // Knife skills
-                'is_verified' => 1,
-                'role' => 'user',
-                'plan' => 'free',
-                'token_balance' => 0
-            ],
-            [
-                'id' => 8,
-                'firstname' => 'ana',
-                'middlename' => 'garcia',
-                'lastname' => 'lopez',
-                'username' => 'ana_design',
-                'email' => 'ana@example.com',
-                'password' => Hash::make('password'),
-                'email_verified_at' => now(),
-                'skill_id' => 2, // Graphic Design (skill_id 2)
+                'skill_id' => 1, // Web Development
                 'is_verified' => 1,
                 'role' => 'user',
                 'plan' => 'free',
@@ -79,3 +64,4 @@ class AdditionalUserSeeder extends Seeder
         }
     }
 }
+
