@@ -36,14 +36,14 @@ class SkillController extends Controller
         // Sorting
         $sortBy = $request->get('sort', 'name');
         $sortOrder = $request->get('order', 'asc');
-        
+
         if (in_array($sortBy, ['name', 'category', 'created_at'])) {
             $query->orderBy($sortBy, $sortOrder);
         }
 
         $skills = $query->paginate(20);
         $skills->appends($request->query());
-        
+
         // Get categories for filter dropdown
         $categories = Skill::select('category')->distinct()->pluck('category');
 
@@ -76,7 +76,7 @@ class SkillController extends Controller
     public function show(Skill $skill)
     {
         $skill->load(['users']);
-        
+
         // Get related skills in the same category
         $relatedSkills = Skill::where('category', $skill->category)
             ->where('skill_id', '!=', $skill->skill_id)
@@ -88,7 +88,7 @@ class SkillController extends Controller
         if (Auth::check()) {
             /** @var User $user */
             $user = Auth::user();
-            $userHasSkill = $user->skills()->where('skill_id', $skill->skill_id)->exists();
+            $userHasSkill = $user->skills()->where('user_skills.skill_id', $skill->skill_id)->exists();
         }
 
         return view('skills.show', compact('skill', 'relatedSkills', 'userHasSkill'));
@@ -131,9 +131,9 @@ class SkillController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
-        
+
         // Check if user already has this skill
-        if ($user->skills()->where('skill_id', $skill->skill_id)->exists()) {
+        if ($user->skills()->where('user_skills.skill_id', $skill->skill_id)->exists()) {
             return redirect()->back()
                 ->with('error', 'You already have this skill in your profile.');
         }
@@ -154,7 +154,7 @@ class SkillController extends Controller
 
             return redirect()->back()
                 ->with('success', 'Skill added to your profile successfully!');
-                
+
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Failed to add skill to profile: ' . $e->getMessage());
@@ -168,9 +168,9 @@ class SkillController extends Controller
     {
         /** @var User $user */
         $user = Auth::user();
-        
+
         // Check if user has this skill
-        if (!$user->skills()->where('skill_id', $skill->skill_id)->exists()) {
+        if (!$user->skills()->where('user_skills.skill_id', $skill->skill_id)->exists()) {
             return redirect()->back()
                 ->with('error', 'You do not have this skill in your profile.');
         }
@@ -181,7 +181,7 @@ class SkillController extends Controller
 
             return redirect()->back()
                 ->with('success', 'Skill removed from your profile successfully!');
-                
+
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Failed to remove skill from profile: ' . $e->getMessage());

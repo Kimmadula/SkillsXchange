@@ -73,7 +73,7 @@ class TradeController extends Controller
                 'exists:skills,skill_id',
                 function ($attribute, $value, $fail) use ($user) {
                     // Check if user has this skill registered OR acquired
-                    $hasRegistered = $user->skills()->where('skill_id', $value)->exists();
+                    $hasRegistered = $user->skills()->where('user_skills.skill_id', $value)->exists();
                     $acquiredSkills = $user->getAcquiredSkills();
                     $hasAcquired = $acquiredSkills->pluck('skill_id')->contains($value);
 
@@ -116,17 +116,27 @@ class TradeController extends Controller
         // Require user has a skill on profile
         $userSkill = $user->skill;
         if (!$userSkill) {
-            return view('trades.matches', ['trades' => collect([]), 'noSkill' => true]);
-        }
-
-        // Require user has posted at least one open trade before viewing matches
-        $userOpenTrade = Trade::where('user_id', $user->id)
-            ->where('status', 'open')
-            ->first();
-        if (!$userOpenTrade) {
             return view('trades.matches', [
                 'trades' => collect([]),
-                'noTradePosted' => true
+                'noSkill' => true,
+                'userOpenTrades' => collect([])
+            ]);
+        }
+
+        // Get all user's open trades for filtering (check before requiring)
+        $userOpenTrades = Trade::where('user_id', $user->id)
+            ->where('status', 'open')
+            ->with(['offeringSkill', 'lookingSkill'])
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->get();
+
+        // Require user has posted at least one open trade before viewing matches
+        if ($userOpenTrades->isEmpty()) {
+            return view('trades.matches', [
+                'trades' => collect([]),
+                'noTradePosted' => true,
+                'userOpenTrades' => collect([])
             ]);
         }
 
@@ -136,14 +146,18 @@ class TradeController extends Controller
             ->where('status', 'open')
             ->get()
             ->map(function($trade) use ($user) {
-                // Calculate compatibility score
-                $trade->compatibility_score = $this->calculateCompatibility($trade);
+                // Check if this trade is compatible with user's skill (and find which user trade matches)
+                $matchingUserTrade = $this->findMatchingUserTrade($trade, $user);
+                $trade->is_compatible = ($matchingUserTrade !== null);
 
-                // Check if this trade is compatible with user's skill
-                $trade->is_compatible = $this->isTradeCompatible($trade, $user);
+                // Store which user trade this match is for (for filtering)
+                $trade->matching_user_trade_id = $matchingUserTrade ? $matchingUserTrade->id : null;
 
-                // Build human-readable insights (Venn diagram style)
-                $trade->insights = $this->buildMatchInsights($trade, $user);
+                // Calculate compatibility score using the specific matching trade
+                $trade->compatibility_score = $this->calculateCompatibility($trade, $matchingUserTrade);
+
+                // Build human-readable insights (Venn diagram style) - use the matching trade
+                $trade->insights = $this->buildMatchInsights($trade, $user, $matchingUserTrade);
 
                 // Check existing request relationships to prevent duplicates and to prompt the user
                 $trade->has_incoming_request_from_user = TradeRequest::where('requester_id', $trade->user_id)
@@ -210,7 +224,7 @@ class TradeController extends Controller
             }
         }
 
-        return view('trades.matches', compact('trades'));
+        return view('trades.matches', compact('trades', 'userOpenTrades'));
     }
 
     /**
@@ -226,244 +240,378 @@ class TradeController extends Controller
     }
 
     /**
-     * Build Venn-style insights for why this trade matches the viewer
+     * Build comprehensive comparison insights for why this trade matches the viewer
+     * @param Trade $theirTrade The trade being viewed
+     * @param User $user The user viewing the trade
+     * @param Trade|null $matchingUserTrade The specific user trade that matches (if any)
      */
-    private function buildMatchInsights($theirTrade, $user)
+    private function buildMatchInsights($theirTrade, $user, $matchingUserTrade = null)
     {
         $insights = [];
-        $myTrade = $this->getUserOpenTrade($user);
+        // Use the matching trade if provided, otherwise fallback to first open trade
+        $myTrade = $matchingUserTrade ?: $this->getUserOpenTrade($user);
+        $tradeOwner = $theirTrade->user;
 
-        // Skill relation
-        $skillOk = ($theirTrade->looking_skill_id == ($user->skill_id ?? null))
-            || ($myTrade && $myTrade->looking_skill_id == $theirTrade->offering_skill_id);
+        // Skills Exchange
+        $theirOffering = $theirTrade->offeringSkill->name ?? 'Not specified';
+        $theirLooking = $theirTrade->lookingSkill->name ?? 'Not specified';
+        $myOffering = $myTrade ? ($myTrade->offeringSkill->name ?? 'Not specified') : 'Not specified';
+        $myLooking = $myTrade ? ($myTrade->lookingSkill->name ?? 'Not specified') : 'Not specified';
+        $skillsMatch = $myTrade && ($theirTrade->looking_skill_id == $myTrade->offering_skill_id) && ($theirTrade->offering_skill_id == $myTrade->looking_skill_id);
         $insights[] = [
-            'label' => 'Skill',
-            'status' => $skillOk ? 'good' : 'neutral',
-            'detail' => ($theirTrade->offeringSkill->name ?? 'Offering') . ' ↔ ' . ($theirTrade->lookingSkill->name ?? 'Looking')
+            'label' => 'Skills Exchange',
+            'status' => $skillsMatch ? 'good' : 'neutral',
+            'their_value' => "Offering: {$theirOffering} | Looking: {$theirLooking}",
+            'your_value' => "Offering: {$myOffering} | Looking: {$myLooking}",
+            'match_detail' => $skillsMatch ? 'Perfect match!' : 'Skills align'
         ];
 
-        // Gender preference (their pref vs your profile)
-        $genderOk = ($theirTrade->gender_pref === 'any' || !$theirTrade->gender_pref || !$user->gender || $theirTrade->gender_pref === $user->gender);
+        // Gender Preference
+        $theirGenderPref = $theirTrade->gender_pref ? ucfirst($theirTrade->gender_pref) : 'Any';
+        $myGenderPref = $myTrade && $myTrade->gender_pref ? ucfirst($myTrade->gender_pref) : 'Any';
+        $theirGender = ucfirst($tradeOwner->gender ?? 'Not specified');
+        $myGender = ucfirst($user->gender ?? 'Not specified');
+        $genderMatch1 = !$theirTrade->gender_pref || $theirTrade->gender_pref === 'any' || ($user->gender && $theirTrade->gender_pref === $user->gender);
+        $genderMatch2 = !$myTrade || !$myTrade->gender_pref || $myTrade->gender_pref === 'any' || ($tradeOwner->gender && $myTrade->gender_pref === $tradeOwner->gender);
+        $genderOk = $genderMatch1 && $genderMatch2;
         $insights[] = [
-            'label' => 'Gender',
-            'status' => $genderOk ? 'good' : 'bad',
-            'detail' => $theirTrade->gender_pref ? ('Pref: ' . strtoupper($theirTrade->gender_pref)) : 'No pref'
+            'label' => 'Gender Preference',
+            'status' => $genderOk ? 'good' : ($genderMatch1 || $genderMatch2 ? 'neutral' : 'bad'),
+            'their_value' => "Prefers: {$theirGenderPref} | Their gender: {$theirGender}",
+            'your_value' => "You prefer: {$myGenderPref} | Your gender: {$myGender}",
+            'match_detail' => $genderOk ? 'Both preferences match' : ($genderMatch1 || $genderMatch2 ? 'Partial match' : 'No match')
         ];
 
-        // Session type
-        $sessionOk = !$myTrade || ($theirTrade->session_type === 'any' || $myTrade->session_type === 'any' || $theirTrade->session_type === $myTrade->session_type);
+        // Session Type
+        $theirSession = ucfirst($theirTrade->session_type ?? 'any');
+        $mySession = $myTrade ? ucfirst($myTrade->session_type ?? 'any') : 'Any';
+        $sessionMatch = !$myTrade || $theirTrade->session_type === 'any' || $myTrade->session_type === 'any' || $theirTrade->session_type === $myTrade->session_type;
         $insights[] = [
-            'label' => 'Session',
-            'status' => $sessionOk ? 'good' : 'neutral',
-            'detail' => strtoupper($theirTrade->session_type)
+            'label' => 'Session Type',
+            'status' => $sessionMatch ? 'good' : 'neutral',
+            'their_value' => $theirSession,
+            'your_value' => $mySession,
+            'match_detail' => $sessionMatch ? 'Compatible' : 'Different preferences'
         ];
 
         // Location
-        $locationOk = false; $locationDetail = 'Flexible';
-        if ($theirTrade->location) {
-            if ($myTrade && $myTrade->location) {
-                $locationOk = str_contains(strtolower($myTrade->location), strtolower($theirTrade->location))
-                    || str_contains(strtolower($theirTrade->location), strtolower($myTrade->location));
-                $locationDetail = $theirTrade->location;
-            } elseif ($user->address) {
-                $locationOk = str_contains(strtolower($user->address), strtolower($theirTrade->location))
-                    || str_contains(strtolower($theirTrade->location), strtolower($user->address));
-                $locationDetail = $theirTrade->location;
-            }
+        $theirLocation = $theirTrade->location ?: ($tradeOwner->address ?? 'Not specified');
+        $myLocation = $myTrade && $myTrade->location ? $myTrade->location : ($user->address ?? 'Not specified');
+        $locationMatch = false;
+        if ($theirTrade->location && ($myTrade && $myTrade->location)) {
+            $locationMatch = str_contains(strtolower($myTrade->location), strtolower($theirTrade->location))
+                || str_contains(strtolower($theirTrade->location), strtolower($myTrade->location));
+        } elseif ($theirTrade->location && $user->address) {
+            $locationMatch = str_contains(strtolower($user->address), strtolower($theirTrade->location))
+                || str_contains(strtolower($theirTrade->location), strtolower($user->address));
+        } elseif ($myTrade && $myTrade->location && $tradeOwner->address) {
+            $locationMatch = str_contains(strtolower($tradeOwner->address), strtolower($myTrade->location))
+                || str_contains(strtolower($myTrade->location), strtolower($tradeOwner->address));
         }
         $insights[] = [
             'label' => 'Location',
-            'status' => $locationOk ? 'good' : 'neutral',
-            'detail' => $locationDetail
+            'status' => $locationMatch ? 'good' : 'neutral',
+            'their_value' => $theirLocation,
+            'your_value' => $myLocation,
+            'match_detail' => $locationMatch ? 'Same area' : 'Different locations'
         ];
 
-        // Time overlap
-        $timeDetail = 'No prefs'; $timeStatus = 'neutral';
-        if ($theirTrade->available_from && $theirTrade->available_to) {
-            if ($myTrade && $myTrade->available_from && $myTrade->available_to) {
-                $tradeStart = $this->timeToMinutes($theirTrade->available_from);
-                $tradeEnd = $this->timeToMinutes($theirTrade->available_to);
-                $userStart = $this->timeToMinutes($myTrade->available_from);
-                $userEnd = $this->timeToMinutes($myTrade->available_to);
-                $overlap = min($tradeEnd, $userEnd) - max($tradeStart, $userStart);
-                if ($overlap > 0) { $timeStatus = 'good'; $timeDetail = floor($overlap) . ' min overlap'; }
-                else { $timeStatus = 'neutral'; $timeDetail = 'Different times'; }
+        // Time Availability
+        $theirTime = $theirTrade->available_from && $theirTrade->available_to
+            ? "{$theirTrade->available_from} - {$theirTrade->available_to}"
+            : 'Flexible';
+        $myTime = $myTrade && $myTrade->available_from && $myTrade->available_to
+            ? "{$myTrade->available_from} - {$myTrade->available_to}"
+            : 'Flexible';
+        $timeMatch = false;
+        $timeDetail = 'No overlap';
+        if ($theirTrade->available_from && $theirTrade->available_to && $myTrade && $myTrade->available_from && $myTrade->available_to) {
+            $tradeStart = $this->timeToMinutes($theirTrade->available_from);
+            $tradeEnd = $this->timeToMinutes($theirTrade->available_to);
+            $userStart = $this->timeToMinutes($myTrade->available_from);
+            $userEnd = $this->timeToMinutes($myTrade->available_to);
+            $overlap = min($tradeEnd, $userEnd) - max($tradeStart, $userStart);
+            if ($overlap > 0) {
+                $timeMatch = true;
+                $timeDetail = floor($overlap) . ' minutes overlap';
             } else {
-                $timeDetail = 'They set a time';
+                $gap = min(abs($tradeStart - $userEnd), abs($userStart - $tradeEnd));
+                $timeDetail = $gap <= 120 ? 'Close times (within 2h)' : 'Different times';
             }
+        } elseif ($theirTrade->available_from && $theirTrade->available_to || ($myTrade && $myTrade->available_from && $myTrade->available_to)) {
+            $timeMatch = true;
+            $timeDetail = 'One is flexible';
         }
-        $insights[] = [ 'label' => 'Time', 'status' => $timeStatus, 'detail' => $timeDetail ];
+        $insights[] = [
+            'label' => 'Time Availability',
+            'status' => $timeMatch ? 'good' : 'neutral',
+            'their_value' => $theirTime,
+            'your_value' => $myTime,
+            'match_detail' => $timeDetail
+        ];
 
-        // Day overlap
-        $dayDetail = 'No prefs'; $dayStatus = 'neutral';
-        if ($theirTrade->preferred_days && is_array($theirTrade->preferred_days)) {
-            if ($myTrade && is_array($myTrade->preferred_days)) {
-                $overlapDays = array_values(array_intersect($theirTrade->preferred_days, $myTrade->preferred_days));
-                if (count($overlapDays) > 0) { $dayStatus = 'good'; $dayDetail = implode(', ', $overlapDays); }
-                else { $dayDetail = 'Different days'; }
-            } else { $dayDetail = implode(', ', $theirTrade->preferred_days); }
+        // Preferred Days
+        $theirDays = $theirTrade->preferred_days && is_array($theirTrade->preferred_days)
+            ? implode(', ', $theirTrade->preferred_days)
+            : 'Flexible';
+        $myDays = $myTrade && $myTrade->preferred_days && is_array($myTrade->preferred_days)
+            ? implode(', ', $myTrade->preferred_days)
+            : 'Flexible';
+        $daysMatch = false;
+        $daysDetail = 'No overlap';
+        if ($theirTrade->preferred_days && is_array($theirTrade->preferred_days) && $myTrade && $myTrade->preferred_days && is_array($myTrade->preferred_days)) {
+            $overlapDays = array_intersect($theirTrade->preferred_days, $myTrade->preferred_days);
+            if (count($overlapDays) > 0) {
+                $daysMatch = true;
+                $daysDetail = implode(', ', $overlapDays) . ' match';
+            } else {
+                $daysDetail = 'Different days';
+            }
+        } elseif ($theirTrade->preferred_days && is_array($theirTrade->preferred_days) || ($myTrade && $myTrade->preferred_days && is_array($myTrade->preferred_days))) {
+            $daysMatch = true;
+            $daysDetail = 'One is flexible';
         }
-        $insights[] = [ 'label' => 'Days', 'status' => $dayStatus, 'detail' => $dayDetail ];
+        $insights[] = [
+            'label' => 'Preferred Days',
+            'status' => $daysMatch ? 'good' : 'neutral',
+            'their_value' => $theirDays,
+            'your_value' => $myDays,
+            'match_detail' => $daysDetail
+        ];
 
-        // Date overlap
-        $dateDetail = 'No prefs'; $dateStatus = 'neutral';
-        if ($theirTrade->start_date && $theirTrade->end_date) {
-            if ($myTrade && $myTrade->start_date && $myTrade->end_date) {
-                $tradeStart = \Carbon\Carbon::parse($theirTrade->start_date);
-                $tradeEnd = \Carbon\Carbon::parse($theirTrade->end_date);
-                $userStart = \Carbon\Carbon::parse($myTrade->start_date);
-                $userEnd = \Carbon\Carbon::parse($myTrade->end_date);
-                if ($tradeStart <= $userEnd && $userStart <= $tradeEnd) {
-                    $overlapStart = max($tradeStart, $userStart);
-                    $overlapEnd = min($tradeEnd, $userEnd);
-                    $dateStatus = 'good';
-                    $dateDetail = $overlapStart->diffInDays($overlapEnd) + 1 . ' day overlap';
-                } else { $dateDetail = 'Different ranges'; }
-            } else { $dateDetail = $theirTrade->start_date . ' - ' . $theirTrade->end_date; }
+        // Date Range
+        $theirDates = $theirTrade->start_date && $theirTrade->end_date
+            ? \Carbon\Carbon::parse($theirTrade->start_date)->format('M d') . ' - ' . \Carbon\Carbon::parse($theirTrade->end_date)->format('M d, Y')
+            : ($theirTrade->start_date ? \Carbon\Carbon::parse($theirTrade->start_date)->format('M d, Y') . ' onwards' : 'Flexible');
+        $myDates = $myTrade && $myTrade->start_date && $myTrade->end_date
+            ? \Carbon\Carbon::parse($myTrade->start_date)->format('M d') . ' - ' . \Carbon\Carbon::parse($myTrade->end_date)->format('M d, Y')
+            : ($myTrade && $myTrade->start_date ? \Carbon\Carbon::parse($myTrade->start_date)->format('M d, Y') . ' onwards' : 'Flexible');
+        $datesMatch = false;
+        $datesDetail = 'No overlap';
+        if ($theirTrade->start_date && $theirTrade->end_date && $myTrade && $myTrade->start_date && $myTrade->end_date) {
+            $tradeStart = \Carbon\Carbon::parse($theirTrade->start_date);
+            $tradeEnd = \Carbon\Carbon::parse($theirTrade->end_date);
+            $userStart = \Carbon\Carbon::parse($myTrade->start_date);
+            $userEnd = \Carbon\Carbon::parse($myTrade->end_date);
+            if ($tradeStart <= $userEnd && $userStart <= $tradeEnd) {
+                $datesMatch = true;
+                $overlapStart = max($tradeStart, $userStart);
+                $overlapEnd = min($tradeEnd, $userEnd);
+                $overlapDays = $overlapStart->diffInDays($overlapEnd) + 1;
+                $datesDetail = $overlapDays . ' days overlap';
+            } else {
+                $gap = min(abs($tradeStart->diffInDays($userEnd)), abs($userStart->diffInDays($tradeEnd)));
+                $datesDetail = $gap <= 7 ? 'Close dates (within 7 days)' : 'Different ranges';
+            }
+        } elseif ($theirTrade->start_date || ($myTrade && $myTrade->start_date)) {
+            $datesMatch = true;
+            $datesDetail = 'One is flexible';
         }
-        $insights[] = [ 'label' => 'Dates', 'status' => $dateStatus, 'detail' => $dateDetail ];
+        $insights[] = [
+            'label' => 'Date Range',
+            'status' => $datesMatch ? 'good' : 'neutral',
+            'their_value' => $theirDates,
+            'your_value' => $myDates,
+            'match_detail' => $datesDetail
+        ];
 
         return $insights;
     }
 
-    private function isTradeCompatible($trade, $user)
+    /**
+     * Find which user trade matches the given trade
+     * Returns the matching Trade object or null if no match
+     */
+    private function findMatchingUserTrade($trade, $user)
     {
-        // Check if user's skill matches what the trade is looking for
-        if ($trade->looking_skill_id == $user->skill_id) {
-            return true;
+        // Get ALL user's open trades (user can have multiple trades with different skills)
+        $userOpenTrades = Trade::where('user_id', $user->id)
+            ->where('status', 'open')
+            ->get();
+
+        if ($userOpenTrades->isEmpty()) {
+            return null; // User must have an open trade to see matches
         }
 
-        // Check if user has a trade and their looking skill matches what this trade is offering
-        $userTrade = Trade::where('user_id', $user->id)->where('status', 'open')->first();
-        if ($userTrade && $userTrade->looking_skill_id == $trade->offering_skill_id) {
-            return true;
+        // A trade is compatible if it matches ANY of the user's open trades
+        // For each trade, BOTH conditions must be true:
+        // 1. The trade is looking for the skill the user is OFFERING in their posted trade
+        // 2. The trade is offering the skill the user is LOOKING FOR in their posted trade
+
+        foreach ($userOpenTrades as $userTrade) {
+            // Check condition 1: Trade is looking for what the user is offering in this trade
+            $tradeWantsWhatUserIsOffering = ($trade->looking_skill_id == $userTrade->offering_skill_id);
+
+            // Check condition 2: Trade is offering what the user is looking for in this trade
+            $tradeOffersWhatUserWants = ($trade->offering_skill_id == $userTrade->looking_skill_id);
+
+            // If both conditions are true for this trade, return it as the match
+            if ($tradeWantsWhatUserIsOffering && $tradeOffersWhatUserWants) {
+                return $userTrade;
+            }
         }
 
-        return false;
+        // No match found across any of the user's trades
+        return null;
     }
 
-    private function calculateCompatibility($trade)
+    /**
+     * Check if a trade is compatible (kept for backward compatibility)
+     */
+    private function isTradeCompatible($trade, $user)
+    {
+        return $this->findMatchingUserTrade($trade, $user) !== null;
+    }
+
+    private function calculateCompatibility($trade, $matchingUserTrade = null)
     {
         $score = 0;
         $user = Auth::user();
 
-        // Gender compatibility (their preference vs your profile gender)
-        if ($trade->gender_pref && $user->gender) {
-            if ($trade->gender_pref === 'any' || $trade->gender_pref === $user->gender) {
-                $score += 20; // High score for gender match
-            } else {
-                $score += 0; // No score for gender mismatch
+        // Use the matching user trade if provided, otherwise get the first open trade
+        if (!$matchingUserTrade) {
+            $matchingUserTrade = Trade::where('user_id', $user->id)
+                ->where('status', 'open')
+                ->orderByDesc('updated_at')
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        // If no matching trade, return base score
+        if (!$matchingUserTrade) {
+            return 0;
+        }
+
+        $tradeOwner = $trade->user;
+
+        // Gender compatibility - check BOTH directions for symmetry
+        $genderScore = 0;
+        // Check: trade's preference vs user's gender
+        if ($trade->gender_pref) {
+            if ($trade->gender_pref === 'any' || ($user->gender && $trade->gender_pref === $user->gender)) {
+                $genderScore += 10;
             }
         } else {
-            $score += 10; // Neutral score if no gender preference specified
+            $genderScore += 5; // No preference = neutral
         }
-
-        // Location compatibility (prefer comparing trade->location vs YOUR OPEN TRADE's location).
-        $userTradeForLocation = Trade::where('user_id', $user->id)
-            ->where('status', 'open')
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id')
-            ->first();
-
-        if ($trade->location && $userTradeForLocation && $userTradeForLocation->location) {
-            if (str_contains(strtolower($userTradeForLocation->location), strtolower($trade->location)) ||
-                str_contains(strtolower($trade->location), strtolower($userTradeForLocation->location))) {
-                $score += 30; // High score for location match
-            } else {
-                $score += 8; // Small partial credit for different locations
+        // Check: user's trade preference vs trade owner's gender
+        if ($matchingUserTrade->gender_pref) {
+            if ($matchingUserTrade->gender_pref === 'any' || ($tradeOwner->gender && $matchingUserTrade->gender_pref === $tradeOwner->gender)) {
+                $genderScore += 10;
             }
         } else {
-            // Fallback: compare against user's profile address, otherwise neutral
-            if ($trade->location && $user->address) {
-                if (str_contains(strtolower($user->address), strtolower($trade->location)) ||
-                    str_contains(strtolower($trade->location), strtolower($user->address))) {
-                    $score += 20; // Reduced weight match vs profile
-                } else {
-                    $score += 8;
-                }
+            $genderScore += 5; // No preference = neutral
+        }
+        $score += $genderScore;
+
+        // Location compatibility - symmetric comparison
+        $locationScore = 0;
+        $tradeLocation = $trade->location;
+        $userTradeLocation = $matchingUserTrade->location;
+
+        if ($tradeLocation && $userTradeLocation) {
+            // Both have locations - compare them
+            if (str_contains(strtolower($userTradeLocation), strtolower($tradeLocation)) ||
+                str_contains(strtolower($tradeLocation), strtolower($userTradeLocation))) {
+                $locationScore = 30; // High score for location match
             } else {
-                $score += 10; // Neutral score if no location specified
+                $locationScore = 8; // Small partial credit for different locations
             }
+        } elseif ($tradeLocation && $user->address) {
+            // Trade has location, compare with user's profile address
+            if (str_contains(strtolower($user->address), strtolower($tradeLocation)) ||
+                str_contains(strtolower($tradeLocation), strtolower($user->address))) {
+                $locationScore = 20; // Reduced weight match vs profile
+            } else {
+                $locationScore = 8;
+            }
+        } elseif ($userTradeLocation && $tradeOwner->address) {
+            // User trade has location, compare with trade owner's profile address
+            if (str_contains(strtolower($tradeOwner->address), strtolower($userTradeLocation)) ||
+                str_contains(strtolower($userTradeLocation), strtolower($tradeOwner->address))) {
+                $locationScore = 20; // Reduced weight match vs profile
+            } else {
+                $locationScore = 8;
+            }
+        } else {
+            $locationScore = 10; // Neutral score if no location specified
         }
+        $score += $locationScore;
 
-        // Time availability overlap with flexible matching
-        if ($trade->available_from && $trade->available_to) {
-            $score += $this->calculateTimeCompatibility($trade);
-        }
+        // Time availability overlap - symmetric calculation (always calculate, handles all cases)
+        $score += $this->calculateTimeCompatibility($trade, $matchingUserTrade);
 
-        // Days overlap with flexible matching
-        if ($trade->preferred_days && is_array($trade->preferred_days)) {
-            $score += $this->calculateDayCompatibility($trade);
-        }
+        // Days overlap - symmetric calculation (always calculate, handles all cases)
+        $score += $this->calculateDayCompatibility($trade, $matchingUserTrade);
 
-        // Date range compatibility
-        if ($trade->start_date && $trade->end_date) {
-            $score += $this->calculateDateCompatibility($trade);
-        }
+        // Date range compatibility - symmetric calculation (always calculate, handles all cases)
+        $score += $this->calculateDateCompatibility($trade, $matchingUserTrade);
 
         return $score;
     }
 
-    private function calculateTimeCompatibility($trade)
+    private function calculateTimeCompatibility($trade, $matchingUserTrade = null)
     {
         $score = 0;
-        $user = Auth::user();
 
-        // If user has an OPEN trade with time preferences, check for overlap (latest open post)
-        $userTrade = Trade::where('user_id', $user->id)
-            ->where('status', 'open')
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id')
-            ->first();
+        if (!$matchingUserTrade) {
+            return 15; // Neutral score if no matching trade
+        }
 
-        if ($userTrade && $userTrade->available_from && $userTrade->available_to) {
-            // Convert times to minutes for easier comparison
+        $tradeHasTime = $trade->available_from && $trade->available_to;
+        $userTradeHasTime = $matchingUserTrade->available_from && $matchingUserTrade->available_to;
+
+        if ($tradeHasTime && $userTradeHasTime) {
+            // Both have time preferences - calculate overlap
             $tradeStart = $this->timeToMinutes($trade->available_from);
             $tradeEnd = $this->timeToMinutes($trade->available_to);
-            $userStart = $this->timeToMinutes($userTrade->available_from);
-            $userEnd = $this->timeToMinutes($userTrade->available_to);
+            $userStart = $this->timeToMinutes($matchingUserTrade->available_from);
+            $userEnd = $this->timeToMinutes($matchingUserTrade->available_to);
 
             // Check for overlap (including small gaps)
             $overlap = min($tradeEnd, $userEnd) - max($tradeStart, $userStart);
 
             if ($overlap > 0) {
                 // Direct overlap - high score
-                $score += 25;
+                $score = 25;
             } else {
-                // Check for small gaps (within 2 hours)
-                $gap = abs($tradeStart - $userEnd);
+                // Check for small gaps (within 2 hours) - check both directions
+                $gap1 = abs($tradeStart - $userEnd);
+                $gap2 = abs($userStart - $tradeEnd);
+                $gap = min($gap1, $gap2);
+
                 if ($gap <= 120) { // 2 hours = 120 minutes
-                    $score += 15; // Good score for small gap
+                    $score = 15; // Good score for small gap
                 } elseif ($gap <= 240) { // 4 hours
-                    $score += 10; // Moderate score for medium gap
+                    $score = 10; // Moderate score for medium gap
                 } else {
-                    $score += 5; // Low score for large gap
+                    $score = 5; // Low score for large gap
                 }
             }
+        } elseif ($tradeHasTime || $userTradeHasTime) {
+            // One has time preferences, the other is flexible - good match
+            $score = 18;
         } else {
-            // User doesn't have time preferences, give moderate score
-            $score += 15;
+            // Neither has time preferences - both flexible
+            $score = 15;
         }
 
         return $score;
     }
 
-    private function calculateDayCompatibility($trade)
+    private function calculateDayCompatibility($trade, $matchingUserTrade = null)
     {
         $score = 0;
-        $user = Auth::user();
 
-        // If user has an OPEN trade with day preferences, check for overlap (latest open post)
-        $userTrade = Trade::where('user_id', $user->id)
-            ->where('status', 'open')
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id')
-            ->first();
+        if (!$matchingUserTrade) {
+            return 12; // Neutral score if no matching trade
+        }
 
-        if ($userTrade && $userTrade->preferred_days && is_array($userTrade->preferred_days)) {
-            $tradeDays = $trade->preferred_days;
-            $userDays = $userTrade->preferred_days;
+        $tradeDays = $trade->preferred_days && is_array($trade->preferred_days) ? $trade->preferred_days : [];
+        $userDays = $matchingUserTrade->preferred_days && is_array($matchingUserTrade->preferred_days) ? $matchingUserTrade->preferred_days : [];
 
+        // Case 1: Both have preferred days - calculate overlap
+        if (!empty($tradeDays) && !empty($userDays)) {
             // Find overlapping days
             $overlappingDays = array_intersect($tradeDays, $userDays);
             $totalDays = count(array_unique(array_merge($tradeDays, $userDays)));
@@ -488,31 +636,40 @@ class TradeController extends Controller
                     $score += 5; // Low score for no overlap
                 }
             }
-        } else {
-            // User doesn't have day preferences, give moderate score
-            $score += 12;
+        }
+        // Case 2: User has no days but other trade has days - user is flexible (good match)
+        elseif (empty($userDays) && !empty($tradeDays)) {
+            $score += 18; // Good score - user is flexible and can accommodate other's schedule
+        }
+        // Case 3: User has days but other trade has no days - other is flexible (good match)
+        elseif (!empty($userDays) && empty($tradeDays)) {
+            $score += 18; // Good score - other is flexible and can accommodate user's schedule
+        }
+        // Case 4: Neither has preferred days - both flexible (neutral)
+        else {
+            $score += 12; // Neutral score - both are flexible
         }
 
         return $score;
     }
 
-    private function calculateDateCompatibility($trade)
+    private function calculateDateCompatibility($trade, $matchingUserTrade = null)
     {
         $score = 0;
-        $user = Auth::user();
 
-        // If user has an OPEN trade with date preferences, check for overlap (latest open post)
-        $userTrade = Trade::where('user_id', $user->id)
-            ->where('status', 'open')
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id')
-            ->first();
+        if (!$matchingUserTrade) {
+            return 10; // Neutral score if no matching trade
+        }
 
-        if ($userTrade && $userTrade->start_date && $userTrade->end_date) {
+        $tradeHasDates = $trade->start_date && $trade->end_date;
+        $userTradeHasDates = $matchingUserTrade->start_date && $matchingUserTrade->end_date;
+
+        if ($tradeHasDates && $userTradeHasDates) {
+            // Both have date ranges - calculate overlap
             $tradeStart = \Carbon\Carbon::parse($trade->start_date);
             $tradeEnd = \Carbon\Carbon::parse($trade->end_date);
-            $userStart = \Carbon\Carbon::parse($userTrade->start_date);
-            $userEnd = \Carbon\Carbon::parse($userTrade->end_date);
+            $userStart = \Carbon\Carbon::parse($matchingUserTrade->start_date);
+            $userEnd = \Carbon\Carbon::parse($matchingUserTrade->end_date);
 
             // Check for date overlap
             if ($tradeStart <= $userEnd && $userStart <= $tradeEnd) {
@@ -522,30 +679,32 @@ class TradeController extends Controller
                 $overlapDays = $overlapStart->diffInDays($overlapEnd) + 1;
 
                 if ($overlapDays >= 7) {
-                    $score += 15; // High score for week+ overlap
+                    $score = 15; // High score for week+ overlap
                 } elseif ($overlapDays >= 3) {
-                    $score += 12; // Medium score for 3+ days overlap
+                    $score = 12; // Medium score for 3+ days overlap
                 } else {
-                    $score += 8; // Low score for minimal overlap
+                    $score = 8; // Low score for minimal overlap
                 }
             } else {
-                // Check for small gaps (within 7 days)
-                $gap = min(
-                    abs($tradeStart->diffInDays($userEnd)),
-                    abs($userStart->diffInDays($tradeEnd))
-                );
+                // Check for small gaps (within 7 days) - check both directions
+                $gap1 = abs($tradeStart->diffInDays($userEnd));
+                $gap2 = abs($userStart->diffInDays($tradeEnd));
+                $gap = min($gap1, $gap2);
 
                 if ($gap <= 7) {
-                    $score += 8; // Good score for small gap
+                    $score = 10; // Good score for small gap
                 } elseif ($gap <= 14) {
-                    $score += 5; // Moderate score for medium gap
+                    $score = 7; // Moderate score for medium gap
                 } else {
-                    $score += 2; // Low score for large gap
+                    $score = 3; // Low score for large gap
                 }
             }
+        } elseif ($tradeHasDates || $userTradeHasDates) {
+            // One has date preferences, the other is flexible - good match
+            $score = 12;
         } else {
-            // User doesn't have date preferences, give moderate score
-            $score += 8;
+            // Neither has date preferences - both flexible
+            $score = 10;
         }
 
         return $score;
@@ -571,10 +730,10 @@ class TradeController extends Controller
             ->get()
             ->map(function($req) use ($user) {
                 if ($req->trade) {
-                    $req->trade->compatibility_score = $this->calculateCompatibility($req->trade);
-                    // For incoming requests, evaluate skill gate from the REQUESTER'S perspective
-                    // so it reflects why they could find you in Matches and decided to request.
-                    $req->trade->is_compatible = $this->isTradeCompatible($req->trade, $req->requester);
+                    // For incoming requests, evaluate from the REQUESTER'S perspective
+                    $matchingRequesterTrade = $this->findMatchingUserTrade($req->trade, $req->requester);
+                    $req->trade->is_compatible = ($matchingRequesterTrade !== null);
+                    $req->trade->compatibility_score = $this->calculateCompatibility($req->trade, $matchingRequesterTrade);
                     // Build insights from the requester's perspective for skills and from viewer for timing overlap (uses viewer's open trade)
                     $req->trade->insights = $this->buildMatchInsights($req->trade, $req->requester);
 
@@ -596,9 +755,10 @@ class TradeController extends Controller
             ->get()
             ->map(function($req) use ($user) {
                 if ($req->trade) {
-                    $req->trade->compatibility_score = $this->calculateCompatibility($req->trade);
-                    // Use SKILL GATE for compatibility flag
-                    $req->trade->is_compatible = $this->isTradeCompatible($req->trade, $user);
+                    // For outgoing requests, evaluate from the current user's perspective
+                    $matchingUserTrade = $this->findMatchingUserTrade($req->trade, $user);
+                    $req->trade->is_compatible = ($matchingUserTrade !== null);
+                    $req->trade->compatibility_score = $this->calculateCompatibility($req->trade, $matchingUserTrade);
                     $req->trade->insights = $this->buildMatchInsights($req->trade, $user);
 
                     // Attach explicit trade contexts for the view labels
@@ -791,7 +951,7 @@ class TradeController extends Controller
         ]);
 
         // Validate that the offering skill is either registered or acquired
-        $hasRegistered = $user->skills()->where('skill_id', $validated['offering_skill_id'])->exists();
+        $hasRegistered = $user->skills()->where('user_skills.skill_id', $validated['offering_skill_id'])->exists();
         $acquiredSkills = $user->getAcquiredSkills();
         $hasAcquired = $acquiredSkills->pluck('skill_id')->contains($validated['offering_skill_id']);
 
@@ -871,7 +1031,7 @@ class TradeController extends Controller
         // Check if user has sufficient tokens for future acceptance (but don't charge yet)
         // Premium users have unlimited requests - skip token check
         $requestFee = TradeFeeSetting::getFeeAmount('trade_request');
-        $isPremium = $user->plan === 'premium';
+        $isPremium = $user->isPremium(); // Use isPremium() method which checks plan and expiration date
 
         if (!$isPremium && $requestFee > 0 && TradeFeeSetting::isFeeActive('trade_request')) {
             if ($user->token_balance < $requestFee) {
@@ -960,9 +1120,9 @@ class TradeController extends Controller
             $requester = $tradeRequest->requester;
             $accepter = $user;
 
-            // Check if users are premium (premium users have unlimited requests)
-            $requesterIsPremium = $requester->plan === 'premium';
-            $accepterIsPremium = $accepter->plan === 'premium';
+            // Check if users are premium (premium users have unlimited requests/acceptances)
+            $requesterIsPremium = $requester->isPremium(); // Use isPremium() method which checks plan and expiration date
+            $accepterIsPremium = $accepter->isPremium(); // Use isPremium() method which checks plan and expiration date
 
             // Get fee amounts
             $requestFee = TradeFeeSetting::getFeeAmount('trade_request');
@@ -1037,8 +1197,8 @@ class TradeController extends Controller
         if ($status === 'accepted') {
             $requester = $tradeRequest->requester;
             $accepter = $user;
-            $requesterIsPremium = $requester->plan === 'premium';
-            $accepterIsPremium = $accepter->plan === 'premium';
+            $requesterIsPremium = $requester->isPremium(); // Use isPremium() method which checks plan and expiration date
+            $accepterIsPremium = $accepter->isPremium(); // Use isPremium() method which checks plan and expiration date
 
             $totalFeesCharged = 0;
             $premiumUsers = [];

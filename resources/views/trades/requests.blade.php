@@ -49,56 +49,61 @@
                             Status: <span style="font-weight:600; color:{{ $r->status === 'pending' ? '#f59e0b' : ($r->status === 'accepted' ? '#10b981' : '#ef4444') }}">{{ strtoupper($r->status) }}</span>
                         </div>
                         @if(isset($r->trade->insights) && is_array($r->trade->insights) && count($r->trade->insights) > 0)
-                            <div style="margin:6px 0 10px 0;">
-                                <div style="font-weight:600; color:#374151; margin-bottom:6px;">Why this match</div>
-                                <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                                    @foreach($r->trade->insights as $ins)
-                                        @php
-                                            $bg = '#E5E7EB'; $fg = '#374151'; $bd = '#D1D5DB';
-                                            if (($ins['status'] ?? 'neutral') === 'good') { $bg = '#DCFCE7'; $fg = '#166534'; $bd = '#86EFAC'; }
-                                            elseif (($ins['status'] ?? 'neutral') === 'bad') { $bg = '#FEE2E2'; $fg = '#991B1B'; $bd = '#FCA5A5'; }
-                                        @endphp
-                                        <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 8px; background:{{ $bg }}; color:{{ $fg }}; border:1px solid {{ $bd }}; border-radius:999px; font-size:0.8rem;">
-                                            <strong>{{ $ins['label'] ?? 'Item' }}:</strong>
-                                            <span>{{ $ins['detail'] ?? '' }}</span>
-                                        </span>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
-                        @if($r->status === 'pending')
-                            <div style="margin:6px 0 10px 0;">
-                                @php
-                                    $reqRating = \DB::table('session_ratings')
-                                        ->selectRaw('AVG(overall_rating) as avg_rating, COUNT(*) as total_ratings')
-                                        ->where('rated_user_id', $r->requester_id)
-                                        ->first();
-                                    $reqAvg = $reqRating ? round((float)($reqRating->avg_rating ?? 0), 2) : 0;
-                                    $reqCount = $reqRating ? (int)($reqRating->total_ratings ?? 0) : 0;
-                                @endphp
-                                <button type="button" onclick="showRequestDetails({{ $r->id }}, {{ json_encode([
-                                    'requester' => $r->requester->use_username ? $r->requester->username : ($r->requester->firstname.' '.$r->requester->lastname),
-                                    'their_offering' => optional(optional($r->other_trade)->offeringSkill)->name,
-                                    'their_looking' => optional(optional($r->other_trade)->lookingSkill)->name,
-                                    'your_offering' => optional(optional($r->viewer_trade)->offeringSkill)->name ?? optional($r->trade->offeringSkill)->name,
-                                    'your_looking' => optional(optional($r->viewer_trade)->lookingSkill)->name ?? optional($r->trade->lookingSkill)->name,
-                                    'compatibility_score' => $r->trade->compatibility_score ?? null,
-                                    'is_compatible' => $r->trade->is_compatible ?? null,
-                                    'insights' => $r->trade->insights ?? [],
-                                    'requester_rating_avg' => $reqAvg,
-                                    'requester_rating_count' => $reqCount,
-                                    'session_type' => $r->trade->session_type,
-                                    'location' => $r->trade->location,
-                                    'available_from' => $r->trade->available_from,
-                                    'available_to' => $r->trade->available_to,
-                                    'preferred_days' => $r->trade->preferred_days,
-                                    'start_date' => $r->trade->start_date,
-                                    'end_date' => $r->trade->end_date,
-                                    'message' => $r->message,
-                                ]) }})"
-                                        style="padding:6px 12px; background:#2563eb; color:#fff; border:none; border-radius:4px; cursor:pointer;">
-                                    View Details
+                            <div style="margin-top:12px;">
+                                <button type="button"
+                                        onclick="toggleMatchDetails({{ $r->id }})"
+                                        style="padding:6px 12px; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-weight:600; color:#111827; font-size:0.875rem; transition:background 0.2s;"
+                                        onmouseover="this.style.background='#e5e7eb'"
+                                        onmouseout="this.style.background='#f3f4f6'"
+                                        id="match-toggle-{{ $r->id }}">
+                                    <span>🔍 View Details</span>
+                                    <span id="match-icon-{{ $r->id }}" style="font-size:0.75rem;">▼</span>
                                 </button>
+                                <div id="match-details-{{ $r->id }}" style="display:none; margin-top:12px; padding:12px; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;">
+                                    <div style="display:grid; gap:12px;">
+                                        @foreach($r->trade->insights as $ins)
+                                            @php
+                                                $status = $ins['status'] ?? 'neutral';
+                                                $borderColor = '#D1D5DB';
+                                                $bgColor = '#ffffff';
+                                                if ($status === 'good') {
+                                                    $borderColor = '#86EFAC';
+                                                    $bgColor = '#F0FDF4';
+                                                } elseif ($status === 'bad') {
+                                                    $borderColor = '#FCA5A5';
+                                                    $bgColor = '#FEF2F2';
+                                                } else {
+                                                    $borderColor = '#E5E7EB';
+                                                    $bgColor = '#FAFAFA';
+                                                }
+                                            @endphp
+                                            <div style="background:{{ $bgColor }}; border:2px solid {{ $borderColor }}; border-radius:8px; padding:12px;">
+                                                <div style="font-weight:600; color:#374151; margin-bottom:8px; font-size:0.9rem;">
+                                                    {{ $ins['label'] ?? 'Item' }}
+                                                    @if(isset($ins['match_detail']))
+                                                        <span style="margin-left:8px; font-size:0.8rem; font-weight:500; color:{{ $status === 'good' ? '#166534' : ($status === 'bad' ? '#991B1B' : '#6b7280') }};">
+                                                            ({{ $ins['match_detail'] }})
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:0.85rem;">
+                                                    <div>
+                                                        <div style="font-weight:600; color:#6b7280; margin-bottom:4px; font-size:0.75rem; text-transform:uppercase;">Their Post</div>
+                                                        <div style="color:#374151; padding:6px; background:#fff; border-radius:4px; border:1px solid #e5e7eb;">
+                                                            {{ $ins['their_value'] ?? 'Not specified' }}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div style="font-weight:600; color:#6b7280; margin-bottom:4px; font-size:0.75rem; text-transform:uppercase;">Your Post</div>
+                                                        <div style="color:#374151; padding:6px; background:#fff; border-radius:4px; border:1px solid #e5e7eb;">
+                                                            {{ $ins['your_value'] ?? 'Not specified' }}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
                             </div>
                         @endif
                         @if($r->message)
@@ -107,12 +112,13 @@
                             </div>
                         @endif
                     </div>
-                    @if($r->status === 'pending')
-                        @php
-                            $acceptanceFee = \App\Models\TradeFeeSetting::getFeeAmount('trade_acceptance');
-                            $userBalance = auth()->user()->token_balance ?? 0;
-                            $isPremium = auth()->user()->plan === 'premium';
-                        @endphp
+                        @if($r->status === 'pending')
+                            @php
+                                $user = auth()->user();
+                                $isPremium = $user->isPremium();
+                                $acceptanceFee = \App\Models\TradeFeeSetting::getFeeAmount('trade_acceptance');
+                                $userBalance = $user->token_balance ?? 0;
+                            @endphp
                         <div style="margin-left:16px;">
                             @if($isPremium)
                                 <div style="margin-bottom:8px; padding:6px 10px; background:#fef3c7; color:#92400e; border-radius:4px; font-size:0.8rem; border:1px solid #f59e0b;">
@@ -135,8 +141,8 @@
                                     @csrf
                                     <input type="hidden" name="action" value="accept">
                                     <button type="submit"
-                                            style="padding:6px 12px; background:#10b981; color:#fff; border:none; border-radius:4px; cursor:pointer; {{ !$isPremium && $acceptanceFee > 0 && $userBalance < $acceptanceFee ? 'opacity:50; cursor:not-allowed;' : '' }}"
-                                            {{ !$isPremium && $acceptanceFee > 0 && $userBalance < $acceptanceFee ? 'disabled' : '' }}>
+                                            style="padding:6px 12px; background:#10b981; color:#fff; border:none; border-radius:4px; cursor:pointer; {{ !$isPremium && $acceptanceFee > 0 && \App\Models\TradeFeeSetting::isFeeActive('trade_acceptance') && $userBalance < $acceptanceFee ? 'opacity:50; cursor:not-allowed;' : '' }}"
+                                            {{ !$isPremium && $acceptanceFee > 0 && \App\Models\TradeFeeSetting::isFeeActive('trade_acceptance') && $userBalance < $acceptanceFee ? 'disabled' : '' }}>
                                         Accept
                                     </button>
                                 </form>
@@ -183,20 +189,60 @@
                         Status: <span style="font-weight:600; color:{{ $r->status === 'pending' ? '#f59e0b' : ($r->status === 'accepted' ? '#10b981' : '#ef4444') }}">{{ strtoupper($r->status) }}</span>
                     </div>
                     @if(isset($r->trade->insights) && is_array($r->trade->insights) && count($r->trade->insights) > 0)
-                        <div style="margin:6px 0 10px 0;">
-                            <div style="font-weight:600; color:#374151; margin-bottom:6px;">Why this match</div>
-                            <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                                @foreach($r->trade->insights as $ins)
-                                    @php
-                                        $bg = '#E5E7EB'; $fg = '#374151'; $bd = '#D1D5DB';
-                                        if (($ins['status'] ?? 'neutral') === 'good') { $bg = '#DCFCE7'; $fg = '#166534'; $bd = '#86EFAC'; }
-                                        elseif (($ins['status'] ?? 'neutral') === 'bad') { $bg = '#FEE2E2'; $fg = '#991B1B'; $bd = '#FCA5A5'; }
-                                    @endphp
-                                    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 8px; background:{{ $bg }}; color:{{ $fg }}; border:1px solid {{ $bd }}; border-radius:999px; font-size:0.8rem;">
-                                        <strong>{{ $ins['label'] ?? 'Item' }}:</strong>
-                                        <span>{{ $ins['detail'] ?? '' }}</span>
-                                    </span>
-                                @endforeach
+                        <div style="margin-top:12px;">
+                            <button type="button"
+                                    onclick="toggleMatchDetailsOutgoing({{ $r->id }})"
+                                    style="padding:6px 12px; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-weight:600; color:#111827; font-size:0.875rem; transition:background 0.2s;"
+                                    onmouseover="this.style.background='#e5e7eb'"
+                                    onmouseout="this.style.background='#f3f4f6'"
+                                    id="match-toggle-outgoing-{{ $r->id }}">
+                                <span>🔍 View Details</span>
+                                <span id="match-icon-outgoing-{{ $r->id }}" style="font-size:0.75rem;">▼</span>
+                            </button>
+                            <div id="match-details-outgoing-{{ $r->id }}" style="display:none; margin-top:12px; padding:12px; background:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;">
+                                <div style="display:grid; gap:12px;">
+                                    @foreach($r->trade->insights as $ins)
+                                        @php
+                                            $status = $ins['status'] ?? 'neutral';
+                                            $borderColor = '#D1D5DB';
+                                            $bgColor = '#ffffff';
+                                            if ($status === 'good') {
+                                                $borderColor = '#86EFAC';
+                                                $bgColor = '#F0FDF4';
+                                            } elseif ($status === 'bad') {
+                                                $borderColor = '#FCA5A5';
+                                                $bgColor = '#FEF2F2';
+                                            } else {
+                                                $borderColor = '#E5E7EB';
+                                                $bgColor = '#FAFAFA';
+                                            }
+                                        @endphp
+                                        <div style="background:{{ $bgColor }}; border:2px solid {{ $borderColor }}; border-radius:8px; padding:12px;">
+                                            <div style="font-weight:600; color:#374151; margin-bottom:8px; font-size:0.9rem;">
+                                                {{ $ins['label'] ?? 'Item' }}
+                                                @if(isset($ins['match_detail']))
+                                                    <span style="margin-left:8px; font-size:0.8rem; font-weight:500; color:{{ $status === 'good' ? '#166534' : ($status === 'bad' ? '#991B1B' : '#6b7280') }};">
+                                                        ({{ $ins['match_detail'] }})
+                                                    </span>
+                                                @endif
+                                            </div>
+                                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:0.85rem;">
+                                                <div>
+                                                    <div style="font-weight:600; color:#6b7280; margin-bottom:4px; font-size:0.75rem; text-transform:uppercase;">Their Post</div>
+                                                    <div style="color:#374151; padding:6px; background:#fff; border-radius:4px; border:1px solid #e5e7eb;">
+                                                        {{ $ins['their_value'] ?? 'Not specified' }}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div style="font-weight:600; color:#6b7280; margin-bottom:4px; font-size:0.75rem; text-transform:uppercase;">Your Post</div>
+                                                    <div style="color:#374151; padding:6px; background:#fff; border-radius:4px; border:1px solid #e5e7eb;">
+                                                        {{ $ins['your_value'] ?? 'Not specified' }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
                             </div>
                         </div>
                     @endif
@@ -218,117 +264,30 @@
 
 @push('scripts')
 <script>
-    function showRequestDetails(id, data) {
-        const overlay = document.createElement('div');
-        overlay.style.position = 'fixed';
-        overlay.style.inset = '0';
-        overlay.style.background = 'rgba(0,0,0,0.5)';
-        overlay.style.display = 'flex';
-        overlay.style.alignItems = 'center';
-        overlay.style.justifyContent = 'center';
-        overlay.style.zIndex = '2000';
-
-        const card = document.createElement('div');
-        card.style.background = '#fff';
-        card.style.borderRadius = '12px';
-        card.style.width = '90%';
-        card.style.maxWidth = '560px';
-        card.style.padding = '20px';
-        card.style.boxShadow = '0 10px 25px rgba(0,0,0,0.1)';
-
-        const title = document.createElement('div');
-        title.style.fontWeight = '700';
-        title.style.fontSize = '1.1rem';
-        title.style.marginBottom = '8px';
-        title.textContent = 'Request Details';
-
-        const body = document.createElement('div');
-        body.style.color = '#374151';
-        body.style.fontSize = '0.95rem';
-
-        const line = (label, value) => `<div style=\"margin:6px 0;\"><strong>${label}:</strong> ${value || '—'}</div>`;
-        const days = Array.isArray(data.preferred_days) ? data.preferred_days.join(', ') : (data.preferred_days || '—');
-
-        const stars = (avg) => {
-            avg = parseFloat(avg || 0);
-            const full = Math.floor(avg);
-            const half = (avg - full) >= 0.5 ? 1 : 0;
-            const empty = 5 - full - half;
-            return `${'★'.repeat(full)}${half?'<span style=\\"opacity:0.5\\">★</span>':''}${'☆'.repeat(empty)}`;
-        };
-
-        const matchBadge = (score, isCompat) => {
-            if (score == null) return '';
-            const bg = isCompat ? '#10b981' : '#9ca3af';
-            const status = isCompat ? 'Compatible' : 'Not compatible';
-            return `
-                <div style=\"display:flex; align-items:center; gap:8px; margin:6px 0 10px 0;\">
-                    <span style=\"background:${bg}; color:#fff; padding:2px 8px; border-radius:999px; font-size:0.8rem; font-weight:700;\">${score}% Match</span>
-                    <span style=\"font-size:0.8rem; color:#6b7280;\">${status}</span>
-                </div>
-            `;
-        };
-
-        const insightChips = (items) => {
-            if (!Array.isArray(items) || items.length === 0) return '';
-            const chips = items.map(ins => {
-                const status = ins.status || 'neutral';
-                let bg = '#E5E7EB', fg = '#374151', bd = '#D1D5DB';
-                if (status === 'good') { bg = '#DCFCE7'; fg = '#166534'; bd = '#86EFAC'; }
-                else if (status === 'bad') { bg = '#FEE2E2'; fg = '#991B1B'; bd = '#FCA5A5'; }
-                return `<span style=\"display:inline-flex; align-items:center; gap:6px; padding:6px 8px; background:${bg}; color:${fg}; border:1px solid ${bd}; border-radius:999px; font-size:0.8rem;\"><strong>${ins.label || 'Item'}:</strong><span>${ins.detail || ''}</span></span>`;
-            }).join('');
-            return `
-                <div style=\"margin-top:4px;\">
-                    <div style=\"font-weight:600; color:#374151; margin-bottom:6px;\">Why this match</div>
-                    <div style=\"display:flex; flex-wrap:wrap; gap:6px;\">${chips}</div>
-                </div>
-            `;
-        };
-
-        body.innerHTML = `
-            ${line('Requester', data.requester)}
-            ${line('Their Trade', (data.their_offering || '—') + ' → ' + (data.their_looking || '—'))}
-            ${line('Your Trade', (data.your_offering || '—') + ' → ' + (data.your_looking || '—'))}
-            ${matchBadge(data.compatibility_score, !!data.is_compatible)}
-            ${insightChips(data.insights)}
-            <div style=\"margin:6px 0;\"><strong>Requester Rating:</strong> <span style=\"color:#F59E0B; font-size:0.9rem;\">${stars(data.requester_rating_avg)}</span> (${data.requester_rating_count || 0})</div>
-            ${line('Session Type', data.session_type)}
-            ${line('Location', data.location || 'Any location')}
-            ${line('Time', (data.available_from || '—') + ' - ' + (data.available_to || '—'))}
-            ${line('Days', days)}
-            ${line('Dates', (data.start_date || '—') + ' to ' + (data.end_date || '—'))}
-            ${data.message ? `<div style=\"margin:10px 0; background:#f9fafb; padding:8px; border-radius:6px;\"><strong>Message:</strong> ${data.message}</div>` : ''}
-        `;
-
-        const footer = document.createElement('div');
-        footer.style.display = 'flex';
-        footer.style.justifyContent = 'flex-end';
-        footer.style.gap = '8px';
-        footer.style.marginTop = '14px';
-
-        const closeBtn = document.createElement('button');
-        closeBtn.textContent = 'Close';
-        closeBtn.style.padding = '8px 12px';
-        closeBtn.style.border = 'none';
-        closeBtn.style.background = '#6b7280';
-        closeBtn.style.color = '#fff';
-        closeBtn.style.borderRadius = '6px';
-        closeBtn.style.cursor = 'pointer';
-        closeBtn.onclick = () => document.body.removeChild(overlay);
-
-        footer.appendChild(closeBtn);
-        card.appendChild(title);
-        card.appendChild(body);
-        card.appendChild(footer);
-        overlay.appendChild(card);
-
-        overlay.addEventListener('click', function(e){
-            if (e.target === overlay) document.body.removeChild(overlay);
-        });
-
-        document.body.appendChild(overlay);
+    function toggleMatchDetails(id) {
+        const details = document.getElementById('match-details-' + id);
+        const icon = document.getElementById('match-icon-' + id);
+        if (details.style.display === 'none') {
+            details.style.display = 'block';
+            icon.textContent = '▲';
+        } else {
+            details.style.display = 'none';
+            icon.textContent = '▼';
+        }
     }
+
+    function toggleMatchDetailsOutgoing(id) {
+        const details = document.getElementById('match-details-outgoing-' + id);
+        const icon = document.getElementById('match-icon-outgoing-' + id);
+        if (details.style.display === 'none') {
+            details.style.display = 'block';
+            icon.textContent = '▲';
+        } else {
+            details.style.display = 'none';
+            icon.textContent = '▼';
+        }
+    }
+
 </script>
 @endpush
 

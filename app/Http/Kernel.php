@@ -35,12 +35,12 @@ class Kernel extends HttpKernel
         'web' => [
             \App\Http\Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-            \App\Http\Middleware\HandleDomainChange::class,
+          //  \App\Http\Middleware\HandleDomainChange::class,
             \Illuminate\Session\Middleware\StartSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
-           \App\Http\Middleware\SessionExpirationMiddleware::class,
+          // \App\Http\Middleware\SessionExpirationMiddleware::class,
             \App\Http\Middleware\ErrorHandlingMiddleware::class,
             \App\Http\Middleware\CheckSuspension::class,
             // \App\Http\Middleware\RateLimitMiddleware::class, // REMOVED: Rate limiting disabled
