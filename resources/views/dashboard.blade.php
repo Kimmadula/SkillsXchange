@@ -262,196 +262,173 @@
 
         <!-- Completed Sessions -->
         @if(isset($completedSessions) && $completedSessions->count() > 0)
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-8">
-            <div class="p-6">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Completed Sessions</h2>
-                <div class="space-y-4">
-                    @foreach($completedSessions->take(5) as $session)
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
-                                <h3 class="text-sm font-medium text-gray-900">
-                                    {{ $session->offeringSkill->name }} ↔ {{ $session->lookingSkill->name }}
-                                </h3>
-                                <p class="text-sm text-gray-500 mt-1">
-                                    @if($session->user_id === auth()->id())
-                                    You offered {{ $session->offeringSkill->name }} and learned {{
-                                    $session->lookingSkill->name }}
-                                    @else
-                                    You learned {{ $session->offeringSkill->name }} and offered {{
-                                    $session->lookingSkill->name }}
-                                    @endif
-                                </p>
-                                <p class="text-xs text-gray-400 mt-2">
-                                    Completed on {{ $session->updated_at->format('M d, Y') }}
-                                </p>
+        <div class="dashboard-card slide-up">
+            <h2 class="h6 fw-bold text-gradient mb-3" style="font-size:0.95rem;">Completed Sessions</h2>
+            <div style="display:grid; gap:8px;">
+                @foreach($completedSessions->take(5) as $session)
+                <div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafafa;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:600; color:#111827; font-size:0.875rem; margin-bottom:4px;">
+                                {{ $session->offeringSkill->name }} ↔ {{ $session->lookingSkill->name }}
                             </div>
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Completed
-                            </span>
+                            <div style="color:#6b7280; font-size:0.8rem; line-height:1.4;">
+                                @if($session->user_id === auth()->id())
+                                    Offered {{ $session->offeringSkill->name }} • Learned {{ $session->lookingSkill->name }}
+                                @else
+                                    Learned {{ $session->offeringSkill->name }} • Offered {{ $session->lookingSkill->name }}
+                                @endif
+                            </div>
+                            <div style="color:#9ca3af; font-size:0.75rem; margin-top:4px;">
+                                {{ $session->updated_at->format('M d, Y') }}
+                            </div>
                         </div>
+                        <span style="display:inline-flex; align-items:center; padding:3px 8px; border-radius:12px; font-size:0.7rem; font-weight:500; background:#dcfce7; color:#166534; white-space:nowrap;">
+                            Completed
+                        </span>
                     </div>
-                    @endforeach
                 </div>
+                @endforeach
             </div>
         </div>
         @endif
 
         <!-- Ongoing Sessions -->
         @if(isset($ongoingSessions) && $ongoingSessions->count() > 0)
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-8">
-            <div class="p-6">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Ongoing Sessions</h2>
-                <div class="space-y-4">
-                    @foreach($ongoingSessions->take(5) as $session)
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
-                                <h3 class="text-sm font-medium text-gray-900">
-                                    {{ $session->offeringSkill->name }} ↔ {{ $session->lookingSkill->name }}
-                                </h3>
-                                <p class="text-sm text-gray-500 mt-1">
-                                    @if($session->user_id === auth()->id())
-                                    You're offering {{ $session->offeringSkill->name }} and learning {{
-                                    $session->lookingSkill->name }}
-                                    @else
-                                    You're learning {{ $session->offeringSkill->name }} and offering {{
-                                    $session->lookingSkill->name }}
-                                    @endif
-                                </p>
-                                <p class="text-xs text-gray-400 mt-2">
-                                    Started on {{ $session->start_date->format('M d, Y') }}
-                                </p>
+        <div class="dashboard-card slide-up">
+            <h2 class="h6 fw-bold text-gradient mb-3" style="font-size:0.95rem;">Ongoing Sessions</h2>
+            <div style="display:grid; gap:8px;">
+                @foreach($ongoingSessions->take(5) as $session)
+                <div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafafa;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:600; color:#111827; font-size:0.875rem; margin-bottom:4px;">
+                                {{ $session->offeringSkill->name }} ↔ {{ $session->lookingSkill->name }}
                             </div>
-                            <div class="flex items-center space-x-2">
-                                <span
-                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    Active
-                                </span>
-                                <a href="{{ route('chat.show', $session->id) }}"
-                                    class="text-blue-600 hover:text-blue-800 text-sm">
-                                    View Chat
-                                </a>
+                            <div style="color:#6b7280; font-size:0.8rem; line-height:1.4;">
+                                @if($session->user_id === auth()->id())
+                                    Offering {{ $session->offeringSkill->name }} • Learning {{ $session->lookingSkill->name }}
+                                @else
+                                    Learning {{ $session->offeringSkill->name }} • Offering {{ $session->lookingSkill->name }}
+                                @endif
+                            </div>
+                            <div style="color:#9ca3af; font-size:0.75rem; margin-top:4px;">
+                                Started {{ $session->start_date->format('M d, Y') }}
                             </div>
                         </div>
+                        <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                            <span style="display:inline-flex; align-items:center; padding:3px 8px; border-radius:12px; font-size:0.7rem; font-weight:500; background:#dbeafe; color:#1e40af; white-space:nowrap;">
+                                Active
+                            </span>
+                            <a href="{{ route('chat.show', $session->id) }}" style="color:#2563eb; font-size:0.8rem; text-decoration:none; font-weight:500; white-space:nowrap;">
+                                Chat →
+                            </a>
+                        </div>
                     </div>
-                    @endforeach
                 </div>
+                @endforeach
             </div>
         </div>
         @endif
 
         <!-- Pending Requests -->
         @if(isset($pendingRequests) && $pendingRequests->count() > 0)
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-8">
-            <div class="p-6">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Your Pending Requests</h2>
-                <div class="space-y-4">
-                    @foreach($pendingRequests->take(5) as $request)
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
-                                <h3 class="text-sm font-medium text-gray-900">
-                                    Request to {{ $request->trade->user->firstname }} {{ $request->trade->user->lastname
-                                    }}
-                                </h3>
-                                <p class="text-sm text-gray-500 mt-1">
-                                    You want to learn {{ $request->trade->offeringSkill->name }} and offer {{
-                                    $request->trade->lookingSkill->name }}
-                                </p>
-                                @if($request->message)
-                                <p class="text-sm text-gray-600 mt-2 italic">"{{ $request->message }}"</p>
-                                @endif
-                                <p class="text-xs text-gray-400 mt-2">
-                                    Sent on {{ $request->created_at->format('M d, Y') }}
-                                </p>
+        <div class="dashboard-card slide-up">
+            <h2 class="h6 fw-bold text-gradient mb-3" style="font-size:0.95rem;">Your Pending Requests</h2>
+            <div style="display:grid; gap:8px;">
+                @foreach($pendingRequests->take(5) as $request)
+                <div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafafa;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:600; color:#111827; font-size:0.875rem; margin-bottom:4px;">
+                                To: {{ $request->trade->user->firstname }} {{ $request->trade->user->lastname }}
                             </div>
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                Pending
-                            </span>
+                            <div style="color:#6b7280; font-size:0.8rem; line-height:1.4;">
+                                Learn {{ $request->trade->offeringSkill->name }} • Offer {{ $request->trade->lookingSkill->name }}
+                            </div>
+                            @if($request->message)
+                            <div style="color:#4b5563; font-size:0.75rem; font-style:italic; margin-top:4px; padding-left:8px; border-left:2px solid #e5e7eb;">
+                                "{{ Str::limit($request->message, 60) }}"
+                            </div>
+                            @endif
+                            <div style="color:#9ca3af; font-size:0.75rem; margin-top:4px;">
+                                Sent {{ $request->created_at->format('M d, Y') }}
+                            </div>
                         </div>
+                        <span style="display:inline-flex; align-items:center; padding:3px 8px; border-radius:12px; font-size:0.7rem; font-weight:500; background:#fef3c7; color:#92400e; white-space:nowrap;">
+                            Pending
+                        </span>
                     </div>
-                    @endforeach
                 </div>
+                @endforeach
             </div>
         </div>
         @endif
 
         <!-- Declined Requests -->
         @if(isset($declinedRequests) && $declinedRequests->count() > 0)
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-8">
-            <div class="p-6">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Declined Requests</h2>
-                <div class="space-y-4">
-                    @foreach($declinedRequests->take(5) as $request)
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
-                                <h3 class="text-sm font-medium text-gray-900">
-                                    Request to {{ $request->trade->user->firstname }} {{ $request->trade->user->lastname
-                                    }}
-                                </h3>
-                                <p class="text-sm text-gray-500 mt-1">
-                                    You wanted to learn {{ $request->trade->offeringSkill->name }} and offer {{
-                                    $request->trade->lookingSkill->name }}
-                                </p>
-                                <p class="text-xs text-gray-400 mt-2">
-                                    Declined on {{ $request->responded_at->format('M d, Y') }}
-                                </p>
+        <div class="dashboard-card slide-up">
+            <h2 class="h6 fw-bold text-gradient mb-3" style="font-size:0.95rem;">Declined Requests</h2>
+            <div style="display:grid; gap:8px;">
+                @foreach($declinedRequests->take(5) as $request)
+                <div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafafa;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:600; color:#111827; font-size:0.875rem; margin-bottom:4px;">
+                                To: {{ $request->trade->user->firstname }} {{ $request->trade->user->lastname }}
                             </div>
-                            <span
-                                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                Declined
-                            </span>
+                            <div style="color:#6b7280; font-size:0.8rem; line-height:1.4;">
+                                Learn {{ $request->trade->offeringSkill->name }} • Offer {{ $request->trade->lookingSkill->name }}
+                            </div>
+                            <div style="color:#9ca3af; font-size:0.75rem; margin-top:4px;">
+                                Declined {{ $request->responded_at->format('M d, Y') }}
+                            </div>
                         </div>
+                        <span style="display:inline-flex; align-items:center; padding:3px 8px; border-radius:12px; font-size:0.7rem; font-weight:500; background:#fee2e2; color:#991b1b; white-space:nowrap;">
+                            Declined
+                        </span>
                     </div>
-                    @endforeach
                 </div>
+                @endforeach
             </div>
         </div>
         @endif
 
         <!-- Requests to Your Trades -->
         @if(isset($pendingRequestsToMe) && $pendingRequestsToMe->count() > 0)
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-8">
-            <div class="p-6">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Requests to Your Trades</h2>
-                <div class="space-y-4">
-                    @foreach($pendingRequestsToMe->take(5) as $request)
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <div class="flex justify-between items-start">
-                            <div class="flex-1">
-                                <h3 class="text-sm font-medium text-gray-900">
-                                    Request from {{ $request->requester->firstname }} {{ $request->requester->lastname
-                                    }}
-                                </h3>
-                                <p class="text-sm text-gray-500 mt-1">
-                                    Wants to learn {{ $request->trade->offeringSkill->name }} and offer {{
-                                    $request->trade->lookingSkill->name }}
-                                </p>
-                                @if($request->message)
-                                <p class="text-sm text-gray-600 mt-2 italic">"{{ $request->message }}"</p>
-                                @endif
-                                <p class="text-xs text-gray-400 mt-2">
-                                    Received on {{ $request->created_at->format('M d, Y') }}
-                                </p>
+        <div class="dashboard-card slide-up">
+            <h2 class="h6 fw-bold text-gradient mb-3" style="font-size:0.95rem;">Requests to Your Trades</h2>
+            <div style="display:grid; gap:8px;">
+                @foreach($pendingRequestsToMe->take(5) as $request)
+                <div style="border:1px solid #e5e7eb; border-radius:8px; padding:10px 12px; background:#fafafa;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:600; color:#111827; font-size:0.875rem; margin-bottom:4px;">
+                                From: {{ $request->requester->firstname }} {{ $request->requester->lastname }}
                             </div>
-                            <div class="flex items-center space-x-2">
-                                <span
-                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                    Pending
-                                </span>
-                                <a href="{{ route('trades.show', $request->trade->id) }}"
-                                    class="text-blue-600 hover:text-blue-800 text-sm">
-                                    Review
-                                </a>
+                            <div style="color:#6b7280; font-size:0.8rem; line-height:1.4;">
+                                Learn {{ $request->trade->offeringSkill->name }} • Offer {{ $request->trade->lookingSkill->name }}
+                            </div>
+                            @if($request->message)
+                            <div style="color:#4b5563; font-size:0.75rem; font-style:italic; margin-top:4px; padding-left:8px; border-left:2px solid #e5e7eb;">
+                                "{{ Str::limit($request->message, 60) }}"
+                            </div>
+                            @endif
+                            <div style="color:#9ca3af; font-size:0.75rem; margin-top:4px;">
+                                Received {{ $request->created_at->format('M d, Y') }}
                             </div>
                         </div>
+                        <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                            <span style="display:inline-flex; align-items:center; padding:3px 8px; border-radius:12px; font-size:0.7rem; font-weight:500; background:#fef3c7; color:#92400e; white-space:nowrap;">
+                                Pending
+                            </span>
+                            <a href="{{ route('trades.show', $request->trade->id) }}" style="color:#2563eb; font-size:0.8rem; text-decoration:none; font-weight:500; white-space:nowrap;">
+                                Review →
+                            </a>
+                        </div>
                     </div>
-                    @endforeach
                 </div>
+                @endforeach
             </div>
         </div>
         @endif
