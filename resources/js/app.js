@@ -143,6 +143,30 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
 
+        window.showEditTaskModal = () => {
+            if (window.app.tasks) {
+                window.app.tasks.showEditTaskModal();
+            } else {
+                console.error('Task Manager not available');
+            }
+        };
+
+        window.hideEditTaskModal = () => {
+            if (window.app.tasks) {
+                window.app.tasks.hideEditTaskModal();
+            } else {
+                console.error('Task Manager not available');
+            }
+        };
+
+        window.handleEditTaskModalClick = (event) => {
+            if (window.app.tasks) {
+                window.app.tasks.handleEditTaskModalClick(event);
+            } else {
+                console.error('Task Manager not available');
+            }
+        };
+
         window.endSession = () => {
             if (confirm('Are you sure you want to end this session?')) {
                 window.location.href = `/chat/${tradeId}/complete`;

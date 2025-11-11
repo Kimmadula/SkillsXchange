@@ -139,6 +139,9 @@ export class TaskManager {
         window.deleteTask = (taskId) => this.deleteTask(taskId);
         window.showAddTaskModal = () => this.showAddTaskModal();
         window.hideAddTaskModal = () => this.hideAddTaskModal();
+        window.showEditTaskModal = () => this.showEditTaskModal();
+        window.hideEditTaskModal = () => this.hideEditTaskModal();
+        window.handleEditTaskModalClick = (event) => this.handleEditTaskModalClick(event);
         window.addTaskToUI = (task) => this.addTaskToUI(task);
         window.removeTaskFromUI = (taskId) => this.removeTaskFromUI(taskId);
         window.updateTaskInUI = (task) => this.updateTaskInUI(task);
@@ -452,75 +455,59 @@ export class TaskManager {
         const taskDiv = document.createElement('div');
         taskDiv.className = 'task-item';
         taskDiv.setAttribute('data-task-id', task.id);
-        taskDiv.style.cssText = 'margin-bottom: 12px; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;';
+        taskDiv.style.cursor = 'pointer';
+        taskDiv.addEventListener('click', () => {
+            if (typeof window.showTaskDetails === 'function') {
+                window.showTaskDetails(task.id);
+            }
+        });
 
         const checkboxHtml = isAssignedToMe
-            ? `<input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask(${task.id})" style="width: 16px; height: 16px;">`
-            : `<input type="checkbox" disabled style="width: 16px; height: 16px;">`;
-
-        // Status badge
-        let statusBadge = '';
-        if (task.current_status) {
-            const statusColors = {
-                'assigned': '#6b7280',
-                'in_progress': '#f59e0b',
-                'submitted': '#3b82f6',
-                'completed': '#10b981'
-            };
-            const statusColor = statusColors[task.current_status] || '#6b7280';
-            const statusText = task.current_status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-            statusBadge = `<span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">${statusText}</span>`;
-        }
-
-        // File submission badge
-        let submissionBadge = '';
-        if (task.requires_submission) {
-            submissionBadge = '<span style="background: #8b5cf6; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;"><i class="fas fa-paperclip" style="font-size: 0.7rem;"></i> Submission Required</span>';
-        }
+            ? `<input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} onchange="event.stopPropagation(); toggleTask(${task.id})">`
+            : `<input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''} disabled onclick="event.stopPropagation()">`;
 
         // Priority badge
         let priorityBadge = '';
         if (task.priority) {
-            const priorityColors = {
-                'low': '#10b981',
-                'medium': '#f59e0b',
-                'high': '#ef4444'
-            };
-            const priorityColor = priorityColors[task.priority] || '#6b7280';
-            priorityBadge = `<span style="background: ${priorityColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority</span>`;
+            priorityBadge = `<span class="task-tag tag-priority-${task.priority}">${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority</span>`;
+        }
+
+        // Status badge
+        let statusBadge = '';
+        if (task.current_status) {
+            const statusText = task.current_status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+            statusBadge = `<span class="task-tag tag-status">${statusText}</span>`;
         }
 
         // Edit/Delete buttons for creators
         let actionButtons = '';
         if (isCreatedByMe) {
             actionButtons = `
-                <button onclick="editTask(${task.id})" title="Edit Task"
-                        style="background: #3b82f6; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 4px; margin-right: 4px;">
-                    <i class="fas fa-edit"></i> Edit
-                </button>
-                <button onclick="deleteTask(${task.id})" title="Delete Task"
-                        style="background: #ef4444; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 4px;">
-                    <i class="fas fa-trash"></i> Delete
-                </button>
+                <div class="task-actions" style="display:flex; gap:6px; margin-left:auto;" onclick="event.stopPropagation()">
+                    <button onclick="editTask(${task.id})" title="Edit Task"
+                            style="background:#3b82f6;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:.75rem;cursor:pointer;">
+                        Edit
+                    </button>
+                    <button onclick="deleteTask(${task.id})" title="Delete Task"
+                            style="background:#ef4444;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:.75rem;cursor:pointer;">
+                        Delete
+                    </button>
+                </div>
             `;
         }
 
-        const titleStyle = task.completed ? 'text-decoration: line-through; color: #6b7280;' : '';
-
         taskDiv.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                    ${checkboxHtml}
-                    <span style="font-weight: 500; ${titleStyle}">${this.escapeHtml(task.title)}</span>
-                    ${priorityBadge}
-                    ${statusBadge}
-                    ${submissionBadge}
+            <div class="task-header">
+                ${checkboxHtml}
+                <div class="task-content">
+                    <div class="task-title">${this.escapeHtml(task.title)}</div>
+                    <div class="task-meta">
+                        ${priorityBadge}
+                        ${statusBadge}
+                    </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 4px;">
-                    ${actionButtons}
-                </div>
+                ${actionButtons}
             </div>
-            ${task.description ? `<div style="font-size: 0.875rem; color: #6b7280; margin-left: 24px;">${this.escapeHtml(task.description)}</div>` : ''}
         `;
 
         // Remove the "No tasks" message if it exists
@@ -749,6 +736,13 @@ export class TaskManager {
             if (this.editTaskForm) {
                 this.editTaskForm.reset();
             }
+        }
+    }
+
+    handleEditTaskModalClick(event) {
+        // Close modal if clicking on the overlay (not the modal content)
+        if (event.target === this.editTaskModal) {
+            this.hideEditTaskModal();
         }
     }
 

@@ -187,7 +187,17 @@ class TaskController extends Controller
                     'submission_instructions' => $task->submission_instructions,
                     'current_status' => $task->current_status,
                     'max_score' => $task->max_score,
-                    'passing_score' => $task->passing_score
+                    'passing_score' => $task->passing_score,
+                    'completed' => $task->completed,
+                    'created_at' => $task->created_at,
+                    'creator' => $task->creator ? [
+                        'firstname' => $task->creator->firstname,
+                        'lastname' => $task->creator->lastname
+                    ] : null,
+                    'assignee' => $task->assignee ? [
+                        'firstname' => $task->assignee->firstname,
+                        'lastname' => $task->assignee->lastname
+                    ] : null
                 ]
             ]);
         }
