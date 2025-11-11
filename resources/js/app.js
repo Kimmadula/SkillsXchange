@@ -2,6 +2,8 @@
 import { ChatManager } from './chat/ChatManager.js';
 import { VideoCallManager } from './video/VideoCallManager.js';
 import { TaskManager } from './tasks/TaskManager.js';
+// Import session UI helpers (tab switching, etc.)
+import './session.js';
 
 // Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', () => {
