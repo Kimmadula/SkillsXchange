@@ -369,7 +369,11 @@ export class TaskManager {
         const form = e.target;
         const title = form.querySelector('#task-title')?.value;
         const description = form.querySelector('#task-description')?.value;
-        const assignedTo = form.querySelector('#task-assignee')?.value;
+		// Hidden assignee field may be placed outside the <form>, so fall back to a global lookup
+		let assignedTo = form.querySelector('#task-assignee')?.value;
+		if (!assignedTo) {
+			assignedTo = document.getElementById('task-assignee')?.value;
+		}
         const priority = form.querySelector('#task-priority')?.value || 'medium';
         const dueDate = form.querySelector('#task-due-date')?.value;
         const requiresSubmission = form.querySelector('#requires-submission')?.checked || false;
@@ -384,6 +388,12 @@ export class TaskManager {
             this.showError('Please select at least one file type when requiring submission.');
             return;
         }
+
+		// Validate assignee
+		if (!assignedTo) {
+			this.showError('The assigned to field is required.');
+			return;
+		}
 
         this.createTask({
             title,

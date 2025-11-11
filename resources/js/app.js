@@ -153,6 +153,26 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Report user feature coming soon');
         };
 
+		// Legacy compatibility shims for older inline Blade functions
+		window.addMessageToChat = (message, senderName, timestamp, isOwn) => {
+			try {
+				if (window.app && window.app.chat && typeof window.app.chat.addMessage === 'function') {
+					return window.app.chat.addMessage(message, senderName, timestamp, isOwn);
+				}
+			} catch (e) {
+				console.error('addMessageToChat shim error:', e);
+			}
+		};
+
+		window.handleModalClick = (event) => {
+			// Close the add-task modal when clicking on the overlay
+			if (event && event.target && event.target.id === 'add-task-modal') {
+				if (window.app && window.app.tasks) {
+					window.app.tasks.hideAddTaskModal();
+				}
+			}
+		};
+
         // Cross-manager communication handlers
         // If a task is completed, we might want to notify chat or vice versa
         if (window.app.tasks && window.app.chat) {
