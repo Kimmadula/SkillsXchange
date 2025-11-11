@@ -166,8 +166,7 @@
             <div class="skills-help-message">
                 <i class="fas fa-info-circle me-2"></i>
                 <span class="text-sm text-gray-600">
-                    You can add more skills to your profile after registration. Contact an admin to add additional skills or modify your skill set.
-                </span>
+                    You can add more skills by completing trades .                 </span>
             </div>
         </div>
 

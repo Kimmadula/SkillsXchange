@@ -42,7 +42,7 @@ class LoginRequest extends FormRequest
         // Determine if login is email or username
         $login = $this->input('login');
         $field = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
-        
+
         // Attempt authentication with the determined field
         if (! Auth::attempt([$field => $login, 'password' => $this->input('password')], $this->boolean('remember'))) {
             throw ValidationException::withMessages([

@@ -76,6 +76,13 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $exception)
     {
+        // Handle ValidationException first - let Laravel handle it with default behavior
+        // This ensures validation errors from login (wrong password, unverified email, etc.)
+        // are properly displayed instead of generic error messages
+        if ($exception instanceof ValidationException) {
+            return parent::render($request, $exception);
+        }
+
         // Handle different types of exceptions
         if ($exception instanceof AuthenticationException) {
             return $this->handleAuthenticationException($request, $exception);
@@ -165,7 +172,7 @@ class Handler extends ExceptionHandler
     protected function handleViewException($request, ViewException $exception)
     {
         $message = $exception->getMessage();
-        
+
         Log::warning('ViewException: ' . $message, [
             'url' => $request->url(),
             'user_id' => Auth::id(),

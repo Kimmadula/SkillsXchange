@@ -215,18 +215,39 @@ class AdminController extends Controller
             ->get();
 
         $totalTokensPurchased = $tokenPurchaseTransactions->sum('quantity');
-        $monthlyRevenue = $tokenPurchaseTransactions->sum('amount'); // Use actual payment amount
+        $monthlyTokenRevenue = $tokenPurchaseTransactions->sum('amount'); // Token purchases revenue
 
-        // Calculate monthly revenue change
+        // Premium revenue (from premium subscription purchases - quantity = 0 and notes contains premium_subscription)
+        // Calculate this early as it's used in total revenue calculation
+        $premiumRevenue = TokenTransaction::where('status', 'completed')
+            ->where('quantity', 0)
+            ->where(function($query) {
+                $query->where('notes', 'like', '%premium_subscription%')
+                      ->orWhere('notes', 'like', '%Premium subscription%');
+            })
+            ->sum('amount');
+
+        // Calculate monthly revenue change (includes both token purchases and premium)
         $lastMonthTokensPurchased = TokenTransaction::where('status', 'completed')
             ->where('quantity', '>', 0)
             ->where('created_at', '>=', $lastMonth)
             ->sum('quantity');
 
-        $lastMonthRevenue = TokenTransaction::where('status', 'completed')
+        $lastMonthTokenRevenue = TokenTransaction::where('status', 'completed')
             ->where('quantity', '>', 0)
             ->where('created_at', '>=', $lastMonth)
             ->sum('amount');
+
+        $lastMonthPremiumRevenue = TokenTransaction::where('status', 'completed')
+            ->where('quantity', 0)
+            ->where(function($query) {
+                $query->where('notes', 'like', '%premium_subscription%')
+                      ->orWhere('notes', 'like', '%Premium subscription%');
+            })
+            ->where('created_at', '>=', $lastMonth)
+            ->sum('amount');
+
+        $lastMonthRevenue = $lastMonthTokenRevenue + $lastMonthPremiumRevenue; // Total monthly revenue
 
         $previousMonthTokensPurchased = TokenTransaction::where('status', 'completed')
             ->where('quantity', '>', 0)
@@ -234,14 +255,26 @@ class AdminController extends Controller
             ->where('created_at', '<', $lastMonth)
             ->sum('quantity');
 
-        $previousMonthRevenue = TokenTransaction::where('status', 'completed')
+        $previousMonthTokenRevenue = TokenTransaction::where('status', 'completed')
             ->where('quantity', '>', 0)
             ->where('created_at', '>=', $lastMonth->copy()->subMonth())
             ->where('created_at', '<', $lastMonth)
             ->sum('amount');
 
-        // Additional revenue statistics
-        $totalRevenue = $tokenPurchaseTransactions->sum('amount'); // Use actual payment amounts
+        $previousMonthPremiumRevenue = TokenTransaction::where('status', 'completed')
+            ->where('quantity', 0)
+            ->where(function($query) {
+                $query->where('notes', 'like', '%premium_subscription%')
+                      ->orWhere('notes', 'like', '%Premium subscription%');
+            })
+            ->where('created_at', '>=', $lastMonth->copy()->subMonth())
+            ->where('created_at', '<', $lastMonth)
+            ->sum('amount');
+
+        $previousMonthRevenue = $previousMonthTokenRevenue + $previousMonthPremiumRevenue; // Total previous month revenue
+
+        // Additional revenue statistics (includes both token purchases and premium subscriptions)
+        $totalRevenue = $tokenPurchaseTransactions->sum('amount') + $premiumRevenue; // Total revenue from all sources
         $todayTokensPurchased = TokenTransaction::where('status', 'completed')
             ->where('quantity', '>', 0)
             ->whereDate('created_at', today())
@@ -250,8 +283,17 @@ class AdminController extends Controller
             ->where('quantity', '>', 0)
             ->whereDate('created_at', today())
             ->sum('amount');
+        $todayPremiumRevenue = TokenTransaction::where('status', 'completed')
+            ->where('quantity', 0)
+            ->where(function($query) {
+                $query->where('notes', 'like', '%premium_subscription%')
+                      ->orWhere('notes', 'like', '%Premium subscription%');
+            })
+            ->whereDate('created_at', today())
+            ->sum('amount');
+        $todayRevenue = $todayRevenue + $todayPremiumRevenue; // Include premium in today's revenue
 
-        // Weekly revenue
+        // Weekly revenue (includes both token purchases and premium subscriptions)
         $weeklyTokensPurchased = TokenTransaction::where('status', 'completed')
             ->where('quantity', '>', 0)
             ->where('created_at', '>=', $lastWeek)
@@ -260,6 +302,15 @@ class AdminController extends Controller
             ->where('quantity', '>', 0)
             ->where('created_at', '>=', $lastWeek)
             ->sum('amount');
+        $weeklyPremiumRevenue = TokenTransaction::where('status', 'completed')
+            ->where('quantity', 0)
+            ->where(function($query) {
+                $query->where('notes', 'like', '%premium_subscription%')
+                      ->orWhere('notes', 'like', '%Premium subscription%');
+            })
+            ->where('created_at', '>=', $lastWeek)
+            ->sum('amount');
+        $weeklyRevenue = $weeklyRevenue + $weeklyPremiumRevenue; // Include premium in weekly revenue
 
         $monthlyRevenueChange = $previousMonthRevenue > 0 ?
             round((($lastMonthRevenue - $previousMonthRevenue) / $previousMonthRevenue) * 100) : 0;
@@ -277,6 +328,51 @@ class AdminController extends Controller
         // Fee settings statistics
         $activeFeeSettings = TradeFeeSetting::where('is_active', true)->count();
         $totalFeeSettings = TradeFeeSetting::count();
+
+        // Premium user statistics
+        $totalPremiumUsers = User::where('plan', 'premium')->count();
+        $activePremiumUsers = User::where('plan', 'premium')
+            ->where(function($query) {
+                $query->whereNull('premium_expires_at')
+                      ->orWhere('premium_expires_at', '>', now());
+            })
+            ->count();
+        $expiredPremiumUsers = User::where('plan', 'premium')
+            ->whereNotNull('premium_expires_at')
+            ->where('premium_expires_at', '<=', now())
+            ->count();
+        $premiumExpiringSoon = User::where('plan', 'premium')
+            ->whereNotNull('premium_expires_at')
+            ->where('premium_expires_at', '>', now())
+            ->where('premium_expires_at', '<=', now()->addDays(7))
+            ->count();
+
+        // Monthly premium revenue (already calculated total premium revenue above)
+        $monthlyPremiumRevenue = TokenTransaction::where('status', 'completed')
+            ->where('quantity', 0)
+            ->where(function($query) {
+                $query->where('notes', 'like', '%premium_subscription%')
+                      ->orWhere('notes', 'like', '%Premium subscription%');
+            })
+            ->where('created_at', '>=', $lastMonth)
+            ->sum('amount');
+        $previousMonthPremiumRevenue = TokenTransaction::where('status', 'completed')
+            ->where('quantity', 0)
+            ->where(function($query) {
+                $query->where('notes', 'like', '%premium_subscription%')
+                      ->orWhere('notes', 'like', '%Premium subscription%');
+            })
+            ->where('created_at', '>=', $lastMonth->copy()->subMonth())
+            ->where('created_at', '<', $lastMonth)
+            ->sum('amount');
+        $premiumRevenueChange = $previousMonthPremiumRevenue > 0 ?
+            round((($monthlyPremiumRevenue - $previousMonthPremiumRevenue) / $previousMonthPremiumRevenue) * 100) : 0;
+
+        // Premium users last week
+        $premiumUsersLastWeek = User::where('plan', 'premium')
+            ->where('updated_at', '<=', $lastWeek)
+            ->count();
+        $premiumUsersChange = $premiumUsersLastWeek > 0 ? round((($totalPremiumUsers - $premiumUsersLastWeek) / $premiumUsersLastWeek) * 100) : 0;
 
         return [
             'totalUsers' => [
@@ -300,7 +396,7 @@ class AdminController extends Controller
                 'changeType' => $skillExchangesChange >= 0 ? 'positive' : 'negative'
             ],
             'monthlyRevenue' => [
-                'value' => $monthlyRevenue,
+                'value' => $lastMonthRevenue, // Includes both token purchases and premium subscriptions
                 'change' => $monthlyRevenueChange,
                 'changeType' => $monthlyRevenueChange >= 0 ? 'positive' : 'negative'
             ],
@@ -338,6 +434,36 @@ class AdminController extends Controller
                 'value' => $totalFeeSettings,
                 'change' => 0, // No change tracking for settings
                 'changeType' => 'neutral'
+            ],
+            'totalPremiumUsers' => [
+                'value' => $totalPremiumUsers,
+                'change' => $premiumUsersChange,
+                'changeType' => $premiumUsersChange >= 0 ? 'positive' : 'negative'
+            ],
+            'activePremiumUsers' => [
+                'value' => $activePremiumUsers,
+                'change' => 0,
+                'changeType' => 'neutral'
+            ],
+            'expiredPremiumUsers' => [
+                'value' => $expiredPremiumUsers,
+                'change' => 0,
+                'changeType' => 'neutral'
+            ],
+            'premiumExpiringSoon' => [
+                'value' => $premiumExpiringSoon,
+                'change' => 0,
+                'changeType' => 'neutral'
+            ],
+            'premiumRevenue' => [
+                'value' => $premiumRevenue,
+                'change' => 0,
+                'changeType' => 'neutral'
+            ],
+            'monthlyPremiumRevenue' => [
+                'value' => $monthlyPremiumRevenue,
+                'change' => $premiumRevenueChange,
+                'changeType' => $premiumRevenueChange >= 0 ? 'positive' : 'negative'
             ]
         ];
     }
@@ -442,9 +568,10 @@ class AdminController extends Controller
 
     public function usersIndex()
     {
-        $users = User::with('skill')->orderBy('created_at', 'desc')->paginate(20);
+        $users = User::with(['skill', 'skills'])->orderBy('created_at', 'desc')->paginate(20);
+        $skills = Skill::orderBy('category')->orderBy('name')->get();
         $notifications = $this->getNotifications();
-        return view('admin.users.index', compact('users', 'notifications'));
+        return view('admin.users.index', compact('users', 'skills', 'notifications'));
     }
 
     public function skillsIndex()
@@ -481,14 +608,39 @@ class AdminController extends Controller
             'pendingRequests' => 1, // Placeholder - would need requests table
         ];
 
-        // Token-related metrics
+        // Token-related metrics (revenue includes both token purchases and premium subscriptions)
+        $tokenRevenue = TokenTransaction::where('status', 'completed')->where('quantity', '>', 0)->sum('amount');
+        $premiumRevenueTotal = TokenTransaction::where('status', 'completed')
+            ->where('quantity', 0)
+            ->where(function($query) {
+                $query->where('notes', 'like', '%premium_subscription%')
+                      ->orWhere('notes', 'like', '%Premium subscription%');
+            })
+            ->sum('amount');
+
         $tokenMetrics = [
             'totalTokensInCirculation' => User::sum('token_balance'),
             'totalTokenTransactions' => TokenTransaction::count(),
             'completedPurchases' => TokenTransaction::where('status', 'completed')->where('quantity', '>', 0)->count(),
-            'totalRevenue' => TokenTransaction::where('status', 'completed')->where('quantity', '>', 0)->sum('amount'),
-            'monthlyRevenue' => TokenTransaction::where('status', 'completed')->where('quantity', '>', 0)->whereMonth('created_at', now()->month)->sum('amount'),
-            'weeklyRevenue' => TokenTransaction::where('status', 'completed')->where('quantity', '>', 0)->where('created_at', '>=', now()->subWeek())->sum('amount'),
+            'totalRevenue' => $tokenRevenue + $premiumRevenueTotal, // Includes both token purchases and premium
+            'monthlyRevenue' => TokenTransaction::where('status', 'completed')->where('quantity', '>', 0)->whereMonth('created_at', now()->month)->sum('amount') +
+                               TokenTransaction::where('status', 'completed')
+                                   ->where('quantity', 0)
+                                   ->where(function($query) {
+                                       $query->where('notes', 'like', '%premium_subscription%')
+                                             ->orWhere('notes', 'like', '%Premium subscription%');
+                                   })
+                                   ->whereMonth('created_at', now()->month)
+                                   ->sum('amount'),
+            'weeklyRevenue' => TokenTransaction::where('status', 'completed')->where('quantity', '>', 0)->where('created_at', '>=', now()->subWeek())->sum('amount') +
+                              TokenTransaction::where('status', 'completed')
+                                  ->where('quantity', 0)
+                                  ->where(function($query) {
+                                      $query->where('notes', 'like', '%premium_subscription%')
+                                            ->orWhere('notes', 'like', '%Premium subscription%');
+                                  })
+                                  ->where('created_at', '>=', now()->subWeek())
+                                  ->sum('amount'),
             'totalFeeTransactions' => FeeTransaction::count(),
             'totalFeesCollected' => abs(FeeTransaction::where('status', 'completed')->sum('amount')),
             'activeFeeSettings' => TradeFeeSetting::where('is_active', true)->count(),
@@ -521,15 +673,23 @@ class AdminController extends Controller
             $tokenTrends[$date] = $count;
         }
 
-        // Revenue Trends (Last 7 Days)
+        // Revenue Trends (Last 7 Days) - includes both token purchases and premium subscriptions
         $revenueTrends = [];
         for ($i = 6; $i >= 0; $i--) {
             $date = now()->subDays($i)->format('M d');
-            $amount = TokenTransaction::where('status', 'completed')
+            $tokenAmount = TokenTransaction::where('status', 'completed')
                 ->where('quantity', '>', 0)
                 ->whereDate('created_at', now()->subDays($i))
                 ->sum('amount');
-            $revenueTrends[$date] = $amount;
+            $premiumAmount = TokenTransaction::where('status', 'completed')
+                ->where('quantity', 0)
+                ->where(function($query) {
+                    $query->where('notes', 'like', '%premium_subscription%')
+                          ->orWhere('notes', 'like', '%Premium subscription%');
+                })
+                ->whereDate('created_at', now()->subDays($i))
+                ->sum('amount');
+            $revenueTrends[$date] = $tokenAmount + $premiumAmount;
         }
 
         // Fee Collection Trends (Last 7 Days)
@@ -579,17 +739,121 @@ class AdminController extends Controller
             ->groupBy('fee_type')
             ->get();
 
+        // Premium user statistics
+        $premiumMetrics = [
+            'totalPremiumUsers' => User::where('plan', 'premium')->count(),
+            'activePremiumUsers' => User::where('plan', 'premium')
+                ->where(function($query) {
+                    $query->whereNull('premium_expires_at')
+                          ->orWhere('premium_expires_at', '>', now());
+                })
+                ->count(),
+            'expiredPremiumUsers' => User::where('plan', 'premium')
+                ->whereNotNull('premium_expires_at')
+                ->where('premium_expires_at', '<=', now())
+                ->count(),
+            'premiumExpiringSoon' => User::where('plan', 'premium')
+                ->whereNotNull('premium_expires_at')
+                ->where('premium_expires_at', '>', now())
+                ->where('premium_expires_at', '<=', now()->addDays(7))
+                ->count(),
+            'premiumExpiringThisMonth' => User::where('plan', 'premium')
+                ->whereNotNull('premium_expires_at')
+                ->where('premium_expires_at', '>', now())
+                ->where('premium_expires_at', '<=', now()->addMonth())
+                ->count(),
+            'totalPremiumRevenue' => TokenTransaction::where('status', 'completed')
+                ->where('quantity', 0)
+                ->where(function($query) {
+                    $query->where('notes', 'like', '%premium_subscription%')
+                          ->orWhere('notes', 'like', '%Premium subscription%');
+                })
+                ->sum('amount'),
+            'monthlyPremiumRevenue' => TokenTransaction::where('status', 'completed')
+                ->where('quantity', 0)
+                ->where(function($query) {
+                    $query->where('notes', 'like', '%premium_subscription%')
+                          ->orWhere('notes', 'like', '%Premium subscription%');
+                })
+                ->whereMonth('created_at', now()->month)
+                ->sum('amount'),
+            'weeklyPremiumRevenue' => TokenTransaction::where('status', 'completed')
+                ->where('quantity', 0)
+                ->where(function($query) {
+                    $query->where('notes', 'like', '%premium_subscription%')
+                          ->orWhere('notes', 'like', '%Premium subscription%');
+                })
+                ->where('created_at', '>=', now()->subWeek())
+                ->sum('amount'),
+            'premiumSubscriptionsThisMonth' => TokenTransaction::where('status', 'completed')
+                ->where('quantity', 0)
+                ->where(function($query) {
+                    $query->where('notes', 'like', '%premium_subscription%')
+                          ->orWhere('notes', 'like', '%Premium subscription%');
+                })
+                ->whereMonth('created_at', now()->month)
+                ->count(),
+        ];
+
+        // Premium Subscription Trends (Last 7 Days)
+        $premiumTrends = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i)->format('M d');
+            $count = TokenTransaction::where('status', 'completed')
+                ->where('quantity', 0)
+                ->where(function($query) {
+                    $query->where('notes', 'like', '%premium_subscription%')
+                          ->orWhere('notes', 'like', '%Premium subscription%');
+                })
+                ->whereDate('created_at', now()->subDays($i))
+                ->count();
+            $premiumTrends[$date] = $count;
+        }
+
+        // Premium Revenue Trends (Last 7 Days)
+        $premiumRevenueTrends = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i)->format('M d');
+            $amount = TokenTransaction::where('status', 'completed')
+                ->where('quantity', 0)
+                ->where(function($query) {
+                    $query->where('notes', 'like', '%premium_subscription%')
+                          ->orWhere('notes', 'like', '%Premium subscription%');
+                })
+                ->whereDate('created_at', now()->subDays($i))
+                ->sum('amount');
+            $premiumRevenueTrends[$date] = $amount;
+        }
+
+        // Top Premium Users (users with most premium subscriptions)
+        $topPremiumUsers = User::select('users.id', 'users.firstname', 'users.lastname', 'users.email', 'users.plan', 'users.premium_expires_at', DB::raw('COUNT(token_transactions.id) as subscription_count'), DB::raw('SUM(token_transactions.amount) as total_spent'))
+            ->join('token_transactions', 'users.id', '=', 'token_transactions.user_id')
+            ->where('token_transactions.status', 'completed')
+            ->where('token_transactions.quantity', 0)
+            ->where(function($query) {
+                $query->where('token_transactions.notes', 'like', '%premium_subscription%')
+                      ->orWhere('token_transactions.notes', 'like', '%Premium subscription%');
+            })
+            ->groupBy('users.id', 'users.firstname', 'users.lastname', 'users.email', 'users.plan', 'users.premium_expires_at')
+            ->orderByDesc('subscription_count')
+            ->limit(10)
+            ->get();
+
         $notifications = $this->getNotifications();
         return view('admin.reports.index', compact(
             'metrics',
             'tokenMetrics',
+            'premiumMetrics',
             'userTrends',
             'tradeTrends',
             'tokenTrends',
             'revenueTrends',
             'feeTrends',
+            'premiumTrends',
+            'premiumRevenueTrends',
             'topSkills',
             'topTokenPurchasers',
+            'topPremiumUsers',
             'recentTokenTransactions',
             'feeTransactionSummary',
             'notifications'
@@ -1058,76 +1322,98 @@ class AdminController extends Controller
                 'admin_notes' => 'nullable|string|max:2000'
             ]);
 
-            // Deactivate any existing active violations
-            $user->violations()->active()->update(['is_active' => false]);
+            // Use database transaction for atomicity and performance
+            DB::beginTransaction();
 
-            // Calculate suspension dates
-            $suspensionStart = now();
-            $suspensionEnd = null;
+            try {
+                // Optimize: Use direct DB update instead of Eloquent for better performance
+                DB::table('violations')
+                    ->where('user_id', $user->id)
+                    ->where('is_active', true)
+                    ->update(['is_active' => false]);
 
-            if ($request->violation_type === 'suspension') {
-                switch ($request->suspension_duration) {
-                    case '7_days':
-                        $suspensionEnd = $suspensionStart->copy()->addDays(7);
-                        break;
-                    case '30_days':
-                        $suspensionEnd = $suspensionStart->copy()->addDays(30);
-                        break;
-                    case 'indefinite':
-                        $suspensionEnd = null;
-                        break;
+                // Calculate suspension dates
+                $suspensionStart = now();
+                $suspensionEnd = null;
+
+                if ($request->violation_type === 'suspension') {
+                    switch ($request->suspension_duration) {
+                        case '7_days':
+                            $suspensionEnd = $suspensionStart->copy()->addDays(7);
+                            break;
+                        case '30_days':
+                            $suspensionEnd = $suspensionStart->copy()->addDays(30);
+                            break;
+                        case 'indefinite':
+                            $suspensionEnd = null;
+                            break;
+                    }
                 }
+
+                // Create violation record
+                $violation = Violation::create([
+                    'user_id' => $user->id,
+                    'admin_id' => auth()->id(),
+                    'violation_type' => $request->violation_type,
+                    'suspension_duration' => $request->suspension_duration,
+                    'reason' => $request->reason,
+                    'admin_notes' => $request->admin_notes,
+                    'suspension_start' => $suspensionStart,
+                    'suspension_end' => $suspensionEnd,
+                    'is_active' => true
+                ]);
+
+                // Optimize: Use direct DB update for user to avoid triggering events
+                DB::table('users')
+                    ->where('id', $user->id)
+                    ->update([
+                        'is_suspended' => true,
+                        'suspension_start' => $suspensionStart,
+                        'suspension_end' => $suspensionEnd,
+                        'suspension_reason' => $request->reason,
+                        'updated_at' => now()
+                    ]);
+
+                DB::commit();
+
+                $action = $request->violation_type === 'permanent_ban' ? 'permanently banned' : 'suspended';
+                $duration = $request->violation_type === 'suspension' ? " for {$request->suspension_duration}" : '';
+
+                // Log after transaction commit (non-blocking)
+                $logData = [
+                    'admin_user' => auth()->user()->email,
+                    'affected_user' => $user->email,
+                    'user_id' => $user->id,
+                    'violation_id' => $violation->id,
+                    'reason' => $request->reason,
+                    'duration' => $request->suspension_duration ?? 'permanent'
+                ];
+
+                // Log in background to avoid blocking response
+                Log::info("User {$action} by admin", $logData);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "User {$user->name} has been {$action}{$duration}.",
+                    'violation' => $violation
+                ]);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
             }
-
-            // Create violation record
-            $violation = Violation::create([
-                'user_id' => $user->id,
-                'admin_id' => auth()->id(),
-                'violation_type' => $request->violation_type,
-                'suspension_duration' => $request->suspension_duration,
-                'reason' => $request->reason,
-                'admin_notes' => $request->admin_notes,
-                'suspension_start' => $suspensionStart,
-                'suspension_end' => $suspensionEnd,
-                'is_active' => true
-            ]);
-
-            // Update user suspension status
-            $user->update([
-                'is_suspended' => true,
-                'suspension_start' => $suspensionStart,
-                'suspension_end' => $suspensionEnd,
-                'suspension_reason' => $request->reason
-            ]);
-
-            $action = $request->violation_type === 'permanent_ban' ? 'permanently banned' : 'suspended';
-            $duration = $request->violation_type === 'suspension' ? " for {$request->suspension_duration}" : '';
-
-            Log::info("User {$action} by admin", [
-                'admin_user' => auth()->user()->email,
-                'affected_user' => $user->email,
-                'user_id' => $user->id,
-                'violation_id' => $violation->id,
-                'reason' => $request->reason,
-                'duration' => $request->suspension_duration ?? 'permanent'
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => "User {$user->name} has been {$action}{$duration}.",
-                'violation' => $violation
-            ]);
 
         } catch (\Exception $e) {
             Log::error('Error suspending user', [
                 'error' => $e->getMessage(),
-                'user_id' => $user->id,
-                'admin_user' => auth()->user()->email
+                'trace' => $e->getTraceAsString(),
+                'user_id' => $user->id ?? null,
+                'admin_user' => auth()->user()->email ?? null
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred while suspending the user.'
+                'message' => 'An error occurred while suspending the user: ' . $e->getMessage()
             ], 500);
         }
     }

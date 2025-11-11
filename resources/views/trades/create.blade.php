@@ -33,7 +33,31 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('trades.store') }}" class="trades-create-form" style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:16px; display:grid; gap:16px;">
+    @if(session('error'))
+        <div style="background:#fee2e2; color:#991b1b; padding:10px 12px; border-radius:6px; margin-bottom:16px; border:1px solid #fecaca;">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            {{ session('error') }}
+        </div>
+    @endif
+
+    @if(!$user->is_verified)
+        <div style="background:#fef3c7; color:#92400e; padding:16px; border-radius:8px; margin-bottom:16px; border:2px solid #fbbf24;">
+            <div style="display:flex; align-items:start; gap:12px;">
+                <div style="flex-shrink:0;">
+                    <i class="fas fa-exclamation-triangle" style="font-size:1.5rem;"></i>
+                </div>
+                <div style="flex:1;">
+                    <h3 style="margin:0 0 8px 0; font-size:1.1rem; font-weight:600;">Account Verification Required</h3>
+                    <p style="margin:0; line-height:1.6;">
+                        Your account is pending admin verification. You cannot post trades until an admin verifies your account.
+                        Please wait for admin approval. You will be able to post trades once your account is verified.
+                    </p>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <form method="POST" action="{{ route('trades.store') }}" class="trades-create-form" id="tradeCreateForm" style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:16px; display:grid; gap:16px; {{ !$user->is_verified ? 'opacity:0.6; pointer-events:none;' : '' }}">
         @csrf
 
         <div>
@@ -181,7 +205,9 @@
         </fieldset>
 
         <div>
-            <button type="submit" style="padding:10px 14px; background:#2563eb; color:#fff; border:none; border-radius:6px;">Post Trade</button>
+            <button type="submit" id="submitTradeBtn" style="padding:10px 14px; background:#2563eb; color:#fff; border:none; border-radius:6px; {{ !$user->is_verified ? 'background:#9ca3af; cursor:not-allowed;' : '' }}" {{ !$user->is_verified ? 'disabled' : '' }}>
+                Post Trade
+            </button>
             <a href="{{ route('trades.matches') }}" style="margin-left:8px;">See Matches</a>
         </div>
     </form>
@@ -256,6 +282,26 @@
                     console.error('Error fetching location suggestions:', error);
                 });
         });
+
+        // Prevent form submission if user is not verified by admin
+        @if(!$user->is_verified)
+        const tradeForm = document.getElementById('tradeCreateForm');
+        if (tradeForm) {
+            // Disable all form inputs
+            const formInputs = tradeForm.querySelectorAll('input, select, textarea, button[type="submit"]');
+            formInputs.forEach(input => {
+                input.disabled = true;
+                input.style.cursor = 'not-allowed';
+            });
+
+            // Prevent form submission
+            tradeForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                alert('Your account must be verified by an admin before you can post trades. Please wait for admin approval.');
+                return false;
+            });
+        }
+        @endif
     </script>
 </main>
 @endsection

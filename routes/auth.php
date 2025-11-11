@@ -28,6 +28,11 @@ Route::middleware('guest')->group(function () {
 
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
                 ->name('password.email');
+
+    // Resend email verification for unauthenticated users
+    Route::post('email/verification-resend', [EmailVerificationNotificationController::class, 'resend'])
+                ->middleware('throttle:6,1')
+                ->name('verification.resend');
 });
 
 // Password reset routes (accessible to both guests and authenticated users)

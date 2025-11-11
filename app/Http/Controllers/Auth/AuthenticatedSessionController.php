@@ -49,7 +49,7 @@ class AuthenticatedSessionController extends Controller
             }
 
             throw ValidationException::withMessages([
-                'email' => [$message],
+                'login' => [$message],
             ]);
         }
 

@@ -306,7 +306,7 @@
                     <div class="metric-content">
                         <div class="metric-value">₱{{ number_format($tokenMetrics['totalRevenue']) }}</div>
                         <div class="metric-label">Total Revenue</div>
-                        <div class="metric-change">₱{{ number_format($tokenMetrics['monthlyRevenue']) }} this month</div>
+                        <div class="metric-change">₱{{ number_format($tokenMetrics['monthlyRevenue']) }} this month (tokens + premium)</div>
                     </div>
                 </div>
 
@@ -335,6 +335,66 @@
                         <div class="metric-value">{{ $tokenMetrics['totalFeeTransactions'] }}</div>
                         <div class="metric-label">Fee Transactions</div>
                         <div class="metric-status">{{ $tokenMetrics['totalFeesCollected'] }} tokens collected</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Premium User Metrics Row -->
+            <div class="metrics-row">
+                <div class="metric-card">
+                    <div class="metric-icon" style="background: #fef3c7; color: #f59e0b;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">{{ $premiumMetrics['totalPremiumUsers'] }}</div>
+                        <div class="metric-label">Total Premium Users</div>
+                        <div class="metric-status">{{ $premiumMetrics['activePremiumUsers'] }} active</div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon" style="background: #d1fae5; color: #059669;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22,4 12,14.01 9,11.01"/>
+                        </svg>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">{{ $premiumMetrics['activePremiumUsers'] }}</div>
+                        <div class="metric-label">Active Premium Users</div>
+                        <div class="metric-status">{{ $premiumMetrics['expiredPremiumUsers'] }} expired, {{ $premiumMetrics['premiumExpiringSoon'] }} expiring soon</div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon" style="background: #e9d5ff; color: #7c3aed;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">₱{{ number_format($premiumMetrics['totalPremiumRevenue']) }}</div>
+                        <div class="metric-label">Total Premium Revenue</div>
+                        <div class="metric-change">₱{{ number_format($premiumMetrics['monthlyPremiumRevenue']) }} this month</div>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-icon" style="background: #fce7f3; color: #ec4899;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                    </div>
+                    <div class="metric-content">
+                        <div class="metric-value">{{ $premiumMetrics['premiumSubscriptionsThisMonth'] }}</div>
+                        <div class="metric-label">Premium Subscriptions</div>
+                        <div class="metric-status">{{ $premiumMetrics['premiumExpiringThisMonth'] }} expiring this month</div>
                     </div>
                 </div>
             </div>
@@ -391,11 +451,15 @@
 
                 <div class="chart-card">
                     <h3 class="chart-title">Revenue Trends (Last 7 Days)</h3>
+                    <p class="chart-subtitle" style="font-size: 0.875rem; color: #6b7280; margin-top: -0.5rem; margin-bottom: 1rem;">Includes token purchases and premium subscriptions</p>
                     <div class="chart-container">
                         <div class="bar-chart">
+                            @php
+                                $maxRevenueTrends = !empty($revenueTrends) ? max($revenueTrends) : 1;
+                            @endphp
                             @foreach($revenueTrends as $date => $amount)
                             <div class="chart-bar">
-                                <div class="bar revenue" style="--bar-height: {{ $amount > 0 ? round($amount / max($revenueTrends) * 100, 1) : 5 }}%; height: var(--bar-height);"></div>
+                                <div class="bar revenue" style="--bar-height: {{ $amount > 0 && $maxRevenueTrends > 0 ? round($amount / $maxRevenueTrends * 100, 1) : 5 }}%; height: var(--bar-height);"></div>
                                 <div class="bar-label">{{ $date }}</div>
                                 <div class="bar-value">₱{{ number_format($amount) }}</div>
                             </div>
@@ -437,6 +501,45 @@
                             @empty
                             <div class="no-data">No fee transactions yet</div>
                             @endforelse
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Premium Analytics Charts -->
+            <div class="charts-row">
+                <div class="chart-card">
+                    <h3 class="chart-title">Premium Subscription Trends (Last 7 Days)</h3>
+                    <div class="chart-container">
+                        <div class="bar-chart">
+                            @php
+                                $maxPremiumTrends = !empty($premiumTrends) ? max($premiumTrends) : 1;
+                            @endphp
+                            @foreach($premiumTrends as $date => $count)
+                            <div class="chart-bar">
+                                <div class="bar" style="background: linear-gradient(to top, #f59e0b, #fbbf24); --bar-height: {{ $count > 0 && $maxPremiumTrends > 0 ? round($count / $maxPremiumTrends * 100, 1) : 5 }}%; height: var(--bar-height);"></div>
+                                <div class="bar-label">{{ $date }}</div>
+                                <div class="bar-value">{{ $count }}</div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h3 class="chart-title">Premium Revenue Trends (Last 7 Days)</h3>
+                    <div class="chart-container">
+                        <div class="bar-chart">
+                            @php
+                                $maxPremiumRevenueTrends = !empty($premiumRevenueTrends) ? max($premiumRevenueTrends) : 1;
+                            @endphp
+                            @foreach($premiumRevenueTrends as $date => $amount)
+                            <div class="chart-bar">
+                                <div class="bar" style="background: linear-gradient(to top, #7c3aed, #a78bfa); --bar-height: {{ $amount > 0 && $maxPremiumRevenueTrends > 0 ? round($amount / $maxPremiumRevenueTrends * 100, 1) : 5 }}%; height: var(--bar-height);"></div>
+                                <div class="bar-label">{{ $date }}</div>
+                                <div class="bar-value">₱{{ number_format($amount) }}</div>
+                            </div>
+                            @endforeach
                         </div>
                     </div>
                 </div>
@@ -565,6 +668,60 @@
                                 @empty
                                 <tr>
                                     <td colspan="5" class="no-data">No token transactions yet</td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Premium Users Analytics -->
+            <div class="charts-row">
+                <!-- Top Premium Users -->
+                <div class="chart-card">
+                    <div class="table-header">
+                        <h3 class="chart-title">Top Premium Users</h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="token-table">
+                            <thead>
+                                <tr>
+                                    <th>USER</th>
+                                    <th>EMAIL</th>
+                                    <th>SUBSCRIPTIONS</th>
+                                    <th>TOTAL SPENT</th>
+                                    <th>STATUS</th>
+                                    <th>EXPIRES</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($topPremiumUsers as $user)
+                                <tr>
+                                    <td>
+                                        <div class="user-name">{{ $user->firstname }} {{ $user->lastname }}</div>
+                                    </td>
+                                    <td>{{ $user->email }}</td>
+                                    <td>{{ $user->subscription_count }}</td>
+                                    <td>₱{{ number_format($user->total_spent) }}</td>
+                                    <td>
+                                        @if($user->plan === 'premium' && ($user->premium_expires_at === null || \Carbon\Carbon::parse($user->premium_expires_at)->isFuture()))
+                                            <span class="status-badge completed">Active</span>
+                                        @else
+                                            <span class="status-badge failed">Expired</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($user->premium_expires_at)
+                                            {{ \Carbon\Carbon::parse($user->premium_expires_at)->format('M d, Y') }}
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="6" class="no-data">No premium users yet</td>
                                 </tr>
                                 @endforelse
                             </tbody>

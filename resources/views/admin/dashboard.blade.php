@@ -340,7 +340,7 @@
                         <div class="metric-value">₱{{ number_format($stats['totalRevenue']['value']) }}</div>
                         <div class="metric-label">Total Revenue</div>
                         <div class="metric-change {{ $stats['totalRevenue']['changeType'] }}">
-                            All time revenue from token purchases
+                            All time revenue (tokens + premium subscriptions)
                         </div>
                     </div>
                     <div class="metric-icon">
@@ -356,7 +356,7 @@
                         <div class="metric-value">₱{{ number_format($stats['todayRevenue']['value']) }}</div>
                         <div class="metric-label">Today's Revenue</div>
                         <div class="metric-change {{ $stats['todayRevenue']['changeType'] }}">
-                            Revenue from today's token purchases
+                            Revenue from today (tokens + premium)
                         </div>
                     </div>
                     <div class="metric-icon">
@@ -374,7 +374,7 @@
                         <div class="metric-value">₱{{ number_format($stats['weeklyRevenue']['value']) }}</div>
                         <div class="metric-label">Weekly Revenue</div>
                         <div class="metric-change {{ $stats['weeklyRevenue']['changeType'] }}">
-                            Revenue from this week's token purchases
+                            Revenue from this week (tokens + premium)
                         </div>
                     </div>
                     <div class="metric-icon">
@@ -383,6 +383,74 @@
                             <path d="M16 2v4"/>
                             <rect x="3" y="4" width="18" height="18" rx="2"/>
                             <path d="M3 10h18"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Premium User Metrics Row -->
+            <div class="metrics-row">
+                <div class="metric-card">
+                    <div class="metric-content">
+                        <div class="metric-value">{{ $stats['totalPremiumUsers']['value'] }}</div>
+                        <div class="metric-label">Total Premium Users</div>
+                        <div class="metric-change {{ $stats['totalPremiumUsers']['changeType'] }}">
+                            {{ $stats['totalPremiumUsers']['change'] >= 0 ? '+' : '' }}{{ $stats['totalPremiumUsers']['change'] }}% vs last week
+                        </div>
+                    </div>
+                    <div class="metric-icon" style="background: #fef3c7; color: #f59e0b;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-content">
+                        <div class="metric-value">{{ $stats['activePremiumUsers']['value'] }}</div>
+                        <div class="metric-label">Active Premium Users</div>
+                        <div class="metric-change {{ $stats['activePremiumUsers']['changeType'] }}">
+                            {{ $stats['expiredPremiumUsers']['value'] }} expired, {{ $stats['premiumExpiringSoon']['value'] }} expiring soon
+                        </div>
+                    </div>
+                    <div class="metric-icon" style="background: #d1fae5; color: #059669;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22,4 12,14.01 9,11.01"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-content">
+                        <div class="metric-value">₱{{ number_format($stats['premiumRevenue']['value']) }}</div>
+                        <div class="metric-label">Premium Revenue</div>
+                        <div class="metric-change {{ $stats['premiumRevenue']['changeType'] }}">
+                            Total revenue from premium subscriptions
+                        </div>
+                    </div>
+                    <div class="metric-icon" style="background: #e9d5ff; color: #7c3aed;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="metric-card">
+                    <div class="metric-content">
+                        <div class="metric-value">₱{{ number_format($stats['monthlyPremiumRevenue']['value']) }}</div>
+                        <div class="metric-label">Monthly Premium Revenue</div>
+                        <div class="metric-change {{ $stats['monthlyPremiumRevenue']['changeType'] }}">
+                            {{ $stats['monthlyPremiumRevenue']['change'] >= 0 ? '+' : '' }}{{ $stats['monthlyPremiumRevenue']['change'] }}% vs last month
+                        </div>
+                    </div>
+                    <div class="metric-icon" style="background: #fce7f3; color: #ec4899;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="16" y1="2" x2="16" y2="6"/>
+                            <line x1="8" y1="2" x2="8" y2="6"/>
+                            <line x1="3" y1="10" x2="21" y2="10"/>
                         </svg>
                     </div>
                 </div>
@@ -414,7 +482,7 @@
                             <div class="metric-value">₱{{ number_format($stats['monthlyRevenue']['value']) }}</div>
                             <div class="metric-label">Monthly Revenue</div>
                             <div class="metric-change {{ $stats['monthlyRevenue']['changeType'] }}">
-                                {{ $stats['monthlyRevenue']['change'] >= 0 ? '+' : '' }}{{ $stats['monthlyRevenue']['change'] }}% vs last month
+                                {{ $stats['monthlyRevenue']['change'] >= 0 ? '+' : '' }}{{ $stats['monthlyRevenue']['change'] }}% vs last month (tokens + premium)
                             </div>
                         </div>
                         <div class="metric-icon">

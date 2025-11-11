@@ -22,6 +22,12 @@ class TradeController extends Controller
             return redirect()->route('admin.dashboard')->with('error', 'Admin users cannot access user trading functionality.');
         }
 
+        // Check if user is verified by admin
+        if (!$user->is_verified) {
+            // Still show the form but with a warning - the form will be disabled
+            // This allows users to see what they need to do
+        }
+
         // Get all skills for "looking for" dropdown
         $skills = Skill::orderBy('category')->orderBy('name')->get();
 
@@ -65,6 +71,13 @@ class TradeController extends Controller
         // Additional check to prevent admin users from creating trades
         if ($user->role === 'admin') {
             return redirect()->route('admin.dashboard')->with('error', 'Admin users cannot create trades.');
+        }
+
+        // Check if user is verified by admin before allowing trade creation
+        if (!$user->is_verified) {
+            return redirect()->route('trades.create')
+                ->with('error', 'Your account must be verified by an admin before you can post trades. Please wait for admin approval.')
+                ->withInput();
         }
 
         $validated = $request->validate([

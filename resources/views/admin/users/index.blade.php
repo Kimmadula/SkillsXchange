@@ -282,13 +282,34 @@ use Illuminate\Support\Facades\Storage;
                             <h3 class="card-title">All Users</h3>
                             <p class="table-subtitle">Manage user accounts and approvals</p>
                         </div>
-                        <div class="table-actions">
-                            <input type="text" placeholder="Search users..." class="search-input" id="userSearchInput">
-                            <select id="statusFilter" class="search-input" style="width:auto;">
-                                <option value="all">All</option>
+                        <div class="table-actions" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                            <input type="text" placeholder="Search users..." class="search-input" id="userSearchInput" style="flex: 1; min-width: 200px;">
+                            <select id="statusFilter" class="search-input" style="width: auto; min-width: 140px;">
+                                <option value="all">All Status</option>
                                 <option value="verified">Verified</option>
                                 <option value="unverified">Unverified</option>
                                 <option value="new">New</option>
+                            </select>
+                            <select id="planFilter" class="search-input" style="width: auto; min-width: 120px;">
+                                <option value="all">All Plans</option>
+                                <option value="premium">Premium</option>
+                                <option value="free">Free</option>
+                            </select>
+                            <select id="skillFilter" class="search-input" style="width: auto; min-width: 180px;">
+                                <option value="all">All Skills</option>
+                                @foreach($skills as $skill)
+                                    <option value="{{ $skill->skill_id }}">{{ $skill->name }}</option>
+                                @endforeach
+                            </select>
+                            <select id="tokenFilter" class="search-input" style="width: auto; min-width: 140px;">
+                                <option value="all">All Tokens</option>
+                                <option value="highest">Highest Tokens</option>
+                                <option value="lowest">Lowest Tokens</option>
+                            </select>
+                            <select id="suspendedFilter" class="search-input" style="width: auto; min-width: 140px;">
+                                <option value="all">All Users</option>
+                                <option value="suspended">Suspended</option>
+                                <option value="not_suspended">Not Suspended</option>
                             </select>
                         </div>
                     </div>
@@ -310,7 +331,11 @@ use Illuminate\Support\Facades\Storage;
                             </thead>
                             <tbody>
                                 @forelse($users as $user)
-                                <tr>
+                                <tr data-plan="{{ strtolower($user->plan ?? 'free') }}"
+                                    data-skill-ids="{{ $user->skills && $user->skills->count() > 0 ? $user->skills->pluck('skill_id')->implode(',') : '' }}"
+                                    data-primary-skill-id="{{ optional($user->skill)->skill_id ?? '' }}"
+                                    data-token-balance="{{ (int)($user->token_balance ?? 0) }}"
+                                    data-is-suspended="{{ $user->isAccountRestricted() ? 'yes' : 'no' }}">
                                     <td>
                                         <div class="user-name-cell">
                                             <div class="user-name">{{ $user->name }}</div>
@@ -319,8 +344,25 @@ use Illuminate\Support\Facades\Storage;
                                     </td>
                                     <td>{{ $user->username }}</td>
                                     <td>{{ $user->email }}</td>
-                                    <td>{{ optional($user->skill)->name ?? '—' }}</td>
-                                    <td>{{ $user->plan ?? 'Free' }}</td>
+                                    <td>
+                                        @if($user->skills && $user->skills->count() > 0)
+                                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                                <span>{{ optional($user->skill)->name ?? $user->skills->first()->name ?? '—' }}</span>
+                                                @if($user->skills->count() > 1)
+                                                    <small style="color: #6b7280; font-size: 11px;">+{{ $user->skills->count() - 1 }} more</small>
+                                                @endif
+                                            </div>
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if(strtolower($user->plan ?? 'free') === 'premium')
+                                            <span style="color: #f59e0b; font-weight: 600;">Premium</span>
+                                        @else
+                                            <span style="color: #6b7280;">Free</span>
+                                        @endif
+                                    </td>
                                     <td>{{ number_format((int)($user->token_balance ?? 0)) }}</td>
                                     <td data-status="{{ $user->is_verified ? 'verified' : 'unverified' }}" data-created="{{ optional($user->created_at)->timestamp ?? 0 }}">
                                         <span
@@ -370,7 +412,7 @@ use Illuminate\Support\Facades\Storage;
                                             @else
                                                 @if($user->isAccountRestricted())
                                                     <button onclick="liftSuspension({{ $user->id }})"
-                                                            class="btn btn-success"
+                                                            class="btn btn-warning"
                                                             id="lift-btn-{{ $user->id }}">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                                             <path d="M9 12l2 2 4-4"></path>
@@ -379,7 +421,7 @@ use Illuminate\Support\Facades\Storage;
                                                         Lift Suspension
                                                     </button>
                                                 @else
-                                                    <button onclick="openSuspendModal({{ $user->id }}, '{{ $user->name }}')"
+                                                    <button onclick="openSuspendModal({{ $user->id }}, '{{ addslashes($user->name) }}', '{{ addslashes($user->email) }}', '{{ addslashes($user->username) }}', '{{ $user->photo ? Storage::disk('public')->url($user->photo) : '' }}')"
                                                             class="btn btn-warning"
                                                             id="suspend-btn-{{ $user->id }}">
                                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -506,6 +548,8 @@ use Illuminate\Support\Facades\Storage;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
         }
 
         .search-input {
@@ -513,10 +557,42 @@ use Illuminate\Support\Facades\Storage;
             border: 1px solid #d1d5db;
             border-radius: 6px;
             font-size: 14px;
-            width: 300px;
+            background: white;
+            color: #374151;
+            transition: all 0.2s ease;
         }
 
-        .table-actions { display: flex; align-items: center; gap: 10px; }
+        .search-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-input:hover {
+            border-color: #9ca3af;
+        }
+
+        .table-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 768px) {
+            .table-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .table-actions {
+                width: 100%;
+            }
+
+            .search-input {
+                width: 100% !important;
+            }
+        }
 
         .table-container {
             overflow-x: auto;
@@ -699,6 +775,30 @@ use Illuminate\Support\Facades\Storage;
 
         .btn-deny:hover {
             background: #dc2626;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-success:hover {
+            background: #059669;
         }
 
         .btn-revoke {
@@ -998,47 +1098,129 @@ use Illuminate\Support\Facades\Storage;
         document.addEventListener('DOMContentLoaded', function() {
             const searchInput = document.getElementById('userSearchInput');
             const statusFilter = document.getElementById('statusFilter');
+            const planFilter = document.getElementById('planFilter');
+            const skillFilter = document.getElementById('skillFilter');
+            const tokenFilter = document.getElementById('tokenFilter');
+            const suspendedFilter = document.getElementById('suspendedFilter');
             const rows = document.querySelectorAll('.users-table tbody tr');
 
             function applyUserFilters() {
                 const q = (searchInput?.value || '').toLowerCase();
                 const status = statusFilter?.value || 'all';
+                const plan = planFilter?.value || 'all';
+                const skill = skillFilter?.value || 'all';
+                const token = tokenFilter?.value || 'all';
+                const suspended = suspendedFilter?.value || 'all';
                 const now = Date.now() / 1000;
                 const newThreshold = now - (7 * 24 * 60 * 60); // last 7 days
+
+                // Get all token balances for highest/lowest filtering
+                const tokenBalances = Array.from(rows).map(row => {
+                    const balance = parseInt(row.getAttribute('data-token-balance') || '0', 10);
+                    return { row, balance };
+                });
+
+                // Determine highest and lowest token values
+                const balances = tokenBalances.map(item => item.balance);
+                const maxTokens = balances.length > 0 ? Math.max(...balances) : 0;
+                const minTokens = balances.length > 0 ? Math.min(...balances) : 0;
 
                 rows.forEach(row => {
                     const text = row.textContent.toLowerCase();
                     const statusCell = row.querySelector('td[data-status]');
                     const rowStatus = statusCell ? statusCell.getAttribute('data-status') : '';
                     const created = statusCell ? parseInt(statusCell.getAttribute('data-created') || '0', 10) : 0;
+                    const rowPlan = row.getAttribute('data-plan') || 'free';
+                    const skillIds = row.getAttribute('data-skill-ids') || '';
+                    const primarySkillId = row.getAttribute('data-primary-skill-id') || '';
+                    const tokenBalance = parseInt(row.getAttribute('data-token-balance') || '0', 10);
+                    const isSuspended = row.getAttribute('data-is-suspended') || 'no';
 
+                    // Status filter
                     let matchesStatus = true;
                     if (status === 'verified') matchesStatus = rowStatus === 'verified';
                     else if (status === 'unverified') matchesStatus = rowStatus === 'unverified';
                     else if (status === 'new') matchesStatus = created > newThreshold;
 
+                    // Plan filter
+                    let matchesPlan = true;
+                    if (plan === 'premium') matchesPlan = rowPlan === 'premium';
+                    else if (plan === 'free') matchesPlan = rowPlan === 'free';
+
+                    // Skill filter
+                    let matchesSkill = true;
+                    if (skill !== 'all') {
+                        // Check if user has this skill (either as primary or in their skills list)
+                        const skillIdList = skillIds ? skillIds.split(',').filter(id => id.trim() !== '') : [];
+                        matchesSkill = primarySkillId === skill || skillIdList.includes(skill);
+                    }
+
+                    // Token filter
+                    let matchesToken = true;
+                    if (token === 'highest') {
+                        matchesToken = tokenBalance === maxTokens && maxTokens > 0;
+                    } else if (token === 'lowest') {
+                        matchesToken = tokenBalance === minTokens;
+                    }
+
+                    // Suspended filter
+                    let matchesSuspended = true;
+                    if (suspended === 'suspended') {
+                        matchesSuspended = isSuspended === 'yes';
+                    } else if (suspended === 'not_suspended') {
+                        matchesSuspended = isSuspended === 'no';
+                    }
+
+                    // Search filter
                     const matchesSearch = text.includes(q);
-                    row.style.display = matchesStatus && matchesSearch ? '' : 'none';
+
+                    // Show row only if all filters match
+                    row.style.display = (matchesStatus && matchesPlan && matchesSkill && matchesToken && matchesSuspended && matchesSearch) ? '' : 'none';
                 });
             }
 
             if (searchInput) searchInput.addEventListener('input', applyUserFilters);
             if (statusFilter) statusFilter.addEventListener('change', applyUserFilters);
+            if (planFilter) planFilter.addEventListener('change', applyUserFilters);
+            if (skillFilter) skillFilter.addEventListener('change', applyUserFilters);
+            if (tokenFilter) tokenFilter.addEventListener('change', applyUserFilters);
+            if (suspendedFilter) suspendedFilter.addEventListener('change', applyUserFilters);
         });
 
         // Suspension modal functions
-        function openSuspendModal(userId, userName) {
+        function openSuspendModal(userId, userName, userEmail, userUsername, userPhoto) {
             document.getElementById('suspendUserId').value = userId;
-            document.getElementById('suspendUserName').textContent = userName;
+
+            // Update user profile in modal
+            const profileName = document.getElementById('suspend_profile_name');
+            const profileEmail = document.getElementById('suspend_profile_email');
+            const profileUsername = document.getElementById('suspend_profile_username');
+            const profilePhoto = document.getElementById('suspend_profile_photo');
+            const profilePhotoFallback = document.getElementById('suspend_profile_photo_fallback');
+
+            if (profileName) profileName.textContent = userName;
+            if (profileEmail) profileEmail.textContent = userEmail;
+            if (profileUsername) profileUsername.textContent = '@' + userUsername;
+
+            if (userPhoto && profilePhoto) {
+                profilePhoto.src = userPhoto;
+                profilePhoto.style.display = 'block';
+                if (profilePhotoFallback) profilePhotoFallback.style.display = 'none';
+            } else {
+                if (profilePhoto) profilePhoto.style.display = 'none';
+                if (profilePhotoFallback) profilePhotoFallback.style.display = 'flex';
+            }
+
             const modal = document.getElementById('suspendModal');
-            modal.style.display = 'flex'; // use flex to center
-            document.body.style.overflow = 'hidden'; // prevent background scroll
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
         }
 
         function closeSuspendModal() {
             document.getElementById('suspendModal').style.display = 'none';
             document.body.style.overflow = 'auto';
             document.getElementById('suspendForm').reset();
+            document.getElementById('durationGroup').style.display = 'none';
         }
 
         function submitSuspension() {
@@ -1134,48 +1316,50 @@ use Illuminate\Support\Facades\Storage;
     </script>
 
     <!-- Suspension Modal -->
-    <div id="suspendModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header-content">
-            <div class="modal-icon">
-                <svg>...</svg> <!-- Replace with actual SVG icon -->
+    <div class="modal-overlay" id="suspendModal" style="display: none;">
+        <div class="modal-content" style="overflow: hidden;">
+            <!-- Important Notice - Centered Box above title -->
+            <div style="display: flex; justify-content: center; align-items: center; padding: 20px 24px 0 24px; width: 100%; box-sizing: border-box;">
+                <div style="background: #fef3c7; color: #92400e; border: 1px solid #fbbf24; padding: 16px 24px; border-radius: 8px; text-align: center; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; max-width: 420px; width: fit-content; box-sizing: border-box;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px; flex-shrink: 0;">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <div style="text-align: center; width: 100%;">
+                        <strong style="display: block; margin-bottom: 6px; font-size: 15px; font-weight: 600;">Important Notice</strong>
+                        <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #78350f;">This action will restrict the user's access to the platform. Please ensure you have reviewed all relevant information before proceeding.</p>
+                    </div>
+                </div>
             </div>
-            <div class="modal-title-wrapper">
-                <h3>Suspend User</h3>
-                <p>Take action against user violations</p>
-            </div>
-                <span class="close" onclick="closeSuspendModal()">&times;</span>
-            </div>
+
+
             <div class="modal-body">
-                <div class="user-info-card">
-                    <div class="user-avatar-large">JD</div>
-                    <div class="user-info-text">
-                        <strong id="suspendUserName">John Doe</strong>
-                        <span>@johndoe • Member since Jan 2024</span>
+                <!-- User Profile Section -->
+                <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #f9fafb; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e5e7eb;">
+                    <div style="flex-shrink: 0;">
+                        <div style="width: 64px; height: 64px; border-radius: 50%; overflow: hidden; background: #e5e7eb; display: flex; align-items: center; justify-content: center; border: 2px solid #d1d5db;">
+                            <img id="suspend_profile_photo" src="" alt="User Photo" style="width: 100%; height: 100%; object-fit: cover; display: none;" onerror="this.style.display='none'; document.getElementById('suspend_profile_photo_fallback').style.display='flex';">
+                            <div id="suspend_profile_photo_fallback" style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 24px; font-weight: 600; color: #6b7280; background: #e5e7eb;">
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div id="suspend_profile_name" style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 4px;">—</div>
+                        <div id="suspend_profile_email" style="font-size: 14px; color: #6b7280; margin-bottom: 2px;">—</div>
+                        <div id="suspend_profile_username" style="font-size: 13px; color: #9ca3af;">—</div>
                     </div>
                 </div>
 
-                <div class="warning-box">
-                    <svg>...</svg>
-                    <div class="warning-box-content">
-                        <strong>Important Notice</strong>
-                        <p>This action will restrict the user's access...</p>
-                    </div>
-                </div>
-
-                <div class="form-help-text">
-                    <svg>...</svg>
-                    Select the appropriate action based on violation severity
-                </div>
                 <form id="suspendForm">
                     <input type="hidden" id="suspendUserId" name="user_id">
 
                     <div class="form-group">
-                        <label>User: <span id="suspendUserName"></span></label>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="violation_type">Action Type:</label>
+                        <label for="violation_type">Action Type <span style="color: #ef4444;">*</span></label>
                         <select id="violation_type" name="violation_type" required onchange="toggleDuration()">
                             <option value="">Select action...</option>
                             <option value="suspension">Suspend</option>
@@ -1184,8 +1368,9 @@ use Illuminate\Support\Facades\Storage;
                     </div>
 
                     <div class="form-group" id="durationGroup" style="display: none;">
-                        <label for="suspension_duration">Suspension Duration:</label>
+                        <label for="suspension_duration">Suspension Duration <span style="color: #ef4444;">*</span></label>
                         <select id="suspension_duration" name="suspension_duration">
+                            <option value="">Select duration...</option>
                             <option value="7_days">7 Days</option>
                             <option value="30_days">30 Days</option>
                             <option value="indefinite">Indefinite</option>
@@ -1193,7 +1378,7 @@ use Illuminate\Support\Facades\Storage;
                     </div>
 
                     <div class="form-group">
-                        <label for="reason">Reason:</label>
+                        <label for="reason">Reason <span style="color: #ef4444;">*</span></label>
                         <select id="reason" name="reason" required>
                             <option value="">Select reason...</option>
                             <option value="Inappropriate behavior">Inappropriate behavior</option>
@@ -1206,14 +1391,15 @@ use Illuminate\Support\Facades\Storage;
                     </div>
 
                     <div class="form-group">
-                        <label for="admin_notes">Admin Notes (Optional):</label>
-                        <textarea id="admin_notes" name="admin_notes" rows="3" placeholder="Additional details..."></textarea>
+                        <label for="admin_notes">Admin Notes (Optional)</label>
+                        <textarea id="admin_notes" name="admin_notes" rows="3" placeholder="Additional details or context..."></textarea>
+                        <small style="color: #6b7280; font-size: 12px; display: block; margin-top: 4px;">Internal notes visible only to admins</small>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeSuspendModal()">Cancel</button>
-                <button type="button" class="btn btn-warning" onclick="submitSuspension()">Confirm Suspension</button>
+                <button type="button" class="btn-secondary" onclick="closeSuspendModal()">Cancel</button>
+                <button type="button" class="btn-primary" onclick="submitSuspension()" style="background: #f59e0b; border-color: #f59e0b;">Confirm Suspension</button>
             </div>
         </div>
     </div>
@@ -1234,206 +1420,159 @@ use Illuminate\Support\Facades\Storage;
     </script>
 
     <style>
-        .modal {
+        /* Standard Admin Modal Styles */
+        .modal-overlay {
             position: fixed;
-            z-index: 20000; /* Raised above sidebar/header */
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            backdrop-filter: blur(4px);  /* NEW: Blur effect */
-            display: none;
-            align-items: center;  /* NEW: Center alignment */
-            justify-content: center;  /* NEW: Center alignment */
-            animation: fadeIn 0.3s ease;  /* NEW: Fade animation */
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
         }
 
         .modal-content {
             background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
             width: 90%;
-            max-width: 520px;
-            max-height: 90vh; /* ensure fits viewport */
-            border-radius: 16px;  /* CHANGED: Larger radius */
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);  /* CHANGED: Deeper shadow */
-            animation: slideUp 0.3s ease;  /* NEW: Slide animation */
-            display: flex;              /* NEW: layout for header/body/footer */
-            flex-direction: column;     /* NEW */
+            max-width: 500px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-sizing: border-box;
         }
 
-        .modal-header, .modal-header-content {
-            padding: 28px 32px;  /* CHANGED: More padding */
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);  /* NEW: Gradient */
-            color: white;  /* NEW: White text */
+        .modal-header {
+            padding: 24px;
+            border-bottom: 1px solid #e5e7eb;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: none;  /* REMOVED: Border */
-        }
-
-        /* Ensure body scrolls while header/footer stay visible */
-        .modal-body {
-            overflow: auto;
-            max-height: calc(90vh - 160px); /* approximate header+footer height */
         }
 
         .modal-header h3 {
             margin: 0;
-            color: #495057;
+            font-size: 20px;
+            font-weight: 600;
+            color: #1f2937;
         }
 
-        .close {
-            color: #aaa;
-            font-size: 28px;
-            font-weight: bold;
+        .modal-close {
+            background: none;
+            border: none;
             cursor: pointer;
-        }
-
-        .close:hover {
-            color: #000;
-        }
-
-        .modal-body {
-            padding: 20px;
-        }
-
-        /* NEW: User Info Card */
-        .user-info-card {
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 24px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .user-avatar-large {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
+            padding: 8px;
+            border-radius: 6px;
+            color: #6b7280;
+            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #1e40af;
-            color: white;
-            font-weight: 700;
         }
 
-        .user-info-text {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            color: #334155;
+        .modal-close svg {
+            width: 20px;
+            height: 20px;
         }
 
-        /* NEW: Warning Box */
-        .warning-box {
-            background: #fef3c7;
-            border: 1px solid #fbbf24;
-            border-radius: 8px;
-            padding: 12px 16px;
-            margin-bottom: 24px;
-            display: flex;
-            gap: 12px;
+        .modal-close:hover {
+            background: #f3f4f6;
+            color: #374151;
         }
 
-        .warning-box-content strong {
-            display: block;
-            color: #92400e;
-            margin-bottom: 4px;
-        }
-
-        /* NEW: Form Help Text */
-        .form-help-text {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #475569;
-            font-size: 14px;
-            margin-bottom: 12px;
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex: 1;
+            box-sizing: border-box;
         }
 
         .modal-footer {
-            padding: 24px 32px;  /* CHANGED: More padding */
-            background: #f8fafc;  /* NEW: Background color */
-            border-top: 1px solid #e2e8f0;  /* CHANGED: Lighter border */
+            padding: 24px;
+            border-top: 1px solid #e5e7eb;
             display: flex;
+            gap: 12px;
             justify-content: flex-end;
-            gap: 12px;  /* CHANGED: More gap */
         }
 
+        /* Form Styles */
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             font-weight: 500;
-            color: #495057;
+            color: #374151;
         }
 
-        .form-control {
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
             width: 100%;
-            padding: 12px 16px;  /* CHANGED: More padding */
-            border: 2px solid #e2e8f0;  /* CHANGED: Thicker border */
-            border-radius: 8px;  /* CHANGED: Larger radius */
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
             font-size: 14px;
-            color: #1e293b;
-            transition: all 0.2s ease;  /* NEW: Transitions */
-            background: #f8fafc;  /* NEW: Light background */
+            transition: all 0.2s ease;
+            font-family: inherit;
+            box-sizing: border-box;
         }
 
-        .form-control:focus {
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
             outline: none;
-            border-color: #f59e0b;  /* NEW: Orange focus */
-            background: white;
-            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);  /* NEW: Focus ring */
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
 
-/* NEW: Custom dropdown arrow */
-        select.form-control {
-            appearance: none;
-            background-image: url("data:image/svg+xml,...");
-            background-repeat: no-repeat;
-            background-position: right 16px center;
-            padding-right: 40px;
+        .form-group textarea {
+            resize: vertical;
         }
 
-        .btn {
-            padding: 12px 24px;  /* CHANGED: More padding */
-            border: none;
-            border-radius: 8px;  /* CHANGED: Larger radius */
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;  /* CHANGED: Bolder */
-            transition: all 0.2s ease;  /* NEW: Transitions */
-            display: inline-flex;  /* NEW: Flex for icons */
-            align-items: center;
-            gap: 8px;  /* NEW: Gap for icons */
-        }
-
+        /* Button Styles */
         .btn-secondary {
-            background-color: white;  /* CHANGED: White background */
-            color: #64748b;
-            border: 2px solid #e2e8f0;  /* NEW: Border */
+            padding: 10px 20px;
+            background: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
 
-        .btn-warning {
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);  /* NEW: Gradient */
+        .btn-secondary:hover {
+            background: #f9fafb;
+            border-color: #9ca3af;
+        }
+
+        .btn-primary {
+            padding: 10px 20px;
+            background: #3b82f6;
             color: white;
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);  /* NEW: Shadow */
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
 
-        .btn-warning:hover {
-            transform: translateY(-2px);  /* NEW: Lift effect */
-            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
-        }
-
-        .btn:hover {
-            opacity: 0.9;
+        .btn-primary:hover {
+            background: #2563eb;
+            border-color: #2563eb;
         }
 
         .clickable-image-table {

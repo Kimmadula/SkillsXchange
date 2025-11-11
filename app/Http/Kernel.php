@@ -40,7 +40,7 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
-           \App\Http\Middleware\SessionExpirationMiddleware::class,
+             \App\Http\Middleware\SessionExpirationMiddleware::class,
             \App\Http\Middleware\ErrorHandlingMiddleware::class,
             \App\Http\Middleware\CheckSuspension::class,
             // \App\Http\Middleware\RateLimitMiddleware::class, // REMOVED: Rate limiting disabled
