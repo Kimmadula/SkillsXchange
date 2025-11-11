@@ -48,6 +48,18 @@
                                     @endif
                                 </div>
                             </div>
+                            @if(Auth::id() === $task->created_by)
+                                <div class="task-actions" style="display:flex; gap:6px; margin-left:auto;">
+                                    <button onclick="editTask({{ $task->id }})" title="Edit Task"
+                                            style="background:#3b82f6;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:.75rem;cursor:pointer;">
+                                        Edit
+                                    </button>
+                                    <button onclick="deleteTask({{ $task->id }})" title="Delete Task"
+                                            style="background:#ef4444;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:.75rem;cursor:pointer;">
+                                        Delete
+                                    </button>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 @endforeach
@@ -91,6 +103,18 @@
                                     @endif
                                 </div>
                             </div>
+                            @if(Auth::id() === $task->created_by)
+                                <div class="task-actions" style="display:flex; gap:6px; margin-left:auto;">
+                                    <button onclick="editTask({{ $task->id }})" title="Edit Task"
+                                            style="background:#3b82f6;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:.75rem;cursor:pointer;">
+                                        Edit
+                                    </button>
+                                    <button onclick="deleteTask({{ $task->id }})" title="Delete Task"
+                                            style="background:#ef4444;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:.75rem;cursor:pointer;">
+                                        Delete
+                                    </button>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 @endforeach
