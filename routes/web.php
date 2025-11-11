@@ -694,6 +694,7 @@ Route::middleware('auth')->group(function () {
 
         // Trade request actions
         Route::post('/trades/{trade}/request', [\App\Http\Controllers\TradeController::class, 'requestTrade'])->name('trades.request');
+        Route::delete('/trades/{trade}/request', [\App\Http\Controllers\TradeController::class, 'cancelRequest'])->name('trades.request.cancel');
         Route::post('/trade-requests/{tradeRequest}/respond', [\App\Http\Controllers\TradeController::class, 'respondToRequest'])->name('trades.respond');
 
         // Notification actions

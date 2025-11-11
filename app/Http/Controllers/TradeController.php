@@ -1074,6 +1074,55 @@ class TradeController extends Controller
         return redirect()->back()->with('success', $successMessage);
     }
 
+    /**
+     * Cancel the current user's pending request for a trade.
+     */
+    public function cancelRequest(Request $request, Trade $trade)
+    {
+        $user = Auth::user();
+
+        // Find pending request by this user for the trade
+        $pending = TradeRequest::where('trade_id', $trade->id)
+            ->where('requester_id', $user->id)
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$pending) {
+            if ($request->ajax() || $request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'No pending request found to cancel.'], 404);
+            }
+            return redirect()->back()->with('error', 'No pending request found to cancel.');
+        }
+
+        // Mark as cancelled (do not delete for audit trail)
+        $pending->update([
+            'status' => 'cancelled',
+            'responded_at' => now(),
+        ]);
+
+        // Notify trade owner that the request was cancelled (optional, silent for now)
+        try {
+            \DB::table('user_notifications')->insert([
+                'user_id' => $trade->user_id,
+                'type' => 'trade_request_cancelled',
+                'data' => json_encode([
+                    'requester_username' => $user->username,
+                    'trade_id' => $trade->id,
+                ]),
+                'read' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            // Non-fatal
+        }
+
+        if ($request->ajax() || $request->expectsJson()) {
+            return response()->json(['success' => true]);
+        }
+        return redirect()->back()->with('success', 'Trade request cancelled.');
+    }
+
     public function respondToRequest(Request $request, TradeRequest $tradeRequest)
     {
         $user = Auth::user();

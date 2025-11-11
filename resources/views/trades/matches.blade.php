@@ -197,11 +197,6 @@
                                 <a href="{{ route('trades.requests') }}" style="margin-left:8px; color:#1e40af; text-decoration:underline;">Open requests</a>
                             </div>
                         @endif
-                        @if(($t->has_outgoing_request_to_user ?? false))
-                            <div style="padding:6px 12px; background:#e0e7ff; color:#3730a3; border-radius:6px; font-size:0.8rem; border:1px solid #6366f1;">
-                                You already requested this user. Pending response.
-                            </div>
-                        @endif
                         @if($isPremium)
                             <div style="padding:6px 12px; background:#dcfce7; color:#166534; border-radius:6px; font-size:0.8rem; border:1px solid #86efac;">
                                 <div style="font-weight:600;">⭐ Premium - Unlimited Requests</div>
@@ -212,14 +207,34 @@
                                 <div style="font-size:0.75rem;">Balance: {{ $userBalance }} tokens</div>
                             </div>
                         @endif
-                        <form method="POST" action="{{ route('trades.request', $t->id) }}" style="display:inline;">
-                            @csrf
-                            <button type="submit"
-                                    style="padding:8px 16px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; white-space:nowrap; {{ $isDisabled ? 'opacity:50; cursor:not-allowed;' : '' }}"
-                                    {{ $isDisabled ? 'disabled' : '' }}>
-                                {{ ($t->has_outgoing_request_to_user ?? false) ? 'Requested' : 'Request Trade' }}
-                            </button>
-                        </form>
+                        @if(($t->has_outgoing_request_to_user ?? false))
+                            <div class="requested-dropdown" style="position:relative; display:inline-block;">
+                                <button type="button"
+                                        onclick="toggleRequestedMenu({{ $t->id }})"
+                                        style="padding:8px 16px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; white-space:nowrap;">
+                                    Requested <span style="font-size:0.75rem;">▼</span>
+                                </button>
+                                <div id="requested-menu-{{ $t->id }}"
+                                     style="display:none; position:absolute; top:100%; left:0; margin-top:6px; background:#fff; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 6px 18px rgba(0,0,0,.08); z-index:10; width:100%;">
+                                    <form method="POST" action="{{ route('trades.request.cancel', $t->id) }}" style="margin:0;">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" style="width:100%; text-align:left; background:#fff; border:none; padding:10px 12px; font-size:0.875rem; cursor:pointer;">
+                                             Cancel request
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        @else
+                            <form method="POST" action="{{ route('trades.request', $t->id) }}" style="display:inline;">
+                                @csrf
+                                <button type="submit"
+                                        style="padding:8px 16px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; white-space:nowrap; {{ $isDisabled ? 'opacity:50; cursor:not-allowed;' : '' }}"
+                                        {{ $isDisabled ? 'disabled' : '' }}>
+                                    Request Trade
+                                </button>
+                            </form>
+                        @endif
                     </div>
                 @else
                     {{-- Not rendered: list is already filtered to compatible only --}}
@@ -281,6 +296,21 @@ function filterByTrade(tradeId) {
         container.appendChild(emptyDiv);
     }
 }
+
+// Dropdown for Requested button
+function toggleRequestedMenu(tradeId) {
+    const menu = document.getElementById('requested-menu-' + tradeId);
+    if (!menu) return;
+    const isShown = menu.style.display === 'block';
+    document.querySelectorAll('[id^="requested-menu-"]').forEach(m => m.style.display = 'none');
+    menu.style.display = isShown ? 'none' : 'block';
+}
+document.addEventListener('click', function(e) {
+    const wrapper = e.target.closest('.requested-dropdown');
+    if (!wrapper) {
+        document.querySelectorAll('[id^="requested-menu-"]').forEach(m => m.style.display = 'none');
+    }
+});
 </script>
 @endsection
 
