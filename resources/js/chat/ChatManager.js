@@ -27,7 +27,27 @@ export class ChatManager {
         this.setupEventListeners();
         this.setupEchoListeners();
         this.setupPollingFallback();
+        this.formatExistingTimestamps();
         this.scrollToBottom();
+    }
+
+    formatExistingTimestamps() {
+        // Format all existing timestamps from server to user's local timezone
+        const timestampElements = document.querySelectorAll('.message-time[data-timestamp]');
+        timestampElements.forEach(element => {
+            const timestamp = element.getAttribute('data-timestamp');
+            if (timestamp) {
+                try {
+                    const localTime = new Date(timestamp).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    element.textContent = localTime;
+                } catch (e) {
+                    console.error('Error formatting timestamp:', e);
+                }
+            }
+        });
     }
 
     setupEventListeners() {
@@ -45,6 +65,49 @@ export class ChatManager {
             }
         });
 
+        // Handle image upload button
+        const sendImageBtn = document.getElementById('send-image-btn');
+        if (sendImageBtn) {
+            sendImageBtn.addEventListener('click', () => {
+                this.handleImageUpload();
+            });
+        }
+
+        // Handle file upload button
+        const attachFileBtn = document.getElementById('attach-file-btn');
+        if (attachFileBtn) {
+            attachFileBtn.addEventListener('click', () => {
+                this.handleFileUpload();
+            });
+        }
+
+        // Handle emoji button
+        const emojiButton = document.getElementById('emoji-button');
+        if (emojiButton) {
+            emojiButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.toggleEmojiPicker();
+            });
+        }
+
+        // Handle emoji selection
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('emoji-item')) {
+                const emoji = e.target.getAttribute('data-emoji');
+                this.insertEmoji(emoji);
+            }
+        });
+
+        // Close emoji picker when clicking outside
+        document.addEventListener('click', (e) => {
+            const picker = document.getElementById('emoji-picker');
+            const button = document.getElementById('emoji-button');
+            if (picker && button && !picker.contains(e.target) && !button.contains(e.target)) {
+                picker.style.display = 'none';
+            }
+        });
+
         // Track user activity for polling optimization
         ['click', 'keypress', 'mousemove', 'scroll'].forEach(event => {
             document.addEventListener(event, () => {
@@ -57,6 +120,115 @@ export class ChatManager {
                 }
             }, { passive: true });
         });
+    }
+
+    handleImageUpload() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.multiple = false;
+        
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                this.uploadFile(file, 'image');
+            }
+        };
+        
+        input.click();
+    }
+
+    handleFileUpload() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = false;
+        
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                this.uploadFile(file, 'file');
+            }
+        };
+        
+        input.click();
+    }
+
+    async uploadFile(file, type = 'file') {
+        // Validate file size (max 10MB)
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            this.showError('File size must be less than 10MB');
+            return;
+        }
+
+        // Show loading state
+        const originalText = this.sendButton?.textContent;
+        if (this.sendButton) {
+            this.sendButton.textContent = 'Uploading...';
+            this.sendButton.disabled = true;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('type', type);
+            formData.append('message', ''); // Empty message for file-only messages
+
+            const url = `/chat/${this.tradeId}/message`;
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': this.csrfToken,
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData,
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                console.log('✅ File uploaded successfully');
+                // The message from server already contains the file reference with URL
+                // Just add it to UI - the server response should have the formatted message
+                const messageText = data.message?.message || (type === 'image' ? `[IMAGE:${file.name}]` : `[FILE:${file.name}]`);
+                const currentUserName = document.querySelector('[data-user-name]')?.getAttribute('data-user-name') || 'You';
+                
+                // If it's an image, create a preview URL for immediate display
+                if (type === 'image' && file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        window.tempImageData = e.target.result;
+                        this.addMessage(messageText, currentUserName, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), true);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    this.addMessage(messageText, currentUserName, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), true);
+                }
+                
+                // Clear input if needed
+                if (this.messageInput) {
+                    this.messageInput.value = '';
+                }
+            } else {
+                throw new Error(data.error || 'Failed to upload file');
+            }
+        } catch (error) {
+            console.error('Upload file error:', error);
+            this.showError('Failed to upload file. Please try again.');
+        } finally {
+            // Reset button state
+            if (this.sendButton) {
+                this.sendButton.disabled = false;
+                this.sendButton.textContent = originalText || 'Send';
+            }
+        }
     }
 
     setupEchoListeners() {
@@ -168,9 +340,17 @@ export class ChatManager {
                 // Update the temporary message with the real one and mark it as confirmed
                 this.updateMessageInChat(tempId, data.message);
                 
-                // Mark this message as confirmed to prevent duplicate Echo events
+                // Update timestamp with server time
                 const messageElement = document.querySelector(`[data-temp-id="${tempId}"]`);
-                if (messageElement) {
+                if (messageElement && data.message?.created_at) {
+                    const serverTime = new Date(data.message.created_at).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    const timestampElement = messageElement.querySelector('.message-time');
+                    if (timestampElement) {
+                        timestampElement.textContent = serverTime;
+                    }
                     messageElement.setAttribute('data-confirmed', 'true');
                     messageElement.removeAttribute('data-temp-id');
                 }
@@ -230,29 +410,51 @@ export class ChatManager {
             new Date(message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 
             new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
 
-        // Check if message contains image or video
+        // Check if message contains image, video, or file
         let messageContent = '';
         if (messageText.includes('[IMAGE:') && messageText.includes(']')) {
-            const fileName = messageText.match(/\[IMAGE:(.+?)\]/)?.[1] || 'image';
+            // Parse format: [IMAGE:filename|url] or [IMAGE:filename]
+            const match = messageText.match(/\[IMAGE:(.+?)(?:\|(.+?))?\]/);
+            const fileName = match?.[1] || 'image';
+            const fileUrl = match?.[2] || window.tempImageData || '#';
             messageContent = `
                 <div class="message-bubble">
                     <div class="message-text">
-                        <img src="${window.tempImageData || '#'}" alt="${fileName}" class="chat-image" onerror="this.style.display='none'" style="max-width: 200px; border-radius: 8px;">
+                        <img src="${fileUrl}" alt="${fileName}" class="chat-image" onerror="this.style.display='none'" style="max-width: 200px; border-radius: 8px; cursor: pointer;" onclick="window.open('${fileUrl}', '_blank')">
                         <div style="font-size: 0.75rem; opacity: 0.8; margin-top: 4px;">${this.escapeHtml(fileName)}</div>
                     </div>
                     <div class="message-time">${messageTime}</div>
                 </div>
             `;
         } else if (messageText.includes('[VIDEO:') && messageText.includes(']')) {
-            const fileName = messageText.match(/\[VIDEO:(.+?)\]/)?.[1] || 'video';
+            // Parse format: [VIDEO:filename|url] or [VIDEO:filename]
+            const match = messageText.match(/\[VIDEO:(.+?)(?:\|(.+?))?\]/);
+            const fileName = match?.[1] || 'video';
+            const fileUrl = match?.[2] || window.tempVideoData || '#';
             messageContent = `
                 <div class="message-bubble">
                     <div class="message-text">
                         <video controls style="max-width: 200px; max-height: 200px; border-radius: 8px;">
-                            <source src="${window.tempVideoData || '#'}" type="video/mp4">
+                            <source src="${fileUrl}" type="video/mp4">
                             Your browser does not support the video tag.
                         </video>
                         <div style="font-size: 0.75rem; opacity: 0.8; margin-top: 4px;">${this.escapeHtml(fileName)}</div>
+                    </div>
+                    <div class="message-time">${messageTime}</div>
+                </div>
+            `;
+        } else if (messageText.includes('[FILE:') && messageText.includes(']')) {
+            // Parse format: [FILE:filename|url] or [FILE:filename]
+            const match = messageText.match(/\[FILE:(.+?)(?:\|(.+?))?\]/);
+            const fileName = match?.[1] || 'file';
+            const fileUrl = match?.[2] || '#';
+            messageContent = `
+                <div class="message-bubble">
+                    <div class="message-text">
+                        <a href="${fileUrl}" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f3f4f6; border-radius: 6px; text-decoration: none; color: #1f2937;">
+                            <span>📎</span>
+                            <span style="font-weight: 500;">${this.escapeHtml(fileName)}</span>
+                        </a>
                     </div>
                     <div class="message-time">${messageTime}</div>
                 </div>
@@ -437,6 +639,43 @@ export class ChatManager {
             setTimeout(() => {
                 indicator.style.display = 'none';
             }, 3000);
+        }
+    }
+
+    toggleEmojiPicker() {
+        const picker = document.getElementById('emoji-picker');
+        if (picker) {
+            if (picker.style.display === 'none' || picker.style.display === '') {
+                picker.style.display = 'block';
+            } else {
+                picker.style.display = 'none';
+            }
+        }
+    }
+
+    insertEmoji(emoji) {
+        if (!this.messageInput) {
+            return;
+        }
+        
+        const currentValue = this.messageInput.value;
+        const cursorPosition = this.messageInput.selectionStart || currentValue.length;
+        
+        // Insert emoji at cursor position
+        const newValue = currentValue.slice(0, cursorPosition) + emoji + currentValue.slice(cursorPosition);
+        this.messageInput.value = newValue;
+        
+        // Set cursor position after the emoji
+        const newCursorPosition = cursorPosition + emoji.length;
+        this.messageInput.setSelectionRange(newCursorPosition, newCursorPosition);
+        
+        // Focus back to input
+        this.messageInput.focus();
+        
+        // Hide emoji picker
+        const picker = document.getElementById('emoji-picker');
+        if (picker) {
+            picker.style.display = 'none';
         }
     }
 

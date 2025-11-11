@@ -166,13 +166,44 @@ class ChatController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
+            // Handle file upload if present
+            $messageText = $request->input('message', '');
+            
+            if ($request->hasFile('file')) {
+                $file = $request->file('file');
+                $type = $request->input('type', 'file');
+                
+                // Validate file
+                $maxSize = 10 * 1024 * 1024; // 10MB
+                if ($file->getSize() > $maxSize) {
+                    return response()->json(['error' => 'File size must be less than 10MB'], 400);
+                }
+                
+                // Store file
+                $fileName = $file->getClientOriginalName();
+                $filePath = $file->store('chat-files', 'public');
+                $fileUrl = asset('storage/' . $filePath);
+                
+                // Update message text to include file reference with URL
+                if ($type === 'image') {
+                    $messageText = $messageText ?: "[IMAGE:{$fileName}|{$fileUrl}]";
+                } else {
+                    $messageText = $messageText ?: "[FILE:{$fileName}|{$fileUrl}]";
+                }
+            }
+            
+            // Validate message (required if no file)
+            if (empty($messageText) && !$request->hasFile('file')) {
+                return response()->json(['error' => 'Message is required'], 422);
+            }
+
             $request->validate([
-                'message' => 'required|string|max:1000'
+                'message' => 'nullable|string|max:1000'
             ]);
 
             $message = $trade->messages()->create([
                 'sender_id' => $user->id,
-                'message' => $request->message
+                'message' => $messageText
             ]);
 
             $message->load('sender');

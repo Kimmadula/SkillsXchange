@@ -13,13 +13,16 @@
     <div class="tasks-content">
         <!-- My Tasks Tab -->
         <div class="tab-content" data-content="my-tasks">
+            @php
+                $myProgressValue = max(0, min(100, round($myProgress ?? 0)));
+            @endphp
             <div class="progress-section">
                 <div class="progress-header">
                     <span class="progress-label">Progress</span>
-                    <span class="progress-percentage">{{ round($myProgress) }}%</span>
+                    <span class="progress-percentage">{{ $myProgressValue }}%</span>
                 </div>
                 <div class="progress-bar">
-                    <div class="progress-fill" style="width: {{ $myProgress }}%"></div>
+                    <div class="progress-fill" style="--progress-width: {{ $myProgressValue }}%; width: var(--progress-width);"></div>
                 </div>
             </div>
             
@@ -53,13 +56,16 @@
 
         <!-- Partner Tasks Tab -->
         <div class="tab-content" data-content="partner-tasks" style="display: none;">
+            @php
+                $partnerProgressValue = max(0, min(100, round($partnerProgress ?? 0)));
+            @endphp
             <div class="progress-section">
                 <div class="progress-header">
                     <span class="progress-label">Progress</span>
-                    <span class="progress-percentage">{{ round($partnerProgress) }}%</span>
+                    <span class="progress-percentage">{{ $partnerProgressValue }}%</span>
                 </div>
                 <div class="progress-bar">
-                    <div class="progress-fill" style="width: {{ $partnerProgress }}%"></div>
+                    <div class="progress-fill" style="--progress-width: {{ $partnerProgressValue }}%; width: var(--progress-width);"></div>
                 </div>
             </div>
             

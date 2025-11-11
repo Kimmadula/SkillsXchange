@@ -153,7 +153,6 @@ html, body {
     height: 8px;
     border-radius: 50%;
     background: #10b981;
-    animation: pulse 2s infinite;
 }
 
 .status-dot.offline {
@@ -288,6 +287,14 @@ html, body {
     font-size: 1.25rem;
     cursor: pointer;
     transition: transform 0.2s;
+}
+
+.emoji-item:hover {
+    background-color: #f3f4f6 !important;
+}
+
+.emoji-item:active {
+    background-color: #e5e7eb !important;
 }
 
 .emoji-btn:hover {

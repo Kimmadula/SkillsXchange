@@ -950,34 +950,12 @@
         });
     }
 
-    // Initialize Firebase video call listeners on page load
-    // This is needed to receive incoming calls, but we filter out stale data
+    // Firebase video call listeners will be initialized on first user interaction
+    // This is handled by VideoCallManager.setupLazyFirebaseInitialization()
+    // No need to auto-initialize here - it will happen when user clicks/touches/interacts with the page
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize listeners after a short delay to ensure Firebase is ready
-        // This allows receiving incoming calls, but filters prevent endless loops
-        setTimeout(() => {
-            if (typeof firebase !== 'undefined' && firebase.app) {
-                try {
-                    firebase.app(); // Check if Firebase is initialized
-                    console.log('🔧 Initializing Firebase listeners for incoming calls...');
-                    // Initialize without waiting - this sets up listeners for incoming calls
-                    initializeVideoCallListenersOnce().then(() => {
-                        console.log('✅ Firebase listeners initialized - ready to receive calls');
-                    }).catch(err => {
-                        console.log('⚠️ Failed to initialize Firebase listeners:', err);
-                    });
-                } catch (error) {
-                    console.log('⏳ Waiting for Firebase to fully initialize...');
-                    setTimeout(() => {
-                        initializeVideoCallListenersOnce().catch(() => {});
-                    }, 2000);
-                }
-            } else {
-                setTimeout(() => {
-                    initializeVideoCallListenersOnce().catch(() => {});
-                }, 3000);
-            }
-        }, 2000); // Wait 2 seconds for Firebase to be ready
+        console.log('💡 Firebase video call will initialize on first user interaction (click, touch, or keypress)');
+        console.log('💡 This allows receiving incoming calls without opening the modal first');
     });
 </script>
 <style>

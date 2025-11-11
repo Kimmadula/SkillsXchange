@@ -208,7 +208,7 @@ export class TaskManager {
         try {
             // Get route from data attribute or use default
             const route = document.querySelector('[data-create-task-route]')?.getAttribute('data-create-task-route') ||
-                         `/chat/${this.tradeId}/tasks`;
+                         `/chat/${this.tradeId}/task`;
 
             const response = await fetch(route, {
                 method: 'POST',
@@ -219,6 +219,19 @@ export class TaskManager {
                 },
                 body: JSON.stringify(taskData)
             });
+
+            // Check if response is ok
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMessage = `Server error: ${response.status}`;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    errorMessage = errorData.error || errorData.message || errorMessage;
+                } catch (e) {
+                    errorMessage = errorText || errorMessage;
+                }
+                throw new Error(errorMessage);
+            }
 
             const data = await response.json();
 

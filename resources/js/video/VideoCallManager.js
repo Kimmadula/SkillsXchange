@@ -42,7 +42,41 @@ export class VideoCallManager {
 
     initialize() {
         this.setupEventListeners();
-        this.initializeFirebase();
+        this.setupLazyFirebaseInitialization();
+    }
+
+    setupLazyFirebaseInitialization() {
+        // Initialize Firebase on first user interaction (click, touch, or keypress)
+        // This allows receiving incoming calls without opening the modal first
+        // but doesn't connect until user actually interacts with the page
+        const events = ['click', 'touchstart', 'keydown'];
+        let initialized = false;
+
+        const initializeOnInteraction = async () => {
+            if (initialized || this.videoCallListenersInitialized) {
+                return;
+            }
+
+            initialized = true;
+            console.log('👆 User interaction detected - initializing Firebase for incoming calls...');
+            
+            // Remove listeners after first interaction
+            events.forEach(event => {
+                document.removeEventListener(event, initializeOnInteraction, { once: true });
+            });
+
+            // Initialize Firebase in background (non-blocking)
+            this.initializeFirebase().catch(error => {
+                console.error('Failed to initialize Firebase on user interaction:', error);
+            });
+        };
+
+        // Add listeners for first user interaction
+        events.forEach(event => {
+            document.addEventListener(event, initializeOnInteraction, { once: true, passive: true });
+        });
+
+        console.log('👂 Listening for user interaction to initialize Firebase video call listeners...');
     }
 
     setupEventListeners() {
@@ -92,6 +126,12 @@ export class VideoCallManager {
         if (!this.videoModal) {
             console.error('❌ Video chat modal not found');
             return;
+        }
+
+        // Initialize Firebase only when user opens the video modal
+        if (!this.videoCallListenersInitialized) {
+            console.log('🔧 Initializing Firebase for video call (lazy load)...');
+            await this.initializeFirebase();
         }
 
         this.videoModal.style.display = 'flex';
