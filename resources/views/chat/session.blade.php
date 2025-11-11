@@ -2018,6 +2018,25 @@
                         });
                     </script>
 
+<!-- Session Tasks Panels (required by TaskManager) -->
+<div id="session-tasks-panels" style="margin-top: 8px;">
+	<div data-content="my-tasks" style="margin-top:8px;">
+		<div class="progress" style="height:8px;background:#eee;border-radius:6px;overflow:hidden;margin:6px 0;">
+			<div class="progress-fill" style="height:8px;width:0;background:#3b82f6;"></div>
+		</div>
+		<div style="font-size:.85rem;color:#6b7280;">Progress: <span class="progress-percentage">0%</span></div>
+		<div id="my-tasks"></div>
+	</div>
+
+	<div data-content="partner-tasks" style="margin-top:8px;">
+		<div class="progress" style="height:8px;background:#eee;border-radius:6px;overflow:hidden;margin:6px 0;">
+			<div class="progress-fill" style="height:8px;width:0;background:#10b981;"></div>
+		</div>
+		<div style="font-size:.85rem;color:#6b7280;">Progress: <span class="progress-percentage">0%</span></div>
+		<div id="partner-tasks"></div>
+	</div>
+</div>
+
 <!-- Add Task Modal -->
 
 <!-- Report User Modal -->
@@ -4249,6 +4268,5 @@ async function initializePeerConnection() {
 @include('components.ratings.session-end-modal')
 
 {{-- Load session managers --}}
-<script type="module" src="{{ asset('js/app.js') }}"></script>
 
 @endsection

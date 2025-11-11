@@ -232,6 +232,9 @@ class ChatController extends Controller
                 // Continue even if broadcasting fails
             }
 
+            // Attach a consistent, server-formatted display time
+            $message->setAttribute('display_time', $message->created_at ? $message->created_at->format('g:i A') : now()->format('g:i A'));
+
             return response()->json([
                 'success' => true,
                 'message' => $message
@@ -343,6 +346,12 @@ class ChatController extends Controller
             }
 
             $messages = $trade->messages()->with('sender')->orderBy('created_at', 'asc')->get();
+
+            // Map in a server-formatted display_time so clients don't need to recalc
+            $messages->transform(function ($m) {
+                $m->setAttribute('display_time', $m->created_at ? $m->created_at->format('g:i A') : null);
+                return $m;
+            });
             
             return response()->json([
                 'success' => true,

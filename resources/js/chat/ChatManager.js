@@ -340,13 +340,10 @@ export class ChatManager {
                 // Update the temporary message with the real one and mark it as confirmed
                 this.updateMessageInChat(tempId, data.message);
                 
-                // Update timestamp with server time
+                // Update timestamp with server-formatted time
                 const messageElement = document.querySelector(`[data-temp-id="${tempId}"]`);
-                if (messageElement && data.message?.created_at) {
-                    const serverTime = new Date(data.message.created_at).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
+                if (messageElement && (data.message?.display_time || data.message?.created_at)) {
+                    const serverTime = data.message.display_time || new Date(data.message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     const timestampElement = messageElement.querySelector('.message-time');
                     if (timestampElement) {
                         timestampElement.textContent = serverTime;
@@ -575,10 +572,7 @@ export class ChatManager {
                         const senderName = msg.sender ? 
                             `${msg.sender.firstname} ${msg.sender.lastname}` : 
                             this.partnerName;
-                        const timestamp = new Date(msg.created_at).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        });
+                        const timestamp = msg.display_time || (msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
                         this.addMessage(msg, senderName, timestamp, false);
                     }
                 });
