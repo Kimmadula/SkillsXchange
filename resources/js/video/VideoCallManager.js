@@ -158,83 +158,90 @@ export class VideoCallManager {
                 return;
             }
 
-        // Initialize Firebase only when user opens the video modal
-        if (!this.videoCallListenersInitialized) {
-            console.log('🔧 Initializing Firebase for video call (lazy load)...');
-            await this.initializeFirebase();
-        }
+            // Initialize Firebase only when user opens the video modal
+            if (!this.videoCallListenersInitialized) {
+                console.log('🔧 Initializing Firebase for video call (lazy load)...');
+                await this.initializeFirebase();
+            }
 
-        this.videoModal.style.display = 'flex';
+            this.videoModal.style.display = 'flex';
 
-        // Check if we're on HTTPS
-        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-            console.error('❌ HTTPS required for camera access');
-            this.showError('Camera access requires HTTPS. Please use https://skillsxchange.site instead of http://');
-            this.videoModal.style.display = 'none';
-            return;
-        }
-
-        // Initialize camera first and wait for it to complete
-        try {
-            console.log('📹 Initializing camera...');
-
-            // Check if getUserMedia is supported
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                console.error('❌ Camera not supported');
-                this.showError('Camera is not supported in this browser. Please use a modern browser.');
+            // Check if we're on HTTPS
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                console.error('❌ HTTPS required for camera access');
+                this.showError('Camera access requires HTTPS. Please use https://skillsxchange.site instead of http://');
+                this.videoModal.style.display = 'none';
                 return;
             }
 
-            // Request camera access with better error handling
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    facingMode: 'user'
-                },
-                audio: {
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
+            // Initialize camera first and wait for it to complete
+            try {
+                console.log('📹 Initializing camera...');
+
+                // Check if getUserMedia is supported
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    console.error('❌ Camera not supported');
+                    this.showError('Camera is not supported in this browser. Please use a modern browser.');
+                    return;
                 }
-            });
 
-            console.log('✅ Camera access granted');
+                // Request camera access with better error handling
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user'
+                    },
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
 
-            // Display local video
-            if (this.localVideo) {
-                this.localVideo.srcObject = stream;
-                this.localVideo.style.display = 'block';
-                this.localVideo.muted = true; // Mute local video to prevent echo
-                this.localVideo.autoplay = true;
-                this.localVideo.playsInline = true;
-                this.localVideo.play();
+                console.log('✅ Camera access granted');
+
+                // Display local video
+                if (this.localVideo) {
+                    this.localVideo.srcObject = stream;
+                    this.localVideo.style.display = 'block';
+                    this.localVideo.muted = true; // Mute local video to prevent echo
+                    this.localVideo.autoplay = true;
+                    this.localVideo.playsInline = true;
+                    this.localVideo.play();
+                }
+
+                // Store stream
+                this.localStream = stream;
+                window.localStream = stream;
+
+                console.log('✅ Video chat opened successfully');
+            } catch (error) {
+                console.error('❌ Error accessing camera:', error);
+
+                let errorMessage = 'Camera access is required for video calls. ';
+
+                if (error.name === 'NotAllowedError') {
+                    errorMessage += 'Please allow camera and microphone access in your browser settings and try again.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage += 'No camera found. Please connect a camera and try again.';
+                } else if (error.name === 'NotSupportedError') {
+                    errorMessage += 'Camera not supported. Please use a modern browser.';
+                } else if (error.name === 'SecurityError') {
+                    errorMessage += 'Camera access blocked due to security restrictions. Please use HTTPS.';
+                } else {
+                    errorMessage += 'Please check your camera settings and try again.';
+                }
+
+                this.showError(errorMessage);
+                this.videoModal.style.display = 'none';
             }
-
-            // Store stream
-            this.localStream = stream;
-            window.localStream = stream;
-
-            console.log('✅ Video chat opened successfully');
         } catch (error) {
-            console.error('❌ Error accessing camera:', error);
-
-            let errorMessage = 'Camera access is required for video calls. ';
-
-            if (error.name === 'NotAllowedError') {
-                errorMessage += 'Please allow camera and microphone access in your browser settings and try again.';
-            } else if (error.name === 'NotFoundError') {
-                errorMessage += 'No camera found. Please connect a camera and try again.';
-            } else if (error.name === 'NotSupportedError') {
-                errorMessage += 'Camera not supported. Please use a modern browser.';
-            } else if (error.name === 'SecurityError') {
-                errorMessage += 'Camera access blocked due to security restrictions. Please use HTTPS.';
-            } else {
-                errorMessage += 'Please check your camera settings and try again.';
+            console.error('❌ Error in openVideoChat:', error);
+            this.showError('Failed to open video chat: ' + error.message);
+            if (this.videoModal) {
+                this.videoModal.style.display = 'none';
             }
-
-            this.showError(errorMessage);
-            this.videoModal.style.display = 'none';
         } finally {
             // Reset flag after a delay to allow modal to open
             setTimeout(() => {
