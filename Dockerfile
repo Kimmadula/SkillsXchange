@@ -29,7 +29,12 @@ RUN cp .env.example .env || echo "APP_NAME=SkillsXchangee\nAPP_ENV=production\nA
 
 # Install dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction
-RUN npm install
+
+# Install npm dependencies with retry and increased timeout
+RUN npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm install --timeout=300000 || (echo "npm install failed, retrying..." && npm install --timeout=300000)
 
 # Build assets (skip if build fails)
 RUN npm run build || echo "Asset build failed, continuing with fallback CSS"

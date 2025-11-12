@@ -38,17 +38,36 @@
             videoCallBtn.title = 'Initializing video call...';
         }
         
+        // Set a timeout to enable button even if initialization hangs
+        const initializationTimeout = setTimeout(() => {
+            console.warn('⚠️ Video call initialization timeout - enabling button anyway');
+            if (videoCallBtn) {
+                videoCallBtn.disabled = false;
+                videoCallBtn.style.opacity = '1';
+                videoCallBtn.style.cursor = 'pointer';
+                videoCallBtn.title = 'Start Video Call (initialization may still be in progress)';
+            }
+        }, 10000); // 10 second timeout
+        
         try {
-            // Fetch session data from API
-            const response = await fetch('/api/trades/get-current-session?trade_id=' + window.tradeId, {
+            // Fetch session data from API with timeout
+            // Create AbortController for timeout (fallback for browsers without AbortSignal.timeout)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+            
+            const fetchPromise = fetch('/api/trades/get-current-session?trade_id=' + window.tradeId, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
                     'Accept': 'application/json'
                 },
-                credentials: 'same-origin'
+                credentials: 'same-origin',
+                signal: controller.signal
             });
+            
+            const response = await fetchPromise;
+            clearTimeout(timeoutId);
             
             // Check if response is HTML (error page) instead of JSON
             const contentType = response.headers.get('content-type');
@@ -84,8 +103,22 @@
             
             console.log('✅ Session data loaded:', window.videoCallSession);
             
-            // Prepare Firebase room connection
-            await prepareFirebaseRoom();
+            // Prepare Firebase room connection with timeout
+            try {
+                await Promise.race([
+                    prepareFirebaseRoom(),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Firebase initialization timeout')), 5000)
+                    )
+                ]);
+            } catch (firebaseError) {
+                console.warn('⚠️ Firebase room preparation failed or timed out:', firebaseError);
+                // Continue anyway - Firebase can be initialized later when call starts
+                window.videoCallSession.firebaseConnected = false;
+            }
+            
+            // Clear timeout since we completed
+            clearTimeout(initializationTimeout);
             
             // Enable video call button
             if (videoCallBtn) {
@@ -100,12 +133,15 @@
         } catch (error) {
             console.error('❌ Failed to auto-initialize video call session:', error);
             
+            // Clear timeout
+            clearTimeout(initializationTimeout);
+            
             // Still enable button but show warning
             if (videoCallBtn) {
                 videoCallBtn.disabled = false;
                 videoCallBtn.style.opacity = '1';
                 videoCallBtn.style.cursor = 'pointer';
-                videoCallBtn.title = 'Video call (initialization failed - may have delays)';
+                videoCallBtn.title = 'Start Video Call (initialization failed - will initialize on call start)';
             }
         }
     });
