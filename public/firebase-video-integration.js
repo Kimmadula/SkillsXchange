@@ -465,8 +465,21 @@ class FirebaseVideoIntegration {
         // Handle ICE candidates
         this.peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
-                this.log('📡 ICE candidate generated');
+                const candidateType = event.candidate.type; // 'host', 'srflx', 'relay'
+                const candidateProtocol = event.candidate.protocol; // 'udp', 'tcp'
+                const candidateAddress = event.candidate.address;
+                this.log(`📡 ICE candidate generated: ${candidateType} ${candidateProtocol} ${candidateAddress || ''}`);
+                
+                // Log if using TURN (relay) - important for NAT traversal
+                if (candidateType === 'relay') {
+                    this.log('✅ Using TURN server (relay) for NAT traversal', 'success');
+                } else if (candidateType === 'srflx') {
+                    this.log('✅ Using STUN server (srflx) for NAT discovery', 'info');
+                }
+                
                 this.sendIceCandidate(event.candidate);
+            } else {
+                this.log('✅ ICE candidate gathering completed');
             }
         };
         
@@ -535,11 +548,39 @@ class FirebaseVideoIntegration {
         // Handle ICE connection state changes
         this.peerConnection.oniceconnectionstatechange = () => {
             const state = this.peerConnection.iceConnectionState;
-            this.log(`🧊 ICE connection state: ${state}`);
+            const gatheringState = this.peerConnection.iceGatheringState;
+            this.log(`🧊 ICE connection state: ${state}, gathering: ${gatheringState}`);
             
-            if (state === 'failed') {
-                this.log('⚠️ ICE connection failed, attempting restart...', 'warning');
+            if (state === 'connected' || state === 'completed') {
+                this.log('✅ ICE connection established successfully!', 'success');
+                // Log which candidates were used
+                this.peerConnection.getStats().then(stats => {
+                    stats.forEach(report => {
+                        if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+                            this.log(`✅ Active candidate pair: ${report.localCandidateId} <-> ${report.remoteCandidateId}`, 'success');
+                        }
+                    });
+                }).catch(err => {
+                    // Stats API might not be available in all browsers
+                });
+            } else if (state === 'failed') {
+                this.log('❌ ICE connection failed - may need TURN servers or check firewall', 'error');
+                this.log('⚠️ Attempting ICE restart...', 'warning');
                 this.peerConnection.restartIce();
+            } else if (state === 'checking') {
+                this.log('🔍 ICE connection checking - trying to establish connection...', 'info');
+            } else if (state === 'disconnected') {
+                this.log('⚠️ ICE connection disconnected', 'warning');
+            }
+        };
+        
+        // Handle ICE gathering state
+        this.peerConnection.onicegatheringstatechange = () => {
+            const state = this.peerConnection.iceGatheringState;
+            this.log(`🧊 ICE gathering state: ${state}`);
+            
+            if (state === 'complete') {
+                this.log('✅ ICE candidate gathering completed', 'success');
             }
         };
         
