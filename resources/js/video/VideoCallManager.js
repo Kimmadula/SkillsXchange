@@ -554,7 +554,9 @@ export class VideoCallManager {
 
                     const { rtcOffer, fromUserId, callId } = this.pendingIncomingOffer;
                     console.log('📞 Accepting incoming call with stored offer');
-                    const ok = await this.firebaseVideoCall.answerCall(rtcOffer);
+                    // Use existing local stream if available
+                    const streamToUse = this.localStream || window.localStream;
+                    const ok = await this.firebaseVideoCall.answerCall(rtcOffer, streamToUse);
                     if (!ok) {
                         throw new Error('Failed to answer call');
                     }
@@ -606,17 +608,35 @@ export class VideoCallManager {
                 }
             }
 
+            // Use existing local stream if available, otherwise let Firebase get its own
+            const streamToUse = this.localStream || window.localStream;
+            
             // Start the call using Firebase
-            const success = await this.firebaseVideoCall.startCall(this.partnerId);
+            const success = await this.firebaseVideoCall.startCall(this.partnerId, streamToUse);
 
             if (success) {
-                // Setup local video display
-                if (this.localVideo && this.firebaseVideoCall.localStream) {
-                    this.localVideo.srcObject = this.firebaseVideoCall.localStream;
+                // Setup local video display - use the stream from firebaseVideoCall
+                const localStream = this.firebaseVideoCall.localStream || streamToUse;
+                if (this.localVideo && localStream) {
+                    console.log('📹 Setting local video with stream:', localStream.id, 'tracks:', localStream.getTracks().length);
+                    this.localVideo.srcObject = localStream;
                     this.localVideo.style.display = 'block';
                     this.localVideo.muted = true; // Mute local video to prevent echo
                     this.localVideo.autoplay = true;
                     this.localVideo.playsInline = true;
+                    
+                    // Ensure video plays
+                    this.localVideo.play().catch(error => {
+                        if (error.name !== 'AbortError') {
+                            console.error('Error playing local video:', error);
+                        }
+                    });
+                    
+                    // Also store for reference
+                    this.localStream = localStream;
+                    window.localStream = localStream;
+                } else {
+                    console.warn('⚠️ Cannot set local video: element or stream missing');
                 }
 
                 // Update status

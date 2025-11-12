@@ -276,7 +276,7 @@ class FirebaseVideoIntegration {
     }
     
     // Start a video call
-    async startCall(partnerId) {
+    async startCall(partnerId, existingStream = null) {
         try {
             this.log('📞 Starting video call...');
             this.partnerId = partnerId;
@@ -284,25 +284,50 @@ class FirebaseVideoIntegration {
             this.isInitiator = true;
             this.startTime = Date.now(); // Track when call started for filtering old ICE candidates
             
-            // Update status
-            this.onStatusUpdate?.('Getting camera access...');
+            // Use existing stream if provided, otherwise get new one
+            if (existingStream && existingStream.getTracks().length > 0) {
+                this.log('✅ Using existing local stream');
+                this.localStream = existingStream;
+            } else {
+                // Update status
+                this.onStatusUpdate?.('Getting camera access...');
+                
+                // Get user media
+                this.localStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 1280, height: 720 },
+                    audio: { echoCancellation: true, noiseSuppression: true }
+                });
+                
+                this.log('✅ Local stream obtained');
+            }
             
-            // Get user media
-            this.localStream = await navigator.mediaDevices.getUserMedia({
-                video: { width: 1280, height: 720 },
-                audio: { echoCancellation: true, noiseSuppression: true }
-            });
+            // Log stream details
+            const tracks = this.localStream.getTracks();
+            this.log(`📹 Local stream has ${tracks.length} tracks: ${tracks.map(t => `${t.kind}(${t.enabled ? 'enabled' : 'disabled'})`).join(', ')}`);
             
-            this.log('✅ Local stream obtained');
             this.onStatusUpdate?.('Setting up connection...');
             
             // Create peer connection
             await this.createPeerConnection();
             
             // Add local stream to peer connection
+            let tracksAdded = 0;
             this.localStream.getTracks().forEach(track => {
+                // Ensure track is enabled
+                if (!track.enabled) {
+                    this.log(`⚠️ Track ${track.kind} is disabled, enabling it...`);
+                    track.enabled = true;
+                }
                 this.peerConnection.addTrack(track, this.localStream);
+                tracksAdded++;
+                this.log(`✅ Added ${track.kind} track to peer connection`);
             });
+            
+            if (tracksAdded === 0) {
+                throw new Error('No tracks added to peer connection');
+            }
+            
+            this.log(`✅ Added ${tracksAdded} tracks to peer connection`);
             
             // Create offer
             this.onStatusUpdate?.('Creating offer...');
@@ -331,27 +356,51 @@ class FirebaseVideoIntegration {
     }
     
     // Answer a video call
-    async answerCall(offer) {
+    async answerCall(offer, existingStream = null) {
         try {
             this.log('📞 Answering video call...');
             this.isInitiator = false;
             this.startTime = Date.now(); // Track when call started for filtering old ICE candidates
             
-            // Get user media
-            this.localStream = await navigator.mediaDevices.getUserMedia({
-                video: { width: 1280, height: 720 },
-                audio: { echoCancellation: true, noiseSuppression: true }
-            });
+            // Use existing stream if provided, otherwise get new one
+            if (existingStream && existingStream.getTracks().length > 0) {
+                this.log('✅ Using existing local stream');
+                this.localStream = existingStream;
+            } else {
+                // Get user media
+                this.localStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 1280, height: 720 },
+                    audio: { echoCancellation: true, noiseSuppression: true }
+                });
+                
+                this.log('✅ Local stream obtained');
+            }
             
-            this.log('✅ Local stream obtained');
+            // Log stream details
+            const tracks = this.localStream.getTracks();
+            this.log(`📹 Local stream has ${tracks.length} tracks: ${tracks.map(t => `${t.kind}(${t.enabled ? 'enabled' : 'disabled'})`).join(', ')}`);
             
             // Create peer connection
             await this.createPeerConnection();
             
             // Add local stream to peer connection
+            let tracksAdded = 0;
             this.localStream.getTracks().forEach(track => {
+                // Ensure track is enabled
+                if (!track.enabled) {
+                    this.log(`⚠️ Track ${track.kind} is disabled, enabling it...`);
+                    track.enabled = true;
+                }
                 this.peerConnection.addTrack(track, this.localStream);
+                tracksAdded++;
+                this.log(`✅ Added ${track.kind} track to peer connection`);
             });
+            
+            if (tracksAdded === 0) {
+                throw new Error('No tracks added to peer connection');
+            }
+            
+            this.log(`✅ Added ${tracksAdded} tracks to peer connection`);
             
             // Set remote description
             // Ensure offer is an RTCSessionDescription
