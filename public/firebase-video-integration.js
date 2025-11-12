@@ -425,22 +425,46 @@ class FirebaseVideoIntegration {
         // Track if we've already notified about remote stream to prevent duplicate callbacks
         this.remoteStreamNotified = this.remoteStreamNotified || false;
         this.peerConnection.ontrack = (event) => {
-            this.log('📹 Remote stream received');
+            this.log('📹 Remote track received:', event.track.kind, event.track.id);
             
             // Store the first stream that arrives
             if (!this.remoteStream && event.streams && event.streams[0]) {
                 this.remoteStream = event.streams[0];
-                this.log('📹 Remote stream tracks:', this.remoteStream.getTracks().map(t => t.kind).join(', '));
+                const tracks = this.remoteStream.getTracks();
+                this.log('📹 Remote stream tracks:', tracks.length, 'tracks:', tracks.map(t => `${t.kind}(${t.id})`).join(', '));
+                
+                // Log track states
+                tracks.forEach(track => {
+                    this.log(`  - Track ${track.kind}: readyState=${track.readyState}, enabled=${track.enabled}, muted=${track.muted}`);
+                });
+            } else if (this.remoteStream && event.streams && event.streams[0]) {
+                // Additional tracks added to existing stream
+                const tracks = this.remoteStream.getTracks();
+                this.log('📹 Additional track added. Total tracks:', tracks.length);
             }
             
             // Only notify once, even if multiple tracks arrive (audio + video)
+            // Wait a bit longer to ensure all tracks are added (especially if audio and video come separately)
             if (!this.remoteStreamNotified && this.remoteStream) {
-                this.remoteStreamNotified = true;
-                // Delay slightly to ensure all tracks are added
-                setTimeout(() => {
-                    this.log('✅ Notifying about remote stream');
-                    this.onCallAnswered(this.remoteStream);
-                }, 100);
+                const tracks = this.remoteStream.getTracks();
+                // Wait until we have at least one track, and give time for both audio and video
+                if (tracks.length > 0) {
+                    this.remoteStreamNotified = true;
+                    // Delay to ensure all tracks are added (audio and video may arrive separately)
+                    setTimeout(() => {
+                        const finalTracks = this.remoteStream.getTracks();
+                        this.log('✅ Notifying about remote stream with', finalTracks.length, 'tracks');
+                        if (finalTracks.length > 0) {
+                            this.onCallAnswered(this.remoteStream);
+                        } else {
+                            this.log('⚠️ No tracks in stream after delay, waiting longer...', 'warning');
+                            // Reset flag and wait for more tracks
+                            this.remoteStreamNotified = false;
+                        }
+                    }, 500); // Increased delay to 500ms to allow both tracks to arrive
+                } else {
+                    this.log('⚠️ Track event but stream has no tracks yet, waiting...', 'warning');
+                }
             }
         };
         
