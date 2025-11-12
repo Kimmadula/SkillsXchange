@@ -14,9 +14,13 @@ export class ChatManager {
         this.isSending = false;
         this.lastMessageCount = 0;
         this.messagePollingInterval = null;
-        this.pollingFrequency = 10000; // 10 seconds
+        this.pollingFrequency = 5000; // Start with 5 seconds (optimized)
+        this.minPollingFrequency = 5000; // Never poll faster than 5 seconds
+        this.maxPollingFrequency = 15000; // Never poll slower than 15 seconds
         this.lastActivity = Date.now();
         this.consecutiveEmptyPolls = 0;
+        this.isPolling = false; // Prevent overlapping requests
+        this.lastPollTime = 0; // Track last poll time for debouncing
         
         // CSRF token
         this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
@@ -114,8 +118,8 @@ export class ChatManager {
                 this.lastActivity = Date.now();
                 
                 // If user becomes active and polling is slow, speed it up
-                if (this.pollingFrequency > 8000) {
-                    this.pollingFrequency = 8000;
+                if (this.pollingFrequency > 5000) {
+                    this.pollingFrequency = 5000;
                     this.startSmartMessagePolling();
                 }
             }, { passive: true });
@@ -547,14 +551,57 @@ export class ChatManager {
             clearInterval(this.messagePollingInterval);
         }
         
+        // Enforce minimum frequency
+        const actualFrequency = Math.max(this.pollingFrequency, this.minPollingFrequency);
+        const actualFrequencyMs = Math.min(actualFrequency, this.maxPollingFrequency);
+        
+        console.log(`🔄 Starting message polling at ${actualFrequencyMs}ms interval`);
+        
         this.messagePollingInterval = setInterval(() => {
             this.checkForNewMessages();
-        }, this.pollingFrequency);
+        }, actualFrequencyMs);
     }
 
     async checkForNewMessages() {
+        // Debounce: Prevent overlapping requests
+        const now = Date.now();
+        const timeSinceLastPoll = now - this.lastPollTime;
+        
+        if (this.isPolling) {
+            console.log('⏸️ Polling already in progress, skipping...');
+            return;
+        }
+        
+        // Enforce minimum time between polls (debounce)
+        if (timeSinceLastPoll < this.minPollingFrequency) {
+            const waitTime = this.minPollingFrequency - timeSinceLastPoll;
+            console.log(`⏳ Debouncing: waiting ${waitTime}ms before next poll`);
+            return;
+        }
+        
+        this.isPolling = true;
+        this.lastPollTime = now;
+        
         try {
-            const response = await fetch(`/chat/${this.tradeId}/messages`);
+            const response = await fetch(`/chat/${this.tradeId}/messages`, {
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            // Handle auth errors gracefully
+            if (response.status === 401 || response.status === 403) {
+                console.warn('⚠️ Authentication failed for message polling - session may have expired');
+                this.isPolling = false;
+                return;
+            }
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const data = await response.json();
             
             if (data.success && data.count > this.lastMessageCount) {
@@ -576,11 +623,36 @@ export class ChatManager {
                         this.addMessage(msg, senderName, timestamp, false);
                     }
                 });
+                
+                console.log(`📨 Received ${newMessages.length} new messages`);
             } else {
                 this.consecutiveEmptyPolls++;
+                
+                // Adjust frequency based on empty polls (slow down if many empty polls)
+                if (this.consecutiveEmptyPolls > 10) {
+                    const oldFrequency = this.pollingFrequency;
+                    this.pollingFrequency = Math.min(this.maxPollingFrequency, this.pollingFrequency + 2000);
+                    if (oldFrequency !== this.pollingFrequency) {
+                        console.log(`🔄 Slowing down polling to ${this.pollingFrequency}ms after ${this.consecutiveEmptyPolls} empty polls`);
+                        this.startSmartMessagePolling(); // Restart with new frequency
+                    }
+                }
             }
         } catch (error) {
             console.error('Error checking for new messages:', error);
+            this.consecutiveEmptyPolls++;
+            
+            // Slow down on errors
+            if (this.consecutiveEmptyPolls % 5 === 0) {
+                const oldFrequency = this.pollingFrequency;
+                this.pollingFrequency = Math.min(this.maxPollingFrequency, this.pollingFrequency + 1000);
+                if (oldFrequency !== this.pollingFrequency) {
+                    console.log(`🔄 Slowing down polling to ${this.pollingFrequency}ms due to errors`);
+                    this.startSmartMessagePolling();
+                }
+            }
+        } finally {
+            this.isPolling = false;
         }
     }
 

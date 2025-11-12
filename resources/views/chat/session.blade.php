@@ -602,7 +602,7 @@
                 window.Echo.channel('trade-{{ $trade->id }}')
                     .whisper('presence', {
                         user_id: window.authUserId,
-                        user_name: '{{ Auth::user()->firstname }} {{ Auth::user()->lastname }}',
+                        user_name: '{{ (Auth::user()->firstname ?? "") . " " . (Auth::user()->lastname ?? "") }}',
                         action: action, // 'joined' or 'left'
                         timestamp: Date.now()
                     });
@@ -2805,78 +2805,12 @@ function showVideoCallError(message) {
 let videoCallPollingInterval = null;
 let lastPollTime = Date.now();
 
+// Video call polling disabled - Firebase handles all video call signaling
+// This reduces server load significantly (was polling every 5 seconds)
 function startVideoCallPolling() {
-    console.log('🔄 Starting HTTP polling fallback for video calls...');
-    
-    if (videoCallPollingInterval) {
-        clearInterval(videoCallPollingInterval);
-    }
-    
-    videoCallPollingInterval = setInterval(async () => {
-        try {
-            const response = await fetch(`/chat/{{ $trade->id }}/video-call/messages?since=${lastPollTime}`);
-            
-            // Check if response is HTML (error page) instead of JSON
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                console.error('❌ Received non-JSON response:', contentType);
-                console.error('Response text:', await response.text());
-                return;
-            }
-            
-            const data = await response.json();
-            
-            if (data.success && data.messages && data.messages.length > 0) {
-                console.log('📞 Polling received messages:', data.messages);
-                
-                for (const message of data.messages) {
-                    if (message.type === 'video-call-offer' && message.toUserId === {{ auth()->id() }}) {
-                        console.log('📞 Processing video call offer via polling:', message);
-                        await handleVideoCallOffer(message);
-                    } else if (message.type === 'video-call-answer' && message.toUserId === {{ auth()->id() }}) {
-                        console.log('📞 Processing video call answer via polling:', message);
-                        await handleVideoCallAnswer(message);
-                    } else if (message.type === 'video-call-ice-candidate' && message.toUserId === {{ auth()->id() }}) {
-                        console.log('📞 Processing ICE candidate via polling:', message);
-                        await handleIceCandidate(message);
-                    } else if (message.type === 'video-call-end' && message.fromUserId !== {{ auth()->id() }}) {
-                        console.log('📞 Processing video call end via polling:', message);
-                        handleVideoCallEnd(message);
-                    }
-                }
-                
-                lastPollTime = Date.now();
-            }
-        } catch (error) {
-            console.error('❌ Error polling for video call messages:', error);
-            // If it's a JSON parsing error, it might be an HTML error page
-            if (error.message.includes('Unexpected token') && error.message.includes('<!DOCTYPE')) {
-                console.error('❌ Received HTML error page instead of JSON. Check if the route exists.');
-            }
-        }
-    }, 5000); // Poll every 5 seconds
-    
-    // Show a notification that we're using polling fallback
-    const fallbackDiv = document.createElement('div');
-    fallbackDiv.className = 'bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4';
-    fallbackDiv.innerHTML = `
-        <div class="flex">
-            <div class="py-1">
-                <svg class="fill-current h-6 w-6 text-yellow-500 mr-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"/>
-                </svg>
-            </div>
-            <div>
-                <p class="font-bold">Using Fallback Mode</p>
-                <p class="text-sm">Video calls are working via HTTP polling. Real-time features may be slightly delayed.</p>
-            </div>
-        </div>
-    `;
-    
-    const chatContainer = document.querySelector('.chat-container') || document.querySelector('.bg-white');
-    if (chatContainer) {
-        chatContainer.insertBefore(fallbackDiv, chatContainer.firstChild);
-    }
+    console.log('ℹ️ Video call polling disabled - using Firebase Realtime Database for signaling');
+    // Video calls now use Firebase Realtime Database for signaling
+    // No HTTP polling needed - reduces server load
 }
 
 function stopVideoCallPolling() {
@@ -3603,131 +3537,9 @@ let timeInterval = setInterval(function() {
 // Keep track of the last message count
 let lastMessageCount = window.initialMessageCount;
 
-// Smart message polling - only if Laravel Echo is not working
-let messagePollingInterval = null;
-let pollingFrequency = 5000; // Start with 5 seconds (optimized from 10s)
-let lastActivity = Date.now();
-let consecutiveEmptyPolls = 0;
-
-// Check if Echo is available (handle null case from tracking prevention)
-if (!window.Echo || window.Echo === null) {
-    console.log('🔄 Laravel Echo not available, starting smart message polling...');
-    startSmartMessagePolling();
-    
-    // Track user activity to optimize polling
-    ['click', 'keypress', 'mousemove', 'scroll'].forEach(event => {
-        document.addEventListener(event, () => {
-            lastActivity = Date.now();
-            
-            // If user becomes active and polling is slow, speed it up
-            if (pollingFrequency > 5000) {
-                pollingFrequency = 5000;
-                startSmartMessagePolling();
-                console.log('🚀 User active - speeding up message polling to 5s');
-            }
-        }, { passive: true });
-    });
-}
-
-function startSmartMessagePolling() {
-    if (messagePollingInterval) {
-        clearInterval(messagePollingInterval);
-    }
-    
-    messagePollingInterval = setInterval(() => {
-        checkForNewMessages();
-    }, pollingFrequency);
-}
-
-function adjustPollingFrequency() {
-    const timeSinceActivity = Date.now() - lastActivity;
-    
-    // If no activity for 30 seconds, slow down polling
-    if (timeSinceActivity > 30000) {
-        pollingFrequency = Math.min(15000, pollingFrequency + 2000); // Max 15 seconds (optimized)
-    } else {
-        pollingFrequency = Math.max(5000, pollingFrequency - 1000); // Min 5 seconds (optimized)
-    }
-    
-    // If too many empty polls, slow down
-    if (consecutiveEmptyPolls > 5) {
-        pollingFrequency = Math.min(15000, pollingFrequency + 2000); // Max 15 seconds (optimized)
-    }
-    
-    // Restart polling with new frequency
-    startSmartMessagePolling();
-}
-
-function checkForNewMessages() {
-    fetch('/chat/{{ $trade->id }}/messages', {
-        credentials: 'same-origin', // Include cookies for session
-        headers: {
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-        .then(response => {
-            // Check if response is OK, handle 401/403 specifically
-            if (response.status === 401 || response.status === 403) {
-                console.warn('⚠️ Authentication failed for message polling - session may have expired');
-                // Don't throw error, just log and continue
-                return response.json().catch(() => ({ error: 'Authentication failed' }));
-            }
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success && data.count > lastMessageCount) {
-                // Get only the new messages
-                const newMessages = data.messages.slice(lastMessageCount);
-                lastMessageCount = data.count;
-                
-                // Reset activity tracking
-                lastActivity = Date.now();
-                consecutiveEmptyPolls = 0;
-
-                // Add only new messages to chat
-                newMessages.forEach(msg => {
-                    addMessageToChat(
-                        msg,
-                        msg.sender.firstname + ' ' + msg.sender.lastname,
-                        new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        msg.sender_id === window.authUserId
-                    );
-                });
-                
-                console.log(`📨 Received ${newMessages.length} new messages`);
-            } else {
-                // No new messages
-                consecutiveEmptyPolls++;
-                
-                // Adjust polling frequency every 10 polls
-                if (consecutiveEmptyPolls % 10 === 0) {
-                    adjustPollingFrequency();
-                    console.log(`🔄 Adjusted polling frequency to ${pollingFrequency}ms after ${consecutiveEmptyPolls} empty polls`);
-                }
-            }
-        })
-        .catch(error => {
-            console.error("Error checking for new messages:", error);
-            consecutiveEmptyPolls++;
-            
-            // Handle rate limiting specifically
-            if (error.message && error.message.includes('429')) {
-                console.log('🔄 Rate limited - slowing down message polling');
-                pollingFrequency = Math.min(30000, pollingFrequency + 5000); // Slow down significantly
-                startSmartMessagePolling();
-                return;
-            }
-            
-            // Slow down on other errors
-            if (consecutiveEmptyPolls % 5 === 0) {
-                adjustPollingFrequency();
-            }
-        });
-}
+// Message polling is now handled by ChatManager.js
+// This inline polling code has been disabled to prevent duplicate polling
+// ChatManager will handle polling if Echo is not available
 
 // Report User: open/close helpers
 function openReportUserModal() {
