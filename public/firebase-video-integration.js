@@ -161,6 +161,12 @@ class FirebaseVideoIntegration {
     
     // Setup Firebase listeners for call events
     setupFirebaseListeners() {
+        // Prevent duplicate listeners - if already attached, detach first
+        if (this.callsListenerCallback && this.roomRef) {
+            this.log('⚠️ Listeners already attached, detaching old ones first...');
+            this.detachCallListeners();
+        }
+        
         const callsRef = this.roomRef.child('calls');
         const initializationTime = Date.now();
         
@@ -615,8 +621,42 @@ class FirebaseVideoIntegration {
         this.isEndingCall = true;
         
         try {
-            // Clean up resources without writing to Firebase (partner already did that)
-            this.cleanupCallResources();
+            // DON'T call endCall() here - just clean up UI and resources
+            // Partner already wrote to Firebase, so we just need to clean up locally
+            
+            // Stop camera/mic
+            if (this.localStream) {
+                try {
+                    this.localStream.getTracks().forEach(track => track.stop());
+                } catch (error) {
+                    this.log(`⚠️ Error stopping local stream tracks: ${error.message}`, 'warning');
+                }
+                this.localStream = null;
+            }
+            
+            // Close peer connection
+            if (this.peerConnection) {
+                try {
+                    this.peerConnection.close();
+                } catch (error) {
+                    this.log(`⚠️ Error closing peer connection: ${error.message}`, 'warning');
+                }
+                this.peerConnection = null;
+            }
+            
+            // Stop timer
+            if (this.timer) {
+                clearInterval(this.timer);
+                this.timer = null;
+            }
+            
+            // Reset state
+            this.isConnected = false;
+            this.isInitiator = false;
+            this.isActive = false;
+            this.callId = null;
+            this.partnerId = null;
+            this.remoteStream = null;
             
             // Notify UI to clean up
             this.onCallEnded();
@@ -633,7 +673,7 @@ class FirebaseVideoIntegration {
     
     // End the call (called when user explicitly ends the call)
     async endCall() {
-        // Prevent re-entry
+        // Stop if already ending - prevent infinite loop
         if (this.isEndingCall) {
             this.log('⚠️ Already ending call, skipping...');
             return;
@@ -645,11 +685,31 @@ class FirebaseVideoIntegration {
         try {
             this.log('📞 Ending video call...');
             
-            // Send end call signal via Firebase (only if we have an active call)
-            // NOTE: We don't detach listeners here because:
-            // 1. The listener checks `call.fromUserId !== this.userId` to ignore our own end-call signals
-            // 2. The guard flag `isEndingCall` prevents re-entry
-            // 3. We need listeners to stay attached for future calls
+            // 1. Stop camera/mic first
+            if (this.localStream) {
+                try {
+                    this.localStream.getTracks().forEach(track => track.stop());
+                } catch (error) {
+                    this.log(`⚠️ Error stopping local stream tracks: ${error.message}`, 'warning');
+                }
+                this.localStream = null;
+            }
+            
+            // 2. Close peer connection
+            if (this.peerConnection) {
+                try {
+                    this.peerConnection.close();
+                } catch (error) {
+                    this.log(`⚠️ Error closing peer connection: ${error.message}`, 'warning');
+                }
+                this.peerConnection = null;
+            }
+            
+            // 3. CRITICAL: Remove Firebase listeners FIRST before writing to Firebase
+            // This prevents the listener from triggering handleCallEnd() when we write
+            this.detachCallListeners();
+            
+            // 4. Now safe to write to Firebase (only if we have an active call)
             if (this.callId && this.partnerId && this.isActive) {
                 try {
                     const callRef = this.roomRef.child(`calls/${this.callId}_end`);
@@ -667,8 +727,27 @@ class FirebaseVideoIntegration {
                 }
             }
             
-            // Clean up resources
-            this.cleanupCallResources();
+            // 5. Clean up remaining resources (timer and state)
+            if (this.timer) {
+                clearInterval(this.timer);
+                this.timer = null;
+            }
+            
+            // Reset state
+            this.isConnected = false;
+            this.isInitiator = false;
+            this.isActive = false;
+            this.callId = null;
+            this.partnerId = null;
+            this.remoteStream = null;
+            
+            // 6. Reattach listeners for future calls (after a short delay)
+            setTimeout(() => {
+                if (!this.isActive && this.roomRef) {
+                    this.setupFirebaseListeners();
+                    this.log('🔌 Reattached Firebase listeners for future calls');
+                }
+            }, 2000);
             
             this.log('✅ Call ended');
         } catch (error) {
