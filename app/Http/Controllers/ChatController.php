@@ -337,11 +337,26 @@ class ChatController extends Controller
     public function getMessages(Trade $trade)
     {
         try {
+            // Middleware('auth') already handles authentication - this method only runs if user is authenticated
+            // Add logging for debugging session issues
+            Log::info('Chat messages request', [
+                'trade_id' => $trade->id,
+                'user_id' => Auth::id(),
+                'session_id' => session()->getId(),
+                'session_driver' => config('session.driver'),
+                'url' => request()->url()
+            ]);
+            
             $user = Auth::user();
             
             // Check if user is part of this trade
             if ($trade->user_id !== $user->id && 
                 !$trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists()) {
+                Log::warning('Unauthorized chat access attempt', [
+                    'user_id' => $user->id,
+                    'trade_id' => $trade->id,
+                    'trade_owner' => $trade->user_id
+                ]);
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
@@ -353,13 +368,22 @@ class ChatController extends Controller
                 return $m;
             });
             
+            Log::info('Messages retrieved successfully', [
+                'trade_id' => $trade->id,
+                'message_count' => $messages->count()
+            ]);
+            
             return response()->json([
                 'success' => true,
                 'count' => $messages->count(),
                 'messages' => $messages
             ]);
         } catch (\Exception $e) {
-            Log::error('Get messages error: ' . $e->getMessage());
+            Log::error('Get messages error: ' . $e->getMessage(), [
+                'trade_id' => $trade->id,
+                'user_id' => Auth::id(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'error' => 'Failed to get messages: ' . $e->getMessage()
             ], 500);

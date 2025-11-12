@@ -53,8 +53,14 @@
             
             function loadEchoFallback() {
                 if (typeof window.Echo === 'undefined') {
+                    // Try to load Echo, but handle gracefully if blocked by tracking prevention
                     const echoScript = document.createElement('script');
                     echoScript.src = 'https://cdn.jsdelivr.net/npm/laravel-echo@1.15.3/dist/echo.iife.js';
+                    echoScript.onerror = () => {
+                        console.warn('⚠️ Laravel Echo CDN blocked by browser tracking prevention. Video calls will use Firebase only.');
+                        // Echo is optional - Firebase handles video call signaling
+                        window.Echo = null; // Set to null so code knows it's not available
+                    };
                     echoScript.onload = () => {
                         console.log('✅ Laravel Echo loaded via fallback');
                         initializeEchoFallback();

@@ -3605,11 +3605,12 @@ let lastMessageCount = window.initialMessageCount;
 
 // Smart message polling - only if Laravel Echo is not working
 let messagePollingInterval = null;
-let pollingFrequency = 10000; // Start with 10 seconds
+let pollingFrequency = 5000; // Start with 5 seconds (optimized from 10s)
 let lastActivity = Date.now();
 let consecutiveEmptyPolls = 0;
 
-if (!window.Echo) {
+// Check if Echo is available (handle null case from tracking prevention)
+if (!window.Echo || window.Echo === null) {
     console.log('🔄 Laravel Echo not available, starting smart message polling...');
     startSmartMessagePolling();
     
@@ -3619,10 +3620,10 @@ if (!window.Echo) {
             lastActivity = Date.now();
             
             // If user becomes active and polling is slow, speed it up
-            if (pollingFrequency > 8000) {
-                pollingFrequency = 8000;
+            if (pollingFrequency > 5000) {
+                pollingFrequency = 5000;
                 startSmartMessagePolling();
-                console.log('🚀 User active - speeding up message polling to 8s');
+                console.log('🚀 User active - speeding up message polling to 5s');
             }
         }, { passive: true });
     });
@@ -3643,14 +3644,14 @@ function adjustPollingFrequency() {
     
     // If no activity for 30 seconds, slow down polling
     if (timeSinceActivity > 30000) {
-        pollingFrequency = Math.min(20000, pollingFrequency + 2000); // Max 20 seconds
+        pollingFrequency = Math.min(15000, pollingFrequency + 2000); // Max 15 seconds (optimized)
     } else {
-        pollingFrequency = Math.max(8000, pollingFrequency - 1000); // Min 8 seconds
+        pollingFrequency = Math.max(5000, pollingFrequency - 1000); // Min 5 seconds (optimized)
     }
     
     // If too many empty polls, slow down
     if (consecutiveEmptyPolls > 5) {
-        pollingFrequency = Math.min(20000, pollingFrequency + 2000); // Max 20 seconds
+        pollingFrequency = Math.min(15000, pollingFrequency + 2000); // Max 15 seconds (optimized)
     }
     
     // Restart polling with new frequency
@@ -3658,8 +3659,25 @@ function adjustPollingFrequency() {
 }
 
 function checkForNewMessages() {
-    fetch('/chat/{{ $trade->id }}/messages')
-        .then(response => response.json())
+    fetch('/chat/{{ $trade->id }}/messages', {
+        credentials: 'same-origin', // Include cookies for session
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+        .then(response => {
+            // Check if response is OK, handle 401/403 specifically
+            if (response.status === 401 || response.status === 403) {
+                console.warn('⚠️ Authentication failed for message polling - session may have expired');
+                // Don't throw error, just log and continue
+                return response.json().catch(() => ({ error: 'Authentication failed' }));
+            }
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success && data.count > lastMessageCount) {
                 // Get only the new messages
