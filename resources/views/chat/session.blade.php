@@ -13,6 +13,190 @@
     window.partnerName = '{{ addslashes(($partner->firstname ?? "Unknown") . " " . ($partner->lastname ?? "User")) }}';
     window.initialMessageCount = parseInt('{{ $messages->count() }}');
     
+    // Initialize video call session data (will be populated by auto-initialization)
+    window.videoCallSession = {
+        tradeId: null,
+        userId: null,
+        partnerId: null,
+        partnerName: null,
+        firebaseRoomPath: null,
+        firebaseRoomId: null,
+        initialized: false,
+        firebaseConnected: false
+    };
+    
+    // Auto-initialize video call session on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('🚀 Auto-initializing video call session...');
+        
+        // Disable video call button until initialization completes
+        const videoCallBtn = document.getElementById('video-call-btn');
+        if (videoCallBtn) {
+            videoCallBtn.disabled = true;
+            videoCallBtn.style.opacity = '0.5';
+            videoCallBtn.style.cursor = 'not-allowed';
+            videoCallBtn.title = 'Initializing video call...';
+        }
+        
+        try {
+            // Fetch session data from API
+            const response = await fetch('/api/trades/get-current-session?trade_id=' + window.tradeId, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                credentials: 'same-origin'
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch session data: ' + response.statusText);
+            }
+            
+            const result = await response.json();
+            
+            if (!result.success || !result.data) {
+                throw new Error(result.message || 'No session data returned');
+            }
+            
+            // Store session data globally
+            window.videoCallSession = {
+                tradeId: result.data.tradeId,
+                userId: result.data.userId,
+                partnerId: result.data.partnerId,
+                partnerName: result.data.partnerName,
+                firebaseRoomPath: result.data.firebaseRoomPath,
+                firebaseRoomId: result.data.firebaseRoomId,
+                initialized: true,
+                firebaseConnected: false
+            };
+            
+            console.log('✅ Session data loaded:', window.videoCallSession);
+            
+            // Prepare Firebase room connection
+            await prepareFirebaseRoom();
+            
+            // Enable video call button
+            if (videoCallBtn) {
+                videoCallBtn.disabled = false;
+                videoCallBtn.style.opacity = '1';
+                videoCallBtn.style.cursor = 'pointer';
+                videoCallBtn.title = 'Start Video Call';
+            }
+            
+            console.log('✅ Video call session auto-initialization complete');
+            
+        } catch (error) {
+            console.error('❌ Failed to auto-initialize video call session:', error);
+            
+            // Still enable button but show warning
+            if (videoCallBtn) {
+                videoCallBtn.disabled = false;
+                videoCallBtn.style.opacity = '1';
+                videoCallBtn.style.cursor = 'pointer';
+                videoCallBtn.title = 'Video call (initialization failed - may have delays)';
+            }
+        }
+    });
+    
+    /**
+     * Prepare Firebase room connection and set user presence
+     */
+    async function prepareFirebaseRoom() {
+        if (!window.videoCallSession.initialized) {
+            console.error('❌ Cannot prepare Firebase room: session not initialized');
+            return;
+        }
+        
+        if (typeof firebase === 'undefined') {
+            console.error('❌ Firebase SDK not loaded');
+            return;
+        }
+        
+        try {
+            console.log('🔥 Preparing Firebase room connection...');
+            
+            // Get Firebase config
+            const firebaseConfig = window.firebaseConfig;
+            if (!firebaseConfig) {
+                throw new Error('Firebase configuration not found');
+            }
+            
+            // Initialize Firebase app if not already initialized
+            let app;
+            try {
+                app = firebase.app();
+            } catch (error) {
+                if (error.code === 'app/duplicate-app') {
+                    app = firebase.app();
+                } else {
+                    app = firebase.initializeApp(firebaseConfig);
+                }
+            }
+            
+            const database = firebase.database();
+            // Use the full path: video_rooms/{roomId}
+            const roomRef = database.ref(window.videoCallSession.firebaseRoomPath);
+            
+            // Set user presence as online with ready: false
+            const userRef = roomRef.child(`users/${window.videoCallSession.userId}`);
+            await userRef.set({
+                userId: window.videoCallSession.userId,
+                status: 'online',
+                ready: false,
+                joinedAt: Date.now(),
+                lastSeen: Date.now()
+            });
+            
+            console.log('✅ User presence set in Firebase room');
+            
+            // Set up room metadata
+            const roomMetaRef = roomRef.child('metadata');
+            await roomMetaRef.set({
+                tradeId: window.videoCallSession.tradeId,
+                user1: Math.min(window.videoCallSession.userId, window.videoCallSession.partnerId),
+                user2: Math.max(window.videoCallSession.userId, window.videoCallSession.partnerId),
+                createdAt: Date.now(),
+                maxUsers: 2
+            });
+            
+            // Listen for partner online status
+            const partnerRef = roomRef.child(`users/${window.videoCallSession.partnerId}`);
+            partnerRef.on('value', (snapshot) => {
+                const partnerData = snapshot.val();
+                if (partnerData) {
+                    const isOnline = partnerData.status === 'online';
+                    console.log(`👤 Partner ${isOnline ? 'is online' : 'is offline'}`);
+                    
+                    // Update UI to show partner status if needed
+                    const videoCallBtn = document.getElementById('video-call-btn');
+                    if (videoCallBtn && isOnline) {
+                        videoCallBtn.title = 'Start Video Call (Partner is online)';
+                    }
+                } else {
+                    console.log('👤 Partner is offline');
+                }
+            });
+            
+            // Update last seen every 30 seconds
+            setInterval(() => {
+                userRef.update({ lastSeen: Date.now() });
+            }, 30000);
+            
+            // Clean up on page unload
+            window.addEventListener('beforeunload', () => {
+                userRef.remove();
+            });
+            
+            window.videoCallSession.firebaseConnected = true;
+            console.log('✅ Firebase room prepared and connected');
+            
+        } catch (error) {
+            console.error('❌ Error preparing Firebase room:', error);
+            throw error;
+        }
+    }
+    
     // Define openVideoChat immediately as a fallback (will be overridden by app.js if it loads)
     window.openVideoChat = function() {
         console.log('🎥 Opening video chat modal (fallback function)...');

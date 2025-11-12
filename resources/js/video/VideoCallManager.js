@@ -273,10 +273,22 @@ export class VideoCallManager {
         console.log('🔧 Setting up Firebase video call listeners...');
 
         try {
+            // Use pre-loaded session data if available (from auto-initialization)
+            const sessionData = window.videoCallSession;
+            const userId = sessionData?.initialized ? sessionData.userId : this.userId;
+            const tradeId = sessionData?.initialized ? sessionData.tradeId : this.tradeId;
+            const partnerId = sessionData?.initialized ? sessionData.partnerId : this.partnerId;
+            
+            if (sessionData?.initialized) {
+                console.log('✅ Using pre-loaded video call session data');
+            } else {
+                console.warn('⚠️ Using fallback data - session not auto-initialized');
+            }
+
             this.firebaseVideoCall = new FirebaseVideoIntegration({
-                userId: this.userId,
-                tradeId: this.tradeId,
-                partnerId: this.partnerId,
+                userId: userId,
+                tradeId: tradeId,
+                partnerId: partnerId,
                 onCallReceived: async (call) => {
                     console.log('📞 Incoming call received via Firebase:', call);
 
@@ -339,6 +351,15 @@ export class VideoCallManager {
         console.log('🚀 Starting video call with Firebase...');
 
         try {
+            // Use pre-loaded session data if available
+            if (window.videoCallSession?.initialized) {
+                console.log('✅ Using pre-loaded session data for instant call start');
+                // Update instance variables from pre-loaded data
+                this.tradeId = window.videoCallSession.tradeId;
+                this.userId = window.videoCallSession.userId;
+                this.partnerId = window.videoCallSession.partnerId;
+            }
+            
             // Ensure local stream is available
             if (!this.localStream && !window.localStream) {
                 console.log('⚠️ No local stream available, trying to initialize camera...');

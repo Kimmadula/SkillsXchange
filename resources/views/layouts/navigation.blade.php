@@ -1035,9 +1035,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let yOffset = 0;
 
     // Touch events for mobile only
-    draggableToggle.addEventListener('touchstart', dragStart, false);
-    draggableToggle.addEventListener('touchend', dragEnd, false);
-    draggableToggle.addEventListener('touchmove', drag, false);
+    // touchstart can be passive since it doesn't prevent default
+    draggableToggle.addEventListener('touchstart', dragStart, { passive: true });
+    draggableToggle.addEventListener('touchend', dragEnd, { passive: true });
+    // touchmove cannot be passive because we call preventDefault() in drag()
+    draggableToggle.addEventListener('touchmove', drag, { passive: false });
 
     function dragStart(e) {
         initialX = e.touches[0].clientX - xOffset;

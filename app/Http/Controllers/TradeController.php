@@ -814,6 +814,86 @@ class TradeController extends Controller
         return view('trades.ongoing', compact('ongoing', 'ownedOngoing', 'requestedOngoing'));
     }
 
+    /**
+     * API endpoint to get current active trade session for video call initialization
+     */
+    public function getCurrentSession(Request $request)
+    {
+        $user = Auth::user();
+        $tradeId = $request->input('trade_id');
+
+        // If trade_id is provided, use it; otherwise get the first active ongoing trade
+        if ($tradeId) {
+            $trade = Trade::where('id', $tradeId)
+                ->where('status', 'ongoing')
+                ->first();
+        } else {
+            // Get first active ongoing trade where user is owner
+            $trade = Trade::where('user_id', $user->id)
+                ->where('status', 'ongoing')
+                ->first();
+            
+            // If not owner, check if user is requester with accepted request
+            if (!$trade) {
+                $trade = Trade::whereHas('requests', function($query) use ($user) {
+                    $query->where('requester_id', $user->id)
+                          ->where('status', 'accepted');
+                })
+                ->where('status', 'ongoing')
+                ->first();
+            }
+        }
+
+        if (!$trade) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No active trade session found'
+            ], 404);
+        }
+
+        // Determine partner (same logic as ChatController)
+        $partner = null;
+        if ($trade->user_id == $user->id) {
+            // User is the trade owner, partner is the requester with accepted request
+            $acceptedRequest = $trade->requests()
+                ->where('status', 'accepted')
+                ->first();
+            
+            if ($acceptedRequest) {
+                $partner = $acceptedRequest->requester;
+            }
+        } else {
+            // User is the requester, partner is the trade owner
+            $partner = $trade->user;
+        }
+
+        if (!$partner) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No partner found for this trade'
+            ], 404);
+        }
+
+        // Generate Firebase room path (matching existing structure in firebase-video-integration.js)
+        // Format: video_rooms/trade_{tradeId}_{minUserId}_{maxUserId}
+        $minUserId = min($user->id, $partner->id);
+        $maxUserId = max($user->id, $partner->id);
+        $firebaseRoomId = "trade_{$trade->id}_{$minUserId}_{$maxUserId}";
+        $firebaseRoomPath = "video_rooms/{$firebaseRoomId}";
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'tradeId' => $trade->id,
+                'userId' => $user->id,
+                'partnerId' => $partner->id,
+                'partnerName' => ($partner->firstname ?? '') . ' ' . ($partner->lastname ?? ''),
+                'firebaseRoomPath' => $firebaseRoomPath,
+                'firebaseRoomId' => $firebaseRoomId
+            ]
+        ]);
+    }
+
     public function notify()
     {
         $user = Auth::user();

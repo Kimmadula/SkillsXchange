@@ -7,8 +7,13 @@ import './session.js';
 
 // Wait for DOM to be ready
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Initializing SkillsXchange Session...');
-
+    // Check if we're on a page that needs session initialization
+    // Only initialize on pages with trade session data (chat pages, session pages)
+    const hasSessionContainer = document.querySelector('.app-container') || 
+                                document.querySelector('[data-trade-id]') ||
+                                document.querySelector('#chat-messages') ||
+                                document.querySelector('.chat-panel');
+    
     // Get data from window variables (set by Blade template) or DOM attributes
     const tradeId = window.tradeId || parseInt(document.querySelector('.app-container')?.dataset.tradeId || 
                      document.querySelector('[data-trade-id]')?.dataset.tradeId || '0');
@@ -20,16 +25,23 @@ document.addEventListener('DOMContentLoaded', () => {
                      document.querySelector('[data-partner-id]')?.dataset.partnerId || '0');
     const partnerName = window.partnerName || 'Partner';
 
-    // Validate data
+    // Only initialize if we have required data AND we're on a session page
+    // Silently skip initialization on pages that don't need it (like listing pages)
     if (!tradeId || !userId) {
-        console.error('Missing required data: tradeId or userId');
-        console.error('Available window variables:', {
-            tradeId: window.tradeId,
-            userId: window.authUserId || window.currentUserId,
-            partnerId: window.partnerId
-        });
+        // Only log if we're on a page that should have this data
+        if (hasSessionContainer) {
+            console.warn('⚠️ Session initialization skipped: Missing tradeId or userId');
+            console.warn('Available window variables:', {
+                tradeId: window.tradeId,
+                userId: window.authUserId || window.currentUserId,
+                partnerId: window.partnerId
+            });
+        }
+        // Silently return - this is expected on pages like /trades/ongoing
         return;
     }
+    
+    console.log('🚀 Initializing SkillsXchange Session...');
 
     if (!partnerId) {
         console.warn('Partner ID not found, some features may be limited');
