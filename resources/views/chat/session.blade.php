@@ -25,29 +25,18 @@
         firebaseConnected: false
     };
     
-    // Auto-initialize video call session on page load
+    // Auto-initialize video call session on page load (non-blocking)
     document.addEventListener('DOMContentLoaded', async function() {
-        console.log('🚀 Auto-initializing video call session...');
+        console.log('🚀 Auto-initializing video call session in background...');
         
-        // Disable video call button until initialization completes
+        // Keep button enabled - initialization happens in background
         const videoCallBtn = document.getElementById('video-call-btn');
         if (videoCallBtn) {
-            videoCallBtn.disabled = true;
-            videoCallBtn.style.opacity = '0.5';
-            videoCallBtn.style.cursor = 'not-allowed';
-            videoCallBtn.title = 'Initializing video call...';
+            videoCallBtn.disabled = false;
+            videoCallBtn.style.opacity = '1';
+            videoCallBtn.style.cursor = 'pointer';
+            videoCallBtn.title = 'Start Video Call';
         }
-        
-        // Set a timeout to enable button even if initialization hangs
-        const initializationTimeout = setTimeout(() => {
-            console.warn('⚠️ Video call initialization timeout - enabling button anyway');
-            if (videoCallBtn) {
-                videoCallBtn.disabled = false;
-                videoCallBtn.style.opacity = '1';
-                videoCallBtn.style.cursor = 'pointer';
-                videoCallBtn.title = 'Start Video Call (initialization may still be in progress)';
-            }
-        }, 10000); // 10 second timeout
         
         try {
             // Fetch session data from API with timeout
@@ -117,31 +106,20 @@
                 window.videoCallSession.firebaseConnected = false;
             }
             
-            // Clear timeout since we completed
-            clearTimeout(initializationTimeout);
-            
-            // Enable video call button
+            // Update button title to show initialization complete
             if (videoCallBtn) {
-                videoCallBtn.disabled = false;
-                videoCallBtn.style.opacity = '1';
-                videoCallBtn.style.cursor = 'pointer';
-                videoCallBtn.title = 'Start Video Call';
+                videoCallBtn.title = 'Start Video Call (ready)';
             }
             
             console.log('✅ Video call session auto-initialization complete');
             
         } catch (error) {
             console.error('❌ Failed to auto-initialize video call session:', error);
+            console.log('ℹ️ Video call will initialize when button is clicked');
             
-            // Clear timeout
-            clearTimeout(initializationTimeout);
-            
-            // Still enable button but show warning
+            // Button remains enabled - initialization will happen on click
             if (videoCallBtn) {
-                videoCallBtn.disabled = false;
-                videoCallBtn.style.opacity = '1';
-                videoCallBtn.style.cursor = 'pointer';
-                videoCallBtn.title = 'Start Video Call (initialization failed - will initialize on call start)';
+                videoCallBtn.title = 'Start Video Call (will initialize on click)';
             }
         }
     });

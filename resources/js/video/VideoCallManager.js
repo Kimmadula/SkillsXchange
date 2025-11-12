@@ -45,6 +45,65 @@ export class VideoCallManager {
         this.setupEventListeners();
         this.setupLazyFirebaseInitialization();
     }
+    
+    /**
+     * Initialize session data if not already loaded (fallback)
+     */
+    async initializeSessionData() {
+        if (window.videoCallSession?.initialized) {
+            return; // Already initialized
+        }
+        
+        try {
+            console.log('🔄 Initializing video call session data...');
+            
+            const response = await fetch(`/api/trades/get-current-session?trade_id=${this.tradeId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success && result.data) {
+                window.videoCallSession = {
+                    tradeId: result.data.tradeId,
+                    userId: result.data.userId,
+                    partnerId: result.data.partnerId,
+                    partnerName: result.data.partnerName,
+                    firebaseRoomPath: result.data.firebaseRoomPath,
+                    firebaseRoomId: result.data.firebaseRoomId,
+                    initialized: true,
+                    firebaseConnected: false
+                };
+                console.log('✅ Session data initialized:', window.videoCallSession);
+            } else {
+                throw new Error(result.message || 'No session data returned');
+            }
+        } catch (error) {
+            console.error('❌ Failed to initialize session data:', error);
+            // Create fallback session data from constructor parameters
+            window.videoCallSession = {
+                tradeId: this.tradeId,
+                userId: this.userId,
+                partnerId: this.partnerId,
+                partnerName: 'Partner',
+                firebaseRoomPath: `video_rooms/trade_${this.tradeId}_${Math.min(this.userId, this.partnerId)}_${Math.max(this.userId, this.partnerId)}`,
+                firebaseRoomId: `trade_${this.tradeId}_${Math.min(this.userId, this.partnerId)}_${Math.max(this.userId, this.partnerId)}`,
+                initialized: true,
+                firebaseConnected: false
+            };
+            console.log('✅ Using fallback session data');
+        }
+    }
 
     setupLazyFirebaseInitialization() {
         // Initialize Firebase on first user interaction (click, touch, or keypress)
@@ -151,6 +210,17 @@ export class VideoCallManager {
         
         this.isOpeningVideoChat = true;
         console.log('🎥 Opening video chat...');
+        
+        // Ensure session data is available (fallback initialization)
+        if (!window.videoCallSession?.initialized) {
+            console.log('ℹ️ Session data not pre-loaded, initializing now...');
+            try {
+                await this.initializeSessionData();
+            } catch (error) {
+                console.warn('⚠️ Failed to initialize session data, using fallback:', error);
+                // Continue with existing tradeId/userId/partnerId from constructor
+            }
+        }
         
         try {
             if (!this.videoModal) {
