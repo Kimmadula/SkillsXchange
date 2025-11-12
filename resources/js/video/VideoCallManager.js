@@ -10,6 +10,7 @@ export class VideoCallManager {
         this.pendingIncomingOffer = null;
         this.videoCallListenersInitialized = false;
         this.initializingVideoCall = false;
+        this.isOpeningVideoChat = false; // Guard flag to prevent duplicate openVideoChat calls
         
         // Video call state
         this.videoCallState = {
@@ -80,12 +81,28 @@ export class VideoCallManager {
     }
 
     setupEventListeners() {
-        // Open video chat button
+        // Open video chat button - remove old listeners first to prevent duplicates
         const videoCallBtn = document.getElementById('video-call-btn');
         if (videoCallBtn) {
-            videoCallBtn.addEventListener('click', () => {
-                this.openVideoChat();
-            });
+            // Clone and replace to remove all event listeners
+            const newBtn = videoCallBtn.cloneNode(true);
+            videoCallBtn.parentNode.replaceChild(newBtn, videoCallBtn);
+            
+            // Add single event listener with once option to prevent multiple calls
+            let isOpening = false;
+            newBtn.addEventListener('click', () => {
+                if (isOpening) {
+                    console.log('⚠️ Video chat already opening, skipping duplicate call');
+                    return;
+                }
+                isOpening = true;
+                this.openVideoChat().finally(() => {
+                    // Reset after a delay to allow modal to open
+                    setTimeout(() => {
+                        isOpening = false;
+                    }, 1000);
+                });
+            }, { once: false });
         }
 
         // Start call button
@@ -110,8 +127,13 @@ export class VideoCallManager {
         }
 
         // Make functions globally available for compatibility
-        window.openVideoChat = () => this.openVideoChat();
-        window.closeVideoChat = () => this.closeVideoChat();
+        // Only set if not already set to prevent overwriting
+        if (!window.openVideoChat || typeof window.openVideoChat !== 'function') {
+            window.openVideoChat = () => this.openVideoChat();
+        }
+        if (!window.closeVideoChat || typeof window.closeVideoChat !== 'function') {
+            window.closeVideoChat = () => this.closeVideoChat();
+        }
         window.startVideoCallFull = () => this.startCall();
         window.endVideoCall = () => this.endCall();
         window.handleVideoCallOffer = (data) => this.handleVideoCallOffer(data);
@@ -121,12 +143,20 @@ export class VideoCallManager {
     }
 
     async openVideoChat() {
-        console.log('🎥 Opening video chat...');
-        
-        if (!this.videoModal) {
-            console.error('❌ Video chat modal not found');
+        // Prevent duplicate calls
+        if (this.isOpeningVideoChat) {
+            console.log('⚠️ Video chat already opening, skipping duplicate call');
             return;
         }
+        
+        this.isOpeningVideoChat = true;
+        console.log('🎥 Opening video chat...');
+        
+        try {
+            if (!this.videoModal) {
+                console.error('❌ Video chat modal not found');
+                return;
+            }
 
         // Initialize Firebase only when user opens the video modal
         if (!this.videoCallListenersInitialized) {
@@ -186,7 +216,6 @@ export class VideoCallManager {
             window.localStream = stream;
 
             console.log('✅ Video chat opened successfully');
-
         } catch (error) {
             console.error('❌ Error accessing camera:', error);
 
@@ -206,6 +235,11 @@ export class VideoCallManager {
 
             this.showError(errorMessage);
             this.videoModal.style.display = 'none';
+        } finally {
+            // Reset flag after a delay to allow modal to open
+            setTimeout(() => {
+                this.isOpeningVideoChat = false;
+            }, 1000);
         }
     }
 
@@ -679,54 +713,114 @@ export class VideoCallManager {
                 if (this.remoteVideo && !this.remoteVideoSet) {
                     // Only set once to prevent play() interruptions
                     this.remoteVideoSet = true;
-                    this.remoteVideo.srcObject = data.remoteStream;
-                    this.remoteVideo.style.display = 'block';
-                    this.remoteVideo.autoplay = true;
-                    this.remoteVideo.playsInline = true;
-
-                    // Wait for video to be ready before playing
-                    this.remoteVideo.onloadedmetadata = () => {
-                        this.remoteVideo.play().catch(error => {
-                            console.error('Error playing remote video:', error);
-                        });
-                    };
-
-                        // Update video call state
-                        this.videoCallState.isActive = true;
-                        if (this.firebaseVideoCall && this.firebaseVideoCall.peerConnection) {
-                            this.videoCallState.peerConnection = this.firebaseVideoCall.peerConnection;
+                    
+                    // Check WebRTC connection state before showing video
+                    if (this.firebaseVideoCall && this.firebaseVideoCall.peerConnection) {
+                        const connectionState = this.firebaseVideoCall.peerConnection.connectionState;
+                        const iceState = this.firebaseVideoCall.peerConnection.iceConnectionState;
+                        
+                        console.log('🔗 WebRTC Connection State:', connectionState);
+                        console.log('🧊 ICE Connection State:', iceState);
+                        
+                        // Wait for connection to be established before showing video
+                        if (connectionState !== 'connected' && iceState !== 'connected' && iceState !== 'completed') {
+                            console.log('⏳ Waiting for WebRTC connection to establish...');
+                            
+                            // Wait for connection state change
+                            const waitForConnection = () => {
+                                return new Promise((resolve) => {
+                                    const checkConnection = () => {
+                                        const state = this.firebaseVideoCall.peerConnection.connectionState;
+                                        const iceState = this.firebaseVideoCall.peerConnection.iceConnectionState;
+                                        
+                                        if (state === 'connected' || (iceState === 'connected' || iceState === 'completed')) {
+                                            console.log('✅ WebRTC connection established');
+                                            resolve();
+                                        } else if (state === 'failed' || iceState === 'failed') {
+                                            console.warn('⚠️ WebRTC connection failed, showing video anyway');
+                                            resolve(); // Show video even if connection failed
+                                        } else {
+                                            // Check again in 500ms
+                                            setTimeout(checkConnection, 500);
+                                        }
+                                    };
+                                    
+                                    // Start checking
+                                    checkConnection();
+                                    
+                                    // Timeout after 10 seconds
+                                    setTimeout(() => {
+                                        console.warn('⚠️ Connection check timeout, showing video anyway');
+                                        resolve();
+                                    }, 10000);
+                                });
+                            };
+                            
+                            // Wait for connection, then set video
+                            waitForConnection().then(() => {
+                                this.setRemoteVideo(data.remoteStream);
+                            });
+                            
+                            return; // Exit early, video will be set after connection
                         }
-
-                        // Check WebRTC connection state if available
-                        if (this.firebaseVideoCall && this.firebaseVideoCall.peerConnection) {
-                            console.log('🔗 WebRTC Connection State:', this.firebaseVideoCall.peerConnection.connectionState);
-                            console.log('🧊 ICE Connection State:', this.firebaseVideoCall.peerConnection.iceConnectionState);
-
-                            // If connection is not fully established, wait for it
-                            if (this.firebaseVideoCall.peerConnection.connectionState !== 'connected') {
-                                console.warn('⚠️ WebRTC connection not fully established yet. Video may not render until connection is complete.');
-
-                                const onConnectionStateChange = () => {
-                                    const state = this.firebaseVideoCall.peerConnection.connectionState;
-                                    console.log('🔗 Connection state changed to:', state);
-
-                                    if (state === 'connected' || state === 'failed') {
-                                        this.firebaseVideoCall.peerConnection.removeEventListener('connectionstatechange', onConnectionStateChange);
-                                    }
-                                };
-
-                                this.firebaseVideoCall.peerConnection.addEventListener('connectionstatechange', onConnectionStateChange);
-                            }
-
-                            this.isCallActive = true;
-                            this.startCallTimer();
-                        }
+                    }
+                    
+                    // Connection is ready, set video immediately
+                    this.setRemoteVideo(data.remoteStream);
                 }
             }
         } catch (error) {
             console.error('Error handling answer:', error);
             this.showError('Failed to handle call answer: ' + error.message);
         }
+    }
+    
+    // Helper method to set remote video safely
+    setRemoteVideo(remoteStream) {
+        if (!this.remoteVideo) return;
+        
+        // Stop any existing video play attempts
+        if (this.remoteVideo.srcObject) {
+            try {
+                this.remoteVideo.pause();
+            } catch (e) {}
+        }
+        
+        this.remoteVideo.srcObject = remoteStream;
+        this.remoteVideo.style.display = 'block';
+        this.remoteVideo.autoplay = true;
+        this.remoteVideo.playsInline = true;
+
+        // Wait for video to be ready before playing
+        const playVideo = () => {
+            if (this.remoteVideo && this.remoteVideo.srcObject) {
+                this.remoteVideo.play().catch(error => {
+                    // Ignore AbortError - it means another play() was called
+                    if (error.name !== 'AbortError') {
+                        console.error('Error playing remote video:', error);
+                    }
+                });
+            }
+        };
+        
+        // Try playing when metadata is loaded
+        this.remoteVideo.onloadedmetadata = () => {
+            playVideo();
+        };
+        
+        // Also try playing immediately (in case metadata is already loaded)
+        if (this.remoteVideo.readyState >= 2) {
+            playVideo();
+        }
+        
+        // Update video call state
+        this.videoCallState.isActive = true;
+        if (this.firebaseVideoCall && this.firebaseVideoCall.peerConnection) {
+            this.videoCallState.peerConnection = this.firebaseVideoCall.peerConnection;
+        }
+
+        this.isCallActive = true;
+        this.startCallTimer();
     }
 
     handleVideoCallEnd(data) {

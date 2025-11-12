@@ -27,6 +27,7 @@ Route::get('/addresses/cebu/suggest', [AddressController::class, 'suggest']);
 // All video call signaling is handled client-side with Firebase
 
 // Get current active trade session for video call initialization
-Route::middleware('auth')->get('/trades/get-current-session', [\App\Http\Controllers\TradeController::class, 'getCurrentSession']);
+// Using 'auth:sanctum' for API routes, but also accept web session auth
+Route::middleware(['auth:sanctum', 'auth'])->get('/trades/get-current-session', [\App\Http\Controllers\TradeController::class, 'getCurrentSession']);
 
  

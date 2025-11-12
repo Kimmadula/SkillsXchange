@@ -44,13 +44,24 @@
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'Accept': 'application/json'
                 },
                 credentials: 'same-origin'
             });
             
+            // Check if response is HTML (error page) instead of JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('❌ Received non-JSON response from API:', contentType);
+                console.error('Response preview:', text.substring(0, 200));
+                throw new Error('API returned HTML instead of JSON. Check if the endpoint exists.');
+            }
+            
             if (!response.ok) {
-                throw new Error('Failed to fetch session data: ' + response.statusText);
+                const errorData = await response.json().catch(() => ({ message: response.statusText }));
+                throw new Error('Failed to fetch session data: ' + (errorData.message || response.statusText));
             }
             
             const result = await response.json();
@@ -637,8 +648,13 @@
     // Define updateCallStatus function before Firebase initialization
     function updateCallStatus(status) {
         const statusElement = document.getElementById('video-status');
-        if (statusElement) {
-            statusElement.textContent = status;
+        if (statusElement && statusElement.textContent !== undefined) {
+            try {
+                statusElement.textContent = status;
+            } catch (error) {
+                console.warn('⚠️ Error updating call status:', error);
+                return;
+            }
             
             // Add visual indicators based on status
             statusElement.className = 'call-status';
@@ -1823,21 +1839,8 @@
                         // openVideoChat will be defined later in the main script
                         
                         
-                        // Add event listener as backup to onclick
-                        document.addEventListener('DOMContentLoaded', function() {
-                            const videoCallBtn = document.getElementById('video-call-btn');
-                            if (videoCallBtn) {
-                                videoCallBtn.addEventListener('click', function() {
-                                    console.log('🎥 Video call button clicked via event listener');
-                                    if (typeof window.openVideoChat === 'function') {
-                                        window.openVideoChat();
-                                    } else {
-                                        console.error('openVideoChat function still not available');
-                                        alert('Video chat function not available. Please refresh the page.');
-                                    }
-                                });
-                                console.log('✅ Video call button event listener added');
-                            }
+                        // Event listener removed - handled by VideoCallManager to prevent duplicates
+                        // VideoCallManager.setupEventListeners() will attach the listener
                             
                             // Add event listener for start call button
                             const startCallBtn = document.getElementById('start-call-btn');
@@ -3516,19 +3519,48 @@ let sessionDurationElement = document.getElementById('session-duration');
 
 // Update current time every second
 let timeInterval = setInterval(function() {
-    const now = new Date();
-    currentTimeElement.textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    // Check if elements still exist before updating
+    if (!currentTimeElement || !currentTimeElement.parentNode) {
+        // Element was removed, clear interval
+        clearInterval(timeInterval);
+        timeInterval = null;
+        return;
+    }
     
-    // Calculate session duration
-    const diff = Math.floor((now - sessionStart) / 60000);
-    if (diff < 0) {
-        sessionDurationElement.textContent = 'Not started yet';
-    } else if (diff < 60) {
-        sessionDurationElement.textContent = diff + ' minutes';
-    } else {
-        const hours = Math.floor(diff / 60);
-        const minutes = diff % 60;
-        sessionDurationElement.textContent = hours + 'h ' + minutes + 'm';
+    try {
+        const now = new Date();
+        if (currentTimeElement && currentTimeElement.textContent !== undefined) {
+            currentTimeElement.textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+        
+        // Calculate session duration
+        if (sessionDurationElement && sessionDurationElement.parentNode) {
+            const diff = Math.floor((now - sessionStart) / 60000);
+            if (diff < 0) {
+                if (sessionDurationElement.textContent !== undefined) {
+                    sessionDurationElement.textContent = 'Not started yet';
+                }
+            } else if (diff < 60) {
+                if (sessionDurationElement.textContent !== undefined) {
+                    sessionDurationElement.textContent = diff + ' minutes';
+                }
+            } else {
+                const hours = Math.floor(diff / 60);
+                const minutes = diff % 60;
+                if (sessionDurationElement.textContent !== undefined) {
+                    sessionDurationElement.textContent = hours + 'h ' + minutes + 'm';
+                }
+            }
+        } else {
+            // Element removed, clear interval
+            clearInterval(timeInterval);
+            timeInterval = null;
+        }
+    } catch (error) {
+        console.warn('⚠️ Error updating time elements:', error);
+        // Clear interval if elements are gone
+        clearInterval(timeInterval);
+        timeInterval = null;
     }
 }, 1000);
 

@@ -7,7 +7,7 @@
         </div>
     </div>
     <div class="header-actions">
-        <button class="icon-btn" id="video-call-btn" onclick="openVideoChat()" title="Video Call">📹</button>
+        <button class="icon-btn" id="video-call-btn" title="Video Call">📹</button>
         <button class="icon-btn" title="Tasks">☑️<span class="badge">{{ $myTasks->count() + $partnerTasks->count() }}</span></button>
         <button class="icon-btn" title="Settings">⚙️</button>
     </div>

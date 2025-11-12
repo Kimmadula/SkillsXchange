@@ -773,6 +773,9 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         Route::post('/chat/{trade}/video-call/ice-candidate', [\App\Http\Controllers\VideoCallController::class, 'sendIceCandidate'])->name('video-call.ice-candidate');
         Route::post('/chat/{trade}/video-call/end', [\App\Http\Controllers\VideoCallController::class, 'endCall'])->name('video-call.end');
         Route::get('/chat/{trade}/video-call/messages', [\App\Http\Controllers\VideoCallController::class, 'pollMessages'])->name('video-call.messages');
+        
+        // Get current active trade session for video call initialization (web route for easier access)
+        Route::get('/api/trades/get-current-session', [\App\Http\Controllers\TradeController::class, 'getCurrentSession'])->name('api.trades.get-current-session');
     });
 
     // Debug route for chat access
