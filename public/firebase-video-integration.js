@@ -12,12 +12,15 @@ class FirebaseVideoIntegration {
         this.isInitiator = false;
         this.isConnected = false;
         this.isActive = false;
+        this.isEndingCall = false; // Guard flag to prevent infinite recursion
         
         // Firebase setup
         this.app = null;
         this.database = null;
         this.roomRef = null;
         this.callRef = null;
+        this.callsListenerCallback = null; // Store callback function for cleanup
+        this.usersListenerCallback = null; // Store callback function for cleanup
         
         // WebRTC state
         this.localStream = null;
@@ -164,7 +167,8 @@ class FirebaseVideoIntegration {
         // Track which calls we've already processed to avoid duplicates
         const processedCalls = new Set();
         
-        callsRef.on('value', (snapshot) => {
+        // Store the callback function so we can detach it later
+        this.callsListenerCallback = (snapshot) => {
             const calls = snapshot.val();
             if (!calls) return;
             
@@ -226,10 +230,12 @@ class FirebaseVideoIntegration {
                 }
                 
                 // Handle call end - only for active calls
-                if (call.type === 'end-call' && this.isActive &&
+                // IMPORTANT: Only handle if the call was ended by the partner (not by us)
+                // This prevents infinite recursion when we end the call ourselves
+                if (call.type === 'end-call' && this.isActive && !this.isEndingCall &&
                     (call.toUserId === this.userId || call.fromUserId === this.userId)) {
-                    // Only process if it's for the current call
-                    if (!call.callId || call.callId === this.callId) {
+                    // Only process if it's for the current call AND it was ended by the partner
+                    if ((!call.callId || call.callId === this.callId) && call.fromUserId !== this.userId) {
                         this.log('📞 Call ended by partner');
                         this.handleCallEnd();
                         processedCalls.add(callId);
@@ -243,18 +249,24 @@ class FirebaseVideoIntegration {
                 processedCalls.clear();
                 entries.slice(-50).forEach(id => processedCalls.add(id));
             }
-        });
+        };
+        
+        // Attach the listener
+        callsRef.on('value', this.callsListenerCallback);
         
         // Listen for user presence changes
         const usersRef = this.roomRef.child('users');
-        usersRef.on('value', (snapshot) => {
+        this.usersListenerCallback = (snapshot) => {
             const users = snapshot.val();
             if (users) {
                 const userCount = Object.keys(users).length;
                 this.log(`👥 Room has ${userCount} users`);
                 this.onParticipantUpdate?.(users);
             }
-        });
+        };
+        
+        // Attach the listener
+        usersRef.on('value', this.usersListenerCallback);
     }
     
     // Start a video call
@@ -588,38 +600,121 @@ class FirebaseVideoIntegration {
         this.log('✅ ICE candidate added');
     }
     
-    // Handle call end
+    // Handle call end (called when partner ends the call)
+    // This should ONLY handle UI cleanup, NOT trigger another endCall()
     handleCallEnd() {
-        this.log('📞 Handling call end...');
-        this.endCall();
-        this.onCallEnded();
-    }
-    
-    // End the call
-    async endCall() {
-        this.log('📞 Ending video call...');
+        this.log('📞 Handling call end from partner...');
         
-        // Send end call signal via Firebase
-        if (this.callId && this.partnerId) {
-            const callRef = this.roomRef.child(`calls/${this.callId}_end`);
-            await callRef.set({
-                type: 'end-call',
-                fromUserId: this.userId,
-                toUserId: this.partnerId,
-                callId: this.callId,
-                timestamp: Date.now()
-            });
+        // Prevent re-entry
+        if (this.isEndingCall) {
+            this.log('⚠️ Already ending call, skipping...');
+            return;
         }
         
+        // Set guard flag to prevent recursion
+        this.isEndingCall = true;
+        
+        try {
+            // Clean up resources without writing to Firebase (partner already did that)
+            this.cleanupCallResources();
+            
+            // Notify UI to clean up
+            this.onCallEnded();
+        } catch (error) {
+            this.log(`❌ Error in handleCallEnd: ${error.message}`, 'error');
+            this.onError(error);
+        } finally {
+            // Reset guard flag after a short delay to allow cleanup to complete
+            setTimeout(() => {
+                this.isEndingCall = false;
+            }, 1000);
+        }
+    }
+    
+    // End the call (called when user explicitly ends the call)
+    async endCall() {
+        // Prevent re-entry
+        if (this.isEndingCall) {
+            this.log('⚠️ Already ending call, skipping...');
+            return;
+        }
+        
+        // Set guard flag to prevent recursion
+        this.isEndingCall = true;
+        
+        try {
+            this.log('📞 Ending video call...');
+            
+            // Send end call signal via Firebase (only if we have an active call)
+            // NOTE: We don't detach listeners here because:
+            // 1. The listener checks `call.fromUserId !== this.userId` to ignore our own end-call signals
+            // 2. The guard flag `isEndingCall` prevents re-entry
+            // 3. We need listeners to stay attached for future calls
+            if (this.callId && this.partnerId && this.isActive) {
+                try {
+                    const callRef = this.roomRef.child(`calls/${this.callId}_end`);
+                    await callRef.set({
+                        type: 'end-call',
+                        fromUserId: this.userId,
+                        toUserId: this.partnerId,
+                        callId: this.callId,
+                        timestamp: Date.now()
+                    });
+                    this.log('📤 End call signal sent to Firebase');
+                } catch (error) {
+                    this.log(`⚠️ Error sending end call signal: ${error.message}`, 'warning');
+                    // Continue with cleanup even if Firebase write fails
+                }
+            }
+            
+            // Clean up resources
+            this.cleanupCallResources();
+            
+            this.log('✅ Call ended');
+        } catch (error) {
+            this.log(`❌ Error in endCall: ${error.message}`, 'error');
+            this.onError(error);
+        } finally {
+            // Reset guard flag after a short delay to allow cleanup to complete
+            setTimeout(() => {
+                this.isEndingCall = false;
+            }, 1000);
+        }
+    }
+    
+    // Detach Firebase listeners to prevent infinite recursion
+    detachCallListeners() {
+        try {
+            if (this.callsListenerCallback && this.roomRef) {
+                const callsRef = this.roomRef.child('calls');
+                callsRef.off('value', this.callsListenerCallback);
+                this.callsListenerCallback = null;
+                this.log('🔌 Detached calls listener');
+            }
+        } catch (error) {
+            this.log(`⚠️ Error detaching calls listener: ${error.message}`, 'warning');
+        }
+    }
+    
+    // Clean up call resources (shared by endCall and handleCallEnd)
+    cleanupCallResources() {
         // Stop local stream
         if (this.localStream) {
-            this.localStream.getTracks().forEach(track => track.stop());
+            try {
+                this.localStream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                this.log(`⚠️ Error stopping local stream tracks: ${error.message}`, 'warning');
+            }
             this.localStream = null;
         }
         
         // Close peer connection
         if (this.peerConnection) {
-            this.peerConnection.close();
+            try {
+                this.peerConnection.close();
+            } catch (error) {
+                this.log(`⚠️ Error closing peer connection: ${error.message}`, 'warning');
+            }
             this.peerConnection = null;
         }
         
@@ -636,8 +731,6 @@ class FirebaseVideoIntegration {
         this.callId = null;
         this.partnerId = null;
         this.remoteStream = null;
-        
-        this.log('✅ Call ended');
     }
     
     // Setup presence cleanup
@@ -665,10 +758,18 @@ class FirebaseVideoIntegration {
             const seconds = Math.floor((elapsed % 60000) / 1000);
             const timeString = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
             
-            // Update timer display
+            // Update timer display with null check
             const timerElement = document.getElementById('call-timer');
-            if (timerElement) {
-                timerElement.textContent = timeString;
+            if (timerElement && timerElement.textContent !== undefined) {
+                try {
+                    timerElement.textContent = timeString;
+                } catch (error) {
+                    // Element might have been removed from DOM, clear timer
+                    if (this.timer) {
+                        clearInterval(this.timer);
+                        this.timer = null;
+                    }
+                }
             }
         }, 1000);
     }
@@ -717,15 +818,34 @@ class FirebaseVideoIntegration {
             this.presenceInterval = null;
         }
         
-        // Remove user from room
-        if (this.roomRef) {
-            const userRef = this.roomRef.child(`users/${this.userId}`);
-            userRef.remove();
-            this.roomRef.off();
+        // Detach all listeners first
+        this.detachCallListeners();
+        
+        if (this.usersListenerCallback && this.roomRef) {
+            try {
+                const usersRef = this.roomRef.child('users');
+                usersRef.off('value', this.usersListenerCallback);
+                this.usersListenerCallback = null;
+            } catch (error) {
+                this.log(`⚠️ Error detaching users listener: ${error.message}`, 'warning');
+            }
         }
         
-        // End call if active
-        this.endCall();
+        // Remove user from room
+        if (this.roomRef) {
+            try {
+                const userRef = this.roomRef.child(`users/${this.userId}`);
+                userRef.remove();
+                this.roomRef.off();
+            } catch (error) {
+                this.log(`⚠️ Error removing user from room: ${error.message}`, 'warning');
+            }
+        }
+        
+        // End call if active (but don't write to Firebase during cleanup)
+        if (this.isActive) {
+            this.cleanupCallResources();
+        }
         
         this.log('🧹 Cleanup completed');
     }

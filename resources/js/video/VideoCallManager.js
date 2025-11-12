@@ -395,9 +395,13 @@ export class VideoCallManager {
 
             // Update UI to show calling state
             if (this.videoModal) {
-                if (this.videoStatus) {
+            if (this.videoStatus && this.videoStatus.textContent !== undefined) {
+                try {
                     this.videoStatus.textContent = 'Starting call...';
+                } catch (error) {
+                    console.warn('⚠️ Error setting video status textContent:', error);
                 }
+            }
                 
                 // Show call controls
                 if (this.startCallBtn) {
@@ -462,8 +466,12 @@ export class VideoCallManager {
             console.log('📞 Starting call with partner ID:', this.partnerId);
 
             // Update UI to show calling state
-            if (this.videoStatus) {
-                this.videoStatus.textContent = 'Initializing...';
+            if (this.videoStatus && this.videoStatus.textContent !== undefined) {
+                try {
+                    this.videoStatus.textContent = 'Initializing...';
+                } catch (error) {
+                    console.warn('⚠️ Error setting video status textContent:', error);
+                }
             }
 
             // Start the call using Firebase
@@ -480,8 +488,12 @@ export class VideoCallManager {
                 }
 
                 // Update status
-                if (this.videoStatus) {
-                    this.videoStatus.textContent = 'Call in progress...';
+                if (this.videoStatus && this.videoStatus.textContent !== undefined) {
+                    try {
+                        this.videoStatus.textContent = 'Call in progress...';
+                    } catch (error) {
+                        console.warn('⚠️ Error setting video status textContent:', error);
+                    }
                 }
 
                 // Update UI buttons
@@ -554,8 +566,12 @@ export class VideoCallManager {
             this.endCallBtn.style.display = 'none';
         }
 
-        if (this.videoStatus) {
-            this.videoStatus.textContent = 'Call ended';
+        if (this.videoStatus && this.videoStatus.textContent !== undefined) {
+            try {
+                this.videoStatus.textContent = 'Call ended';
+            } catch (error) {
+                console.warn('⚠️ Error setting video status textContent:', error);
+            }
         }
 
         this.isCallActive = false;
@@ -601,8 +617,12 @@ export class VideoCallManager {
             // Ring and show UI, but do not auto-answer
             this.pendingIncomingOffer = { rtcOffer, fromUserId: data.fromUserId, callId: data.callId };
 
-            if (this.videoStatus) {
-                this.videoStatus.textContent = 'Incoming call...';
+            if (this.videoStatus && this.videoStatus.textContent !== undefined) {
+                try {
+                    this.videoStatus.textContent = 'Incoming call...';
+                } catch (error) {
+                    console.warn('⚠️ Error setting video status textContent:', error);
+                }
             }
 
             if (this.startCallBtn) {
@@ -711,8 +731,17 @@ export class VideoCallManager {
             const seconds = Math.floor((elapsed % 60000) / 1000);
             const timeString = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
             
-            if (this.callTimerElement) {
-                this.callTimerElement.textContent = timeString;
+            if (this.callTimerElement && this.callTimerElement.textContent !== undefined) {
+                try {
+                    this.callTimerElement.textContent = timeString;
+                } catch (error) {
+                    // Element might have been removed from DOM, clear timer
+                    console.warn('⚠️ Error setting timer textContent:', error);
+                    if (this.callTimer) {
+                        clearInterval(this.callTimer);
+                        this.callTimer = null;
+                    }
+                }
             }
         }, 1000);
     }
@@ -723,8 +752,12 @@ export class VideoCallManager {
             this.callTimer = null;
         }
         this.callStartTime = null;
-        if (this.callTimerElement) {
-            this.callTimerElement.textContent = '00:00';
+        if (this.callTimerElement && this.callTimerElement.textContent !== undefined) {
+            try {
+                this.callTimerElement.textContent = '00:00';
+            } catch (error) {
+                console.warn('⚠️ Error resetting timer textContent:', error);
+            }
         }
     }
 
