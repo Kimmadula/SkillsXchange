@@ -236,16 +236,29 @@ class FirebaseVideoIntegration {
                         return;
                     }
                     
-                    this.log(`🔍 Checking answer: callId=${call.callId}, this.callId=${this.callId}, toUserId=${call.toUserId}, this.userId=${this.userId}, isInitiator=${this.isInitiator}, isActive=${this.isActive}`);
+                    this.log(`🔍 Checking answer: callId=${call.callId}, this.callId=${this.callId}, toUserId=${call.toUserId}, this.userId=${this.userId}, fromUserId=${call.fromUserId}, isInitiator=${this.isInitiator}, isActive=${this.isActive}`);
                     
-                    // Check if this answer is for us
+                    // Check if this answer is for us (addressed to us)
                     const isForUs = call.toUserId === this.userId || call.toUserId == this.userId;
                     // Match callId exactly or check if one contains the other (for flexible matching)
                     const callIdMatches = call.callId === this.callId || 
                         (typeof call.callId === 'string' && typeof this.callId === 'string' && 
                          (call.callId.includes(this.callId) || this.callId.includes(call.callId)));
                     
-                    if (isForUs && (callIdMatches || !this.callId) && this.isInitiator && this.isActive && call.answer) {
+                    // IMPORTANT: Only process if we're the initiator (caller) AND the answer is addressed to us
+                    // The callee should never process their own answer
+                    const shouldProcess = isForUs && (callIdMatches || !this.callId) && this.isInitiator && call.answer;
+                    
+                    // Log detailed info for debugging
+                    if (isForUs && call.answer) {
+                        this.log(`🔍 Answer details: isForUs=${isForUs}, callIdMatches=${callIdMatches}, isInitiator=${this.isInitiator}, isActive=${this.isActive}, hasAnswer=${!!call.answer}`);
+                    }
+                    
+                    if (shouldProcess) {
+                        // If call is not active yet, that's okay - we might be processing the answer before isActive is set
+                        if (!this.isActive) {
+                            this.log('⚠️ Answer received but call not marked as active yet - processing anyway', 'warning');
+                        }
                         // Mark as processed immediately to prevent race conditions
                         processedCalls.add(callId);
                         
@@ -282,6 +295,47 @@ class FirebaseVideoIntegration {
                         }
                     } else {
                         // Log why answer is being ignored (only once per callId to reduce noise)
+                        // But always log if we're the initiator and it's for us - this is important!
+                        if (this.isInitiator && isForUs && call.answer) {
+                            if (!callIdMatches && this.callId) {
+                                this.log(`⚠️ CRITICAL: Answer for us but callId mismatch! call.callId=${call.callId}, this.callId=${this.callId}`, 'error');
+                                this.log(`⚠️ Attempting to process anyway since answer is addressed to us...`, 'warning');
+                                // Try to process anyway if callId is close (contains our callId or vice versa)
+                                if (typeof call.callId === 'string' && typeof this.callId === 'string') {
+                                    // Check if callIds are related (one contains the other or they're similar)
+                                    const callIdSimilar = call.callId.includes(this.callId) || this.callId.includes(call.callId) || 
+                                                         call.callId.replace(/_5$|_9$/, '') === this.callId.replace(/_5$|_9$/, '');
+                                    if (callIdSimilar) {
+                                        this.log(`✅ CallIds are similar, processing answer anyway`, 'info');
+                                        processedCalls.add(callId);
+                                        
+                                        let answerData = call.answer;
+                                        if (typeof answerData === 'object' && answerData.type && answerData.sdp) {
+                                            if (!(answerData instanceof RTCSessionDescription)) {
+                                                answerData = new RTCSessionDescription(answerData);
+                                            }
+                                            this.handleCallAnswer(answerData);
+                                        }
+                                        return;
+                                    }
+                                }
+                            }
+                            if (!this.isActive) {
+                                this.log(`⚠️ CRITICAL: Answer for us but call not active! Processing anyway...`, 'warning');
+                                // Process anyway - the answer is for us and we're the initiator
+                                processedCalls.add(callId);
+                                
+                                let answerData = call.answer;
+                                if (typeof answerData === 'object' && answerData.type && answerData.sdp) {
+                                    if (!(answerData instanceof RTCSessionDescription)) {
+                                        answerData = new RTCSessionDescription(answerData);
+                                    }
+                                    this.handleCallAnswer(answerData);
+                                }
+                                return;
+                            }
+                        }
+                        
                         if (!processedCalls.has(callId + '_ignored')) {
                             if (!isForUs) {
                                 this.log(`⚠️ Answer not for us: toUserId=${call.toUserId}, our userId=${this.userId}`);
@@ -290,10 +344,7 @@ class FirebaseVideoIntegration {
                                 this.log(`⚠️ Answer callId mismatch: call.callId=${call.callId}, this.callId=${this.callId}`);
                             }
                             if (!this.isInitiator) {
-                                this.log('⚠️ Not the initiator, ignoring answer');
-                            }
-                            if (!this.isActive) {
-                                this.log('⚠️ Call not active, ignoring answer');
+                                // This is normal for callee - they shouldn't process answers
                             }
                             if (!call.answer) {
                                 this.log('⚠️ Answer missing in call object');
