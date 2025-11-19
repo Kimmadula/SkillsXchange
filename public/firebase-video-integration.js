@@ -285,30 +285,69 @@ class FirebaseVideoIntegration {
             this.startTime = Date.now(); // Track when call started for filtering old ICE candidates
             
             // Use existing stream if provided, otherwise get new one
-            if (existingStream && existingStream.getTracks().length > 0) {
+            if (existingStream && existingStream.getTracks && existingStream.getTracks().length > 0) {
                 this.log('✅ Using existing local stream');
                 this.localStream = existingStream;
             } else {
                 // Update status
                 this.onStatusUpdate?.('Getting camera access...');
                 
-                // Get user media
-                this.localStream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: 1280, height: 720 },
-                    audio: { echoCancellation: true, noiseSuppression: true }
-                });
-                
-                this.log('✅ Local stream obtained');
+                try {
+                    // Get user media
+                    this.localStream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: 1280, height: 720 },
+                        audio: { echoCancellation: true, noiseSuppression: true }
+                    });
+                    
+                    this.log('✅ Local stream obtained');
+                } catch (mediaError) {
+                    let errorMessage = 'Failed to access camera/microphone. ';
+                    if (mediaError.name === 'NotAllowedError') {
+                        errorMessage += 'Please allow camera and microphone access in your browser settings.';
+                    } else if (mediaError.name === 'NotFoundError') {
+                        errorMessage += 'No camera or microphone found. Please connect a device.';
+                    } else if (mediaError.name === 'NotReadableError') {
+                        errorMessage += 'Camera or microphone is being used by another application.';
+                    } else {
+                        errorMessage += mediaError.message;
+                    }
+                    this.log(`❌ ${errorMessage}`, 'error');
+                    this.onStatusUpdate?.(errorMessage);
+                    this.onError(new Error(errorMessage));
+                    throw new Error(errorMessage);
+                }
+            }
+            
+            // Validate local stream before proceeding
+            if (!this.localStream || typeof this.localStream.getTracks !== 'function') {
+                const errorMsg = 'Local stream is invalid or not available';
+                this.log(`❌ ${errorMsg}`, 'error');
+                this.onStatusUpdate?.(errorMsg);
+                throw new Error(errorMsg);
             }
             
             // Log stream details
             const tracks = this.localStream.getTracks();
+            if (!tracks || tracks.length === 0) {
+                const errorMsg = 'Local stream has no tracks';
+                this.log(`❌ ${errorMsg}`, 'error');
+                this.onStatusUpdate?.(errorMsg);
+                throw new Error(errorMsg);
+            }
             this.log(`📹 Local stream has ${tracks.length} tracks: ${tracks.map(t => `${t.kind}(${t.enabled ? 'enabled' : 'disabled'})`).join(', ')}`);
             
             this.onStatusUpdate?.('Setting up connection...');
             
-            // Create peer connection
+            // Create peer connection AFTER getting user media
             await this.createPeerConnection();
+            
+            // Validate peer connection was created
+            if (!this.peerConnection) {
+                const errorMsg = 'Failed to create peer connection';
+                this.log(`❌ ${errorMsg}`, 'error');
+                this.onStatusUpdate?.(errorMsg);
+                throw new Error(errorMsg);
+            }
             
             // Add local stream to peer connection
             let tracksAdded = 0;
@@ -363,25 +402,60 @@ class FirebaseVideoIntegration {
             this.startTime = Date.now(); // Track when call started for filtering old ICE candidates
             
             // Use existing stream if provided, otherwise get new one
-            if (existingStream && existingStream.getTracks().length > 0) {
+            if (existingStream && existingStream.getTracks && existingStream.getTracks().length > 0) {
                 this.log('✅ Using existing local stream');
                 this.localStream = existingStream;
             } else {
-                // Get user media
-                this.localStream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: 1280, height: 720 },
-                    audio: { echoCancellation: true, noiseSuppression: true }
-                });
-                
-                this.log('✅ Local stream obtained');
+                try {
+                    // Get user media
+                    this.localStream = await navigator.mediaDevices.getUserMedia({
+                        video: { width: 1280, height: 720 },
+                        audio: { echoCancellation: true, noiseSuppression: true }
+                    });
+                    
+                    this.log('✅ Local stream obtained');
+                } catch (mediaError) {
+                    let errorMessage = 'Failed to access camera/microphone. ';
+                    if (mediaError.name === 'NotAllowedError') {
+                        errorMessage += 'Please allow camera and microphone access in your browser settings.';
+                    } else if (mediaError.name === 'NotFoundError') {
+                        errorMessage += 'No camera or microphone found. Please connect a device.';
+                    } else if (mediaError.name === 'NotReadableError') {
+                        errorMessage += 'Camera or microphone is being used by another application.';
+                    } else {
+                        errorMessage += mediaError.message;
+                    }
+                    this.log(`❌ ${errorMessage}`, 'error');
+                    this.onError(new Error(errorMessage));
+                    throw new Error(errorMessage);
+                }
+            }
+            
+            // Validate local stream before proceeding
+            if (!this.localStream || typeof this.localStream.getTracks !== 'function') {
+                const errorMsg = 'Local stream is invalid or not available';
+                this.log(`❌ ${errorMsg}`, 'error');
+                throw new Error(errorMsg);
             }
             
             // Log stream details
             const tracks = this.localStream.getTracks();
+            if (!tracks || tracks.length === 0) {
+                const errorMsg = 'Local stream has no tracks';
+                this.log(`❌ ${errorMsg}`, 'error');
+                throw new Error(errorMsg);
+            }
             this.log(`📹 Local stream has ${tracks.length} tracks: ${tracks.map(t => `${t.kind}(${t.enabled ? 'enabled' : 'disabled'})`).join(', ')}`);
             
-            // Create peer connection
+            // Create peer connection AFTER getting user media
             await this.createPeerConnection();
+            
+            // Validate peer connection was created
+            if (!this.peerConnection) {
+                const errorMsg = 'Failed to create peer connection';
+                this.log(`❌ ${errorMsg}`, 'error');
+                throw new Error(errorMsg);
+            }
             
             // Add local stream to peer connection
             let tracksAdded = 0;
@@ -464,22 +538,36 @@ class FirebaseVideoIntegration {
         
         // Handle ICE candidates
         this.peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-                const candidateType = event.candidate.type; // 'host', 'srflx', 'relay'
-                const candidateProtocol = event.candidate.protocol; // 'udp', 'tcp'
-                const candidateAddress = event.candidate.address;
-                this.log(`📡 ICE candidate generated: ${candidateType} ${candidateProtocol} ${candidateAddress || ''}`);
-                
-                // Log if using TURN (relay) - important for NAT traversal
-                if (candidateType === 'relay') {
-                    this.log('✅ Using TURN server (relay) for NAT traversal', 'success');
-                } else if (candidateType === 'srflx') {
-                    this.log('✅ Using STUN server (srflx) for NAT discovery', 'info');
+            // Add null check
+            if (!this.peerConnection) {
+                this.log('⚠️ PeerConnection is null in ICE candidate handler', 'warning');
+                return;
+            }
+            
+            try {
+                if (event.candidate) {
+                    const candidateType = event.candidate.type; // 'host', 'srflx', 'relay'
+                    const candidateProtocol = event.candidate.protocol; // 'udp', 'tcp'
+                    const candidateAddress = event.candidate.address;
+                    this.log(`📡 ICE candidate generated: ${candidateType} ${candidateProtocol} ${candidateAddress || ''}`);
+                    
+                    // Log if using TURN (relay) - important for NAT traversal
+                    if (candidateType === 'relay') {
+                        this.log('✅ Using TURN server (relay) for NAT traversal', 'success');
+                    } else if (candidateType === 'srflx') {
+                        this.log('✅ Using STUN server (srflx) for NAT discovery', 'info');
+                    }
+                    
+                    // Send ICE candidate (errors are handled internally)
+                    this.sendIceCandidate(event.candidate).catch(err => {
+                        // Already logged in sendIceCandidate, just prevent unhandled rejection
+                        this.log('⚠️ ICE candidate send failed (non-critical)', 'warning');
+                    });
+                } else {
+                    this.log('✅ ICE candidate gathering completed');
                 }
-                
-                this.sendIceCandidate(event.candidate);
-            } else {
-                this.log('✅ ICE candidate gathering completed');
+            } catch (error) {
+                this.log(`❌ Error in ICE candidate handler: ${error.message}`, 'error');
             }
         };
         
@@ -492,31 +580,56 @@ class FirebaseVideoIntegration {
             // Store the first stream that arrives
             if (!this.remoteStream && event.streams && event.streams[0]) {
                 this.remoteStream = event.streams[0];
-                const tracks = this.remoteStream.getTracks();
-                this.log('📹 Remote stream tracks:', tracks.length, 'tracks:', tracks.map(t => `${t.kind}(${t.id})`).join(', '));
                 
-                // Log track states
-                tracks.forEach(track => {
-                    this.log(`  - Track ${track.kind}: readyState=${track.readyState}, enabled=${track.enabled}, muted=${track.muted}`);
-                });
+                // Validate stream before accessing getTracks
+                if (this.remoteStream && typeof this.remoteStream.getTracks === 'function') {
+                    const tracks = this.remoteStream.getTracks();
+                    if (tracks) {
+                        this.log('📹 Remote stream tracks:', tracks.length, 'tracks:', tracks.map(t => `${t.kind}(${t.id})`).join(', '));
+                        
+                        // Log track states
+                        tracks.forEach(track => {
+                            this.log(`  - Track ${track.kind}: readyState=${track.readyState}, enabled=${track.enabled}, muted=${track.muted}`);
+                        });
+                    }
+                } else {
+                    this.log('⚠️ Remote stream is invalid, cannot get tracks', 'warning');
+                }
             } else if (this.remoteStream && event.streams && event.streams[0]) {
                 // Additional tracks added to existing stream
-                const tracks = this.remoteStream.getTracks();
-                this.log('📹 Additional track added. Total tracks:', tracks.length);
+                if (typeof this.remoteStream.getTracks === 'function') {
+                    const tracks = this.remoteStream.getTracks();
+                    if (tracks) {
+                        this.log('📹 Additional track added. Total tracks:', tracks.length);
+                    }
+                }
             }
             
             // Only notify once, even if multiple tracks arrive (audio + video)
             // Wait a bit longer to ensure all tracks are added (especially if audio and video come separately)
             if (!this.remoteStreamNotified && this.remoteStream) {
+                // Add null check before accessing getTracks
+                if (!this.remoteStream || typeof this.remoteStream.getTracks !== 'function') {
+                    this.log('⚠️ Remote stream is invalid, cannot get tracks', 'warning');
+                    return;
+                }
+                
                 const tracks = this.remoteStream.getTracks();
                 // Wait until we have at least one track, and give time for both audio and video
-                if (tracks.length > 0) {
+                if (tracks && tracks.length > 0) {
                     this.remoteStreamNotified = true;
                     // Delay to ensure all tracks are added (audio and video may arrive separately)
                     setTimeout(() => {
+                        // Double-check stream still exists and is valid
+                        if (!this.remoteStream || typeof this.remoteStream.getTracks !== 'function') {
+                            this.log('⚠️ Remote stream became invalid during delay', 'warning');
+                            this.remoteStreamNotified = false;
+                            return;
+                        }
+                        
                         const finalTracks = this.remoteStream.getTracks();
-                        this.log('✅ Notifying about remote stream with', finalTracks.length, 'tracks');
-                        if (finalTracks.length > 0) {
+                        this.log('✅ Notifying about remote stream with', finalTracks ? finalTracks.length : 0, 'tracks');
+                        if (finalTracks && finalTracks.length > 0) {
                             this.onCallAnswered(this.remoteStream);
                         } else {
                             this.log('⚠️ No tracks in stream after delay, waiting longer...', 'warning');
@@ -532,55 +645,112 @@ class FirebaseVideoIntegration {
         
         // Handle connection state changes
         this.peerConnection.onconnectionstatechange = () => {
-            const state = this.peerConnection.connectionState;
-            this.log(`🔗 Connection state: ${state}`);
-            this.onConnectionStateChange(state);
+            // Add null check to prevent errors
+            if (!this.peerConnection) {
+                this.log('⚠️ PeerConnection is null in connection state change handler', 'warning');
+                return;
+            }
             
-            if (state === 'connected') {
-                this.isConnected = true;
-                this.log('✅ Call connected successfully!');
-            } else if (state === 'failed') {
-                this.isConnected = false;
-                this.log('❌ Connection failed', 'error');
+            try {
+                const state = this.peerConnection.connectionState;
+                if (!state) {
+                    this.log('⚠️ Connection state is undefined', 'warning');
+                    return;
+                }
+                
+                this.log(`🔗 Connection state: ${state}`);
+                this.onConnectionStateChange(state);
+                
+                if (state === 'connected') {
+                    this.isConnected = true;
+                    this.log('✅ Call connected successfully!');
+                } else if (state === 'failed') {
+                    this.isConnected = false;
+                    this.log('❌ Connection failed', 'error');
+                }
+            } catch (error) {
+                this.log(`❌ Error in connection state change handler: ${error.message}`, 'error');
             }
         };
         
         // Handle ICE connection state changes
         this.peerConnection.oniceconnectionstatechange = () => {
-            const state = this.peerConnection.iceConnectionState;
-            const gatheringState = this.peerConnection.iceGatheringState;
-            this.log(`🧊 ICE connection state: ${state}, gathering: ${gatheringState}`);
+            // Add null check to prevent errors
+            if (!this.peerConnection) {
+                this.log('⚠️ PeerConnection is null in ICE connection state change handler', 'warning');
+                return;
+            }
             
-            if (state === 'connected' || state === 'completed') {
-                this.log('✅ ICE connection established successfully!', 'success');
-                // Log which candidates were used
-                this.peerConnection.getStats().then(stats => {
-                    stats.forEach(report => {
-                        if (report.type === 'candidate-pair' && report.state === 'succeeded') {
-                            this.log(`✅ Active candidate pair: ${report.localCandidateId} <-> ${report.remoteCandidateId}`, 'success');
+            try {
+                const state = this.peerConnection.iceConnectionState;
+                const gatheringState = this.peerConnection.iceGatheringState;
+                
+                if (!state) {
+                    this.log('⚠️ ICE connection state is undefined', 'warning');
+                    return;
+                }
+                
+                this.log(`🧊 ICE connection state: ${state}, gathering: ${gatheringState}`);
+                
+                if (state === 'connected' || state === 'completed') {
+                    this.log('✅ ICE connection established successfully!', 'success');
+                    // Log which candidates were used
+                    if (this.peerConnection && typeof this.peerConnection.getStats === 'function') {
+                        this.peerConnection.getStats().then(stats => {
+                            if (stats) {
+                                stats.forEach(report => {
+                                    if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+                                        this.log(`✅ Active candidate pair: ${report.localCandidateId} <-> ${report.remoteCandidateId}`, 'success');
+                                    }
+                                });
+                            }
+                        }).catch(err => {
+                            // Stats API might not be available in all browsers
+                            this.log('⚠️ Could not get connection stats', 'warning');
+                        });
+                    }
+                } else if (state === 'failed') {
+                    this.log('❌ ICE connection failed - may need TURN servers or check firewall', 'error');
+                    this.log('⚠️ Attempting ICE restart...', 'warning');
+                    try {
+                        if (this.peerConnection && typeof this.peerConnection.restartIce === 'function') {
+                            this.peerConnection.restartIce();
                         }
-                    });
-                }).catch(err => {
-                    // Stats API might not be available in all browsers
-                });
-            } else if (state === 'failed') {
-                this.log('❌ ICE connection failed - may need TURN servers or check firewall', 'error');
-                this.log('⚠️ Attempting ICE restart...', 'warning');
-                this.peerConnection.restartIce();
-            } else if (state === 'checking') {
-                this.log('🔍 ICE connection checking - trying to establish connection...', 'info');
-            } else if (state === 'disconnected') {
-                this.log('⚠️ ICE connection disconnected', 'warning');
+                    } catch (restartError) {
+                        this.log(`⚠️ Failed to restart ICE: ${restartError.message}`, 'warning');
+                    }
+                } else if (state === 'checking') {
+                    this.log('🔍 ICE connection checking - trying to establish connection...', 'info');
+                } else if (state === 'disconnected') {
+                    this.log('⚠️ ICE connection disconnected', 'warning');
+                }
+            } catch (error) {
+                this.log(`❌ Error in ICE connection state change handler: ${error.message}`, 'error');
             }
         };
         
         // Handle ICE gathering state
         this.peerConnection.onicegatheringstatechange = () => {
-            const state = this.peerConnection.iceGatheringState;
-            this.log(`🧊 ICE gathering state: ${state}`);
+            // Add null check to prevent errors
+            if (!this.peerConnection) {
+                this.log('⚠️ PeerConnection is null in ICE gathering state change handler', 'warning');
+                return;
+            }
             
-            if (state === 'complete') {
-                this.log('✅ ICE candidate gathering completed', 'success');
+            try {
+                const state = this.peerConnection.iceGatheringState;
+                if (!state) {
+                    this.log('⚠️ ICE gathering state is undefined', 'warning');
+                    return;
+                }
+                
+                this.log(`🧊 ICE gathering state: ${state}`);
+                
+                if (state === 'complete') {
+                    this.log('✅ ICE candidate gathering completed', 'success');
+                }
+            } catch (error) {
+                this.log(`❌ Error in ICE gathering state change handler: ${error.message}`, 'error');
             }
         };
         
@@ -589,54 +759,116 @@ class FirebaseVideoIntegration {
     
     // Send offer via Firebase
     async sendOffer(offer) {
-        const callRef = this.roomRef.child(`calls/${this.callId}`);
-        // Serialize the RTCSessionDescription to plain object for Firebase storage
-        const offerData = {
-            type: offer.type,
-            sdp: offer.sdp
-        };
-        await callRef.set({
-            type: 'offer',
-            fromUserId: this.userId,
-            toUserId: this.partnerId,
-            offer: offerData, // Store as plain object with type and sdp
-            callId: this.callId,
-            timestamp: Date.now()
-        });
-        this.log('📤 Offer sent via Firebase');
+        try {
+            // Validate inputs
+            if (!offer || !offer.type || !offer.sdp) {
+                throw new Error('Invalid offer: missing type or sdp');
+            }
+            if (!this.roomRef) {
+                throw new Error('Firebase room reference not initialized');
+            }
+            if (!this.callId) {
+                throw new Error('Call ID not set');
+            }
+            if (!this.userId || !this.partnerId) {
+                throw new Error('User IDs not set');
+            }
+            
+            const callRef = this.roomRef.child(`calls/${this.callId}`);
+            // Serialize the RTCSessionDescription to plain object for Firebase storage
+            const offerData = {
+                type: offer.type,
+                sdp: offer.sdp
+            };
+            await callRef.set({
+                type: 'offer',
+                fromUserId: this.userId,
+                toUserId: this.partnerId,
+                offer: offerData, // Store as plain object with type and sdp
+                callId: this.callId,
+                timestamp: Date.now()
+            });
+            this.log('📤 Offer sent via Firebase');
+        } catch (error) {
+            this.log(`❌ Error sending offer: ${error.message}`, 'error');
+            this.onError(error);
+            throw error;
+        }
     }
     
     // Send answer via Firebase
     async sendAnswer(answer) {
-        const callRef = this.roomRef.child(`calls/${this.callId}`);
-        // Serialize the RTCSessionDescription to plain object for Firebase storage
-        const answerData = {
-            type: answer.type,
-            sdp: answer.sdp
-        };
-        await callRef.set({
-            type: 'answer',
-            fromUserId: this.userId,
-            toUserId: this.partnerId,
-            answer: answerData, // Store as plain object with type and sdp
-            callId: this.callId,
-            timestamp: Date.now()
-        });
-        this.log('📤 Answer sent via Firebase');
+        try {
+            // Validate inputs
+            if (!answer || !answer.type || !answer.sdp) {
+                throw new Error('Invalid answer: missing type or sdp');
+            }
+            if (!this.roomRef) {
+                throw new Error('Firebase room reference not initialized');
+            }
+            if (!this.callId) {
+                throw new Error('Call ID not set');
+            }
+            if (!this.userId || !this.partnerId) {
+                throw new Error('User IDs not set');
+            }
+            
+            const callRef = this.roomRef.child(`calls/${this.callId}`);
+            // Serialize the RTCSessionDescription to plain object for Firebase storage
+            const answerData = {
+                type: answer.type,
+                sdp: answer.sdp
+            };
+            await callRef.set({
+                type: 'answer',
+                fromUserId: this.userId,
+                toUserId: this.partnerId,
+                answer: answerData, // Store as plain object with type and sdp
+                callId: this.callId,
+                timestamp: Date.now()
+            });
+            this.log('📤 Answer sent via Firebase');
+        } catch (error) {
+            this.log(`❌ Error sending answer: ${error.message}`, 'error');
+            this.onError(error);
+            throw error;
+        }
     }
     
     // Send ICE candidate via Firebase
     async sendIceCandidate(candidate) {
-        const callRef = this.roomRef.child(`calls/${this.callId}_ice_${Date.now()}`);
-        await callRef.set({
-            type: 'ice-candidate',
-            fromUserId: this.userId,
-            toUserId: this.partnerId,
-            candidate: candidate,
-            callId: this.callId,
-            timestamp: Date.now()
-        });
-        this.log('📤 ICE candidate sent via Firebase');
+        try {
+            // Validate inputs
+            if (!candidate) {
+                throw new Error('Invalid ICE candidate: candidate is null or undefined');
+            }
+            if (!this.roomRef) {
+                throw new Error('Firebase room reference not initialized');
+            }
+            if (!this.callId) {
+                // ICE candidates can be sent before callId is set, skip silently
+                this.log('⚠️ Skipping ICE candidate - call ID not set yet', 'warning');
+                return;
+            }
+            if (!this.userId || !this.partnerId) {
+                this.log('⚠️ Skipping ICE candidate - user IDs not set', 'warning');
+                return;
+            }
+            
+            const callRef = this.roomRef.child(`calls/${this.callId}_ice_${Date.now()}`);
+            await callRef.set({
+                type: 'ice-candidate',
+                fromUserId: this.userId,
+                toUserId: this.partnerId,
+                candidate: candidate,
+                callId: this.callId,
+                timestamp: Date.now()
+            });
+            this.log('📤 ICE candidate sent via Firebase');
+        } catch (error) {
+            // ICE candidate errors are non-critical, log but don't throw
+            this.log(`⚠️ Error sending ICE candidate (non-critical): ${error.message}`, 'warning');
+        }
     }
     
     // Handle incoming call
@@ -995,12 +1227,28 @@ class FirebaseVideoIntegration {
     
     // Get connection state
     getConnectionState() {
-        return this.peerConnection ? this.peerConnection.connectionState : 'disconnected';
+        if (!this.peerConnection) {
+            return 'disconnected';
+        }
+        try {
+            return this.peerConnection.connectionState || 'disconnected';
+        } catch (error) {
+            this.log(`⚠️ Error getting connection state: ${error.message}`, 'warning');
+            return 'disconnected';
+        }
     }
     
     // Check if call is active
     isCallActive() {
-        return this.isActive && this.peerConnection && this.peerConnection.connectionState === 'connected';
+        if (!this.isActive || !this.peerConnection) {
+            return false;
+        }
+        try {
+            return this.peerConnection.connectionState === 'connected';
+        } catch (error) {
+            this.log(`⚠️ Error checking call active state: ${error.message}`, 'warning');
+            return false;
+        }
     }
     
     // Cleanup
