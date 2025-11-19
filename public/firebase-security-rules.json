@@ -2,33 +2,39 @@
   "rules": {
     "video_rooms": {
       "$roomId": {
-        ".read": "auth != null && (data.child('metadata/user1').val() == auth.uid || data.child('metadata/user2').val() == auth.uid)",
-        ".write": "auth != null && (data.child('metadata/user1').val() == auth.uid || data.child('metadata/user2').val() == auth.uid)",
+        ".read": true,
+        ".write": true,
         "metadata": {
-          ".read": "auth != null && (data.child('user1').val() == auth.uid || data.child('user2').val() == auth.uid)",
-          ".write": "auth != null && (data.child('user1').val() == auth.uid || data.child('user2').val() == auth.uid)"
+          ".read": true,
+          ".write": true
         },
         "users": {
           "$userId": {
-            ".read": "auth != null && (data.parent().parent().child('metadata/user1').val() == auth.uid || data.parent().parent().child('metadata/user2').val() == auth.uid)",
-            ".write": "auth != null && (data.parent().parent().child('metadata/user1').val() == auth.uid || data.parent().parent().child('metadata/user2').val() == auth.uid)"
+            ".read": true,
+            ".write": true
           }
         },
         "calls": {
           "$callId": {
-            ".read": "auth != null && (data.parent().parent().child('metadata/user1').val() == auth.uid || data.parent().parent().child('metadata/user2').val() == auth.uid)",
-            ".write": "auth != null && (data.parent().parent().child('metadata/user1').val() == auth.uid || data.parent().parent().child('metadata/user2').val() == auth.uid)"
+            ".read": true,
+            ".write": true
           }
         }
       }
     },
+    "calls": {
+      "$callId": {
+        ".read": true,
+        ".write": true
+      }
+    },
     "test_connection": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true
     },
     "security_test": {
-      ".read": "auth != null",
-      ".write": "auth != null"
+      ".read": true,
+      ".write": true
     }
   }
 }
