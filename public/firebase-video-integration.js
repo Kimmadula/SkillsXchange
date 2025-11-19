@@ -1192,6 +1192,9 @@ class FirebaseVideoIntegration {
             this.callId = null;
             this.partnerId = null;
             this.remoteStream = null;
+            this.isProcessingAnswer = false;
+            this.answerProcessed = false;
+            this.processedAnswerCallId = null;
             
             // Notify UI to clean up
             this.onCallEnded();
@@ -1312,6 +1315,11 @@ class FirebaseVideoIntegration {
     
     // Clean up call resources (shared by endCall and handleCallEnd)
     cleanupCallResources() {
+        // Reset answer processing flags
+        this.isProcessingAnswer = false;
+        this.answerProcessed = false;
+        this.processedAnswerCallId = null;
+        
         // Stop local stream
         if (this.localStream) {
             try {
