@@ -13,6 +13,9 @@ class FirebaseVideoIntegration {
         this.isConnected = false;
         this.isActive = false;
         this.isEndingCall = false; // Guard flag to prevent infinite recursion
+        this.isProcessingAnswer = false; // Guard flag to prevent race conditions in answer processing
+        this.answerProcessed = false; // Track if answer has been successfully processed
+        this.processedAnswerCallId = null; // Track which callId's answer we've processed
         
         // Firebase setup
         this.app = null;
@@ -221,6 +224,18 @@ class FirebaseVideoIntegration {
                 // Handle incoming answer - initiator should accept partner's answer
                 // Accept answers that match our current callId and are addressed to us
                 if (call.type === 'answer') {
+                    // CRITICAL: Check if we've already processed this answer
+                    if (this.answerProcessed && this.processedAnswerCallId === call.callId) {
+                        // Already processed, skip silently (don't log to reduce noise)
+                        return;
+                    }
+                    
+                    // CRITICAL: Check if we're currently processing an answer
+                    if (this.isProcessingAnswer) {
+                        this.log('⚠️ Already processing answer, skipping duplicate', 'warning');
+                        return;
+                    }
+                    
                     this.log(`🔍 Checking answer: callId=${call.callId}, this.callId=${this.callId}, toUserId=${call.toUserId}, this.userId=${this.userId}, isInitiator=${this.isInitiator}, isActive=${this.isActive}`);
                     
                     // Check if this answer is for us
@@ -231,6 +246,9 @@ class FirebaseVideoIntegration {
                          (call.callId.includes(this.callId) || this.callId.includes(call.callId)));
                     
                     if (isForUs && (callIdMatches || !this.callId) && this.isInitiator && this.isActive && call.answer) {
+                        // Mark as processed immediately to prevent race conditions
+                        processedCalls.add(callId);
+                        
                         this.log('📞 Call answered - processing answer');
                         // Ensure answer is properly formatted
                         let answerData = call.answer;
@@ -243,34 +261,44 @@ class FirebaseVideoIntegration {
                             // Check if we've already set remote description
                             if (this.peerConnection && this.peerConnection.remoteDescription) {
                                 const currentRemoteDesc = this.peerConnection.remoteDescription;
-                                if (currentRemoteDesc.type === 'answer' && currentRemoteDesc.sdp === answerData.sdp) {
-                                    this.log('⚠️ Answer already processed, skipping duplicate', 'warning');
-                                    processedCalls.add(callId);
-                                    return;
+                                if (currentRemoteDesc.type === 'answer') {
+                                    // Check if SDP matches
+                                    if (currentRemoteDesc.sdp === answerData.sdp) {
+                                        this.log('✅ Answer already processed (SDP matches), skipping duplicate', 'info');
+                                        this.answerProcessed = true;
+                                        this.processedAnswerCallId = call.callId;
+                                        return;
+                                    } else {
+                                        this.log('⚠️ Remote description already set but SDP differs, this should not happen', 'warning');
+                                    }
                                 }
                             }
                             
+                            // Process the answer
                             this.handleCallAnswer(answerData);
-                            processedCalls.add(callId);
                         } else {
                             this.log('⚠️ Answer missing type or sdp', 'warning');
                             this.log('Answer data:', answerData);
                         }
                     } else {
-                        if (!isForUs) {
-                            this.log(`⚠️ Answer not for us: toUserId=${call.toUserId}, our userId=${this.userId}`);
-                        }
-                        if (!callIdMatches && this.callId) {
-                            this.log(`⚠️ Answer callId mismatch: call.callId=${call.callId}, this.callId=${this.callId}`);
-                        }
-                        if (!this.isInitiator) {
-                            this.log('⚠️ Not the initiator, ignoring answer');
-                        }
-                        if (!this.isActive) {
-                            this.log('⚠️ Call not active, ignoring answer');
-                        }
-                        if (!call.answer) {
-                            this.log('⚠️ Answer missing in call object');
+                        // Log why answer is being ignored (only once per callId to reduce noise)
+                        if (!processedCalls.has(callId + '_ignored')) {
+                            if (!isForUs) {
+                                this.log(`⚠️ Answer not for us: toUserId=${call.toUserId}, our userId=${this.userId}`);
+                            }
+                            if (!callIdMatches && this.callId) {
+                                this.log(`⚠️ Answer callId mismatch: call.callId=${call.callId}, this.callId=${this.callId}`);
+                            }
+                            if (!this.isInitiator) {
+                                this.log('⚠️ Not the initiator, ignoring answer');
+                            }
+                            if (!this.isActive) {
+                                this.log('⚠️ Call not active, ignoring answer');
+                            }
+                            if (!call.answer) {
+                                this.log('⚠️ Answer missing in call object');
+                            }
+                            processedCalls.add(callId + '_ignored');
                         }
                     }
                 }
@@ -335,6 +363,10 @@ class FirebaseVideoIntegration {
             this.callId = `call_${Date.now()}_${this.userId}`;
             this.isInitiator = true;
             this.startTime = Date.now(); // Track when call started for filtering old ICE candidates
+            // Reset answer processing flags
+            this.isProcessingAnswer = false;
+            this.answerProcessed = false;
+            this.processedAnswerCallId = null;
             
             // Use existing stream if provided, otherwise get new one
             if (existingStream && existingStream.getTracks && existingStream.getTracks().length > 0) {
@@ -452,6 +484,10 @@ class FirebaseVideoIntegration {
             this.log('📞 Answering video call...');
             this.isInitiator = false;
             this.startTime = Date.now(); // Track when call started for filtering old ICE candidates
+            // Reset answer processing flags (shouldn't be needed for callee, but reset for safety)
+            this.isProcessingAnswer = false;
+            this.answerProcessed = false;
+            this.processedAnswerCallId = null;
             
             // Use existing stream if provided, otherwise get new one
             if (existingStream && existingStream.getTracks && existingStream.getTracks().length > 0) {
@@ -946,6 +982,18 @@ class FirebaseVideoIntegration {
     
     // Handle call answer
     async handleCallAnswer(answer) {
+        // CRITICAL: Prevent duplicate processing
+        if (this.isProcessingAnswer) {
+            this.log('⚠️ Answer processing already in progress, skipping duplicate', 'warning');
+            return;
+        }
+        
+        // CRITICAL: Check if answer is already processed
+        if (this.answerProcessed) {
+            this.log('⚠️ Answer already processed, skipping duplicate', 'warning');
+            return;
+        }
+        
         this.log('📞 Handling call answer...');
         
         if (!this.peerConnection) {
@@ -953,19 +1001,29 @@ class FirebaseVideoIntegration {
             return;
         }
         
-        // Check if remote description is already set
+        // CRITICAL: Check if remote description is already set to answer
         if (this.peerConnection.remoteDescription) {
             const currentType = this.peerConnection.remoteDescription.type;
             if (currentType === 'answer') {
-                this.log('⚠️ Remote description already set to answer, checking if update needed...');
                 const currentSdp = this.peerConnection.remoteDescription.sdp;
                 const newSdp = answer.sdp || (answer instanceof RTCSessionDescription ? answer.sdp : null);
                 if (currentSdp === newSdp) {
-                    this.log('✅ Remote description already set with same SDP, skipping');
+                    this.log('✅ Remote description already set with same SDP, marking as processed');
+                    this.answerProcessed = true;
+                    this.processedAnswerCallId = this.callId;
+                    return;
+                } else {
+                    this.log('⚠️ Remote description already set but SDP differs - this should not happen', 'warning');
+                    // Don't try to set again, just mark as processed
+                    this.answerProcessed = true;
+                    this.processedAnswerCallId = this.callId;
                     return;
                 }
             }
         }
+        
+        // Set processing flag
+        this.isProcessingAnswer = true;
         
         // Ensure answer is an RTCSessionDescription
         let rtcAnswer;
@@ -976,42 +1034,89 @@ class FirebaseVideoIntegration {
         } else {
             this.log('❌ Invalid answer format', 'error');
             this.log('Answer object:', answer);
+            this.isProcessingAnswer = false;
             return;
         }
         
         try {
-            await this.peerConnection.setRemoteDescription(rtcAnswer);
-            this.log('✅ Remote answer set successfully');
-            this.log(`📊 Connection state after setting answer: ${this.peerConnection.connectionState}`);
-            this.log(`🧊 ICE connection state: ${this.peerConnection.iceConnectionState}`);
+            // Check connection state before setting
+            const signalingState = this.peerConnection.signalingState;
+            this.log(`📊 Signaling state before setting answer: ${signalingState}`);
+            
+            // Only set if in correct state
+            if (signalingState === 'have-local-offer') {
+                await this.peerConnection.setRemoteDescription(rtcAnswer);
+                this.log('✅ Remote answer set successfully');
+                this.log(`📊 Connection state after setting answer: ${this.peerConnection.connectionState}`);
+                this.log(`🧊 ICE connection state: ${this.peerConnection.iceConnectionState}`);
+                this.log(`📊 Signaling state after setting answer: ${this.peerConnection.signalingState}`);
 
-            // Process any pending remote ICE candidates that arrived before remote description
-            if (this.pendingRemoteCandidates.length > 0) {
-                this.log(`🔄 Processing ${this.pendingRemoteCandidates.length} buffered ICE candidates (caller)...`);
-                for (const candidate of this.pendingRemoteCandidates) {
-                    try {
-                        await this.peerConnection.addIceCandidate(candidate);
-                        this.log('✅ Buffered ICE candidate processed (caller)');
-                    } catch (e) {
-                        this.log(`❌ Error processing buffered ICE candidate (caller): ${e.message}`, 'error');
+                // Mark as processed
+                this.answerProcessed = true;
+                this.processedAnswerCallId = this.callId;
+
+                // Process any pending remote ICE candidates that arrived before remote description
+                if (this.pendingRemoteCandidates.length > 0) {
+                    this.log(`🔄 Processing ${this.pendingRemoteCandidates.length} buffered ICE candidates (caller)...`);
+                    for (const candidate of this.pendingRemoteCandidates) {
+                        try {
+                            await this.peerConnection.addIceCandidate(candidate);
+                            this.log('✅ Buffered ICE candidate processed (caller)');
+                        } catch (e) {
+                            this.log(`❌ Error processing buffered ICE candidate (caller): ${e.message}`, 'error');
+                        }
                     }
+                    this.pendingRemoteCandidates = [];
+                    this.log('✅ All buffered ICE candidates processed (caller)');
                 }
-                this.pendingRemoteCandidates = [];
-                this.log('✅ All buffered ICE candidates processed (caller)');
+            } else {
+                // Check if already set
+                if (this.peerConnection.remoteDescription && this.peerConnection.remoteDescription.type === 'answer') {
+                    this.log(`⚠️ Signaling state is ${signalingState}, but remote description is already set to answer`);
+                    this.log('✅ Answer already processed, continuing...');
+                    this.answerProcessed = true;
+                    this.processedAnswerCallId = this.callId;
+                } else {
+                    throw new Error(`Cannot set remote answer in signaling state: ${signalingState}. Expected: have-local-offer`);
+                }
             }
         } catch (error) {
-            this.log(`❌ Error setting remote description: ${error.message}`, 'error');
-            this.log(`Error details: ${error.name}, ${error.code || ''}`);
-            
-            // If it's an invalid state error, the description might already be set
+            // If it's an invalid state error and remote description is already set, treat as success
             if (error.name === 'InvalidStateError') {
-                this.log('⚠️ InvalidStateError - remote description may already be set');
-                if (this.peerConnection.remoteDescription) {
-                    this.log(`Current remote description type: ${this.peerConnection.remoteDescription.type}`);
+                if (this.peerConnection.remoteDescription && this.peerConnection.remoteDescription.type === 'answer') {
+                    this.log('✅ InvalidStateError but remote description is already set to answer - treating as success');
+                    this.answerProcessed = true;
+                    this.processedAnswerCallId = this.callId;
+                    
+                    // Process buffered candidates if any
+                    if (this.pendingRemoteCandidates.length > 0) {
+                        this.log(`🔄 Processing ${this.pendingRemoteCandidates.length} buffered ICE candidates (caller)...`);
+                        for (const candidate of this.pendingRemoteCandidates) {
+                            try {
+                                await this.peerConnection.addIceCandidate(candidate);
+                                this.log('✅ Buffered ICE candidate processed (caller)');
+                            } catch (e) {
+                                this.log(`❌ Error processing buffered ICE candidate (caller): ${e.message}`, 'error');
+                            }
+                        }
+                        this.pendingRemoteCandidates = [];
+                        this.log('✅ All buffered ICE candidates processed (caller)');
+                    }
+                    return; // Don't call onError for this case
+                } else {
+                    this.log(`❌ Error setting remote description: ${error.message}`, 'error');
+                    this.log(`Error details: ${error.name}, ${error.code || ''}`);
+                    this.log(`Signaling state: ${this.peerConnection.signalingState}`);
+                    this.onError(error);
                 }
+            } else {
+                this.log(`❌ Error setting remote description: ${error.message}`, 'error');
+                this.log(`Error details: ${error.name}, ${error.code || ''}`);
+                this.onError(error);
             }
-            
-            this.onError(error);
+        } finally {
+            // Always clear processing flag
+            this.isProcessingAnswer = false;
         }
     }
     
