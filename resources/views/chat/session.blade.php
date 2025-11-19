@@ -1005,31 +1005,58 @@
                 
                 // Check WebRTC connection state if available
                 if (firebaseVideoCall && firebaseVideoCall.peerConnection) {
-                    console.log('🔗 WebRTC Connection State:', firebaseVideoCall.peerConnection.connectionState);
-                    console.log('🧊 ICE Connection State:', firebaseVideoCall.peerConnection.iceConnectionState);
-                    
-                    // If connection isn't fully established, the video might not render yet
-                    if (firebaseVideoCall.peerConnection.connectionState !== 'connected') {
-                        console.warn('⚠️ WebRTC connection not fully established yet. Video may not render until connection is complete.');
+                    try {
+                        const pc = firebaseVideoCall.peerConnection;
+                        if (pc && pc.connectionState) {
+                            console.log('🔗 WebRTC Connection State:', pc.connectionState);
+                        }
+                        if (pc && pc.iceConnectionState) {
+                            console.log('🧊 ICE Connection State:', pc.iceConnectionState);
+                        }
                         
-                        // Listen for connection state change
-                        const onConnectionStateChange = () => {
-                            const state = firebaseVideoCall.peerConnection.connectionState;
-                            console.log('🔗 Connection state changed to:', state);
+                        // If connection isn't fully established, the video might not render yet
+                        if (pc && pc.connectionState && pc.connectionState !== 'connected') {
+                            console.warn('⚠️ WebRTC connection not fully established yet. Video may not render until connection is complete.');
                             
-                            if (state === 'connected' && remoteVideo && remoteVideo.paused) {
-                                console.log('🎬 Connection established, attempting to play video...');
-                                remoteVideo.play().catch(e => {
-                                    console.error('Failed to play after connection:', e);
-                                });
-                            }
+                            // Listen for connection state change
+                            const onConnectionStateChange = () => {
+                                // Check if peerConnection still exists
+                                if (!firebaseVideoCall || !firebaseVideoCall.peerConnection) {
+                                    return;
+                                }
+                                
+                                try {
+                                    const state = firebaseVideoCall.peerConnection.connectionState;
+                                    if (!state) return;
+                                    
+                                    console.log('🔗 Connection state changed to:', state);
+                                    
+                                    if (state === 'connected' && remoteVideo && remoteVideo.paused) {
+                                        console.log('🎬 Connection established, attempting to play video...');
+                                        remoteVideo.play().catch(e => {
+                                            // Ignore AbortError - it's common when video is reloaded
+                                            if (e.name !== 'AbortError') {
+                                                console.error('Failed to play after connection:', e);
+                                            }
+                                        });
+                                    }
+                                    
+                                    if (state === 'connected' || state === 'failed' || state === 'closed') {
+                                        if (firebaseVideoCall.peerConnection) {
+                                            firebaseVideoCall.peerConnection.removeEventListener('connectionstatechange', onConnectionStateChange);
+                                        }
+                                    }
+                                } catch (err) {
+                                    console.warn('Error in connection state change handler:', err);
+                                }
+                            };
                             
-                            if (state === 'connected' || state === 'failed' || state === 'closed') {
-                                firebaseVideoCall.peerConnection.removeEventListener('connectionstatechange', onConnectionStateChange);
+                            if (pc) {
+                                pc.addEventListener('connectionstatechange', onConnectionStateChange);
                             }
-                        };
-                        
-                        firebaseVideoCall.peerConnection.addEventListener('connectionstatechange', onConnectionStateChange);
+                        }
+                    } catch (err) {
+                        console.warn('Error checking connection state:', err);
                     }
                 }
                 
@@ -3979,11 +4006,20 @@ async function initializePeerConnection() {
             remoteVideo.play().then(() => {
                 console.log('Remote video started playing');
             }).catch(e => {
-                console.log('Remote video play error:', e);
-                // Try to play again after a short delay
-                setTimeout(() => {
-                    remoteVideo.play().catch(err => console.log('Retry play error:', err));
-                }, 1000);
+                // Ignore AbortError - it's common when video is reloaded
+                if (e.name !== 'AbortError') {
+                    console.log('Remote video play error:', e.name, e.message);
+                    // Try to play again after a short delay
+                    setTimeout(() => {
+                        if (remoteVideo && remoteVideo.srcObject) {
+                            remoteVideo.play().catch(err => {
+                                if (err.name !== 'AbortError') {
+                                    console.log('Retry play error:', err.name, err.message);
+                                }
+                            });
+                        }
+                    }, 1000);
+                }
             });
         }
         document.getElementById('remote-status').textContent = 'Connected';
@@ -4014,62 +4050,153 @@ async function initializePeerConnection() {
     
     // Handle connection state changes
     peerConnection.onconnectionstatechange = () => {
-        console.log('Connection state:', peerConnection.connectionState);
-        if (peerConnection.connectionState === 'connected') {
-            document.getElementById('remote-status').textContent = 'Connected';
-            document.getElementById('remote-status').className = 'connection-status connected';
-            document.getElementById('video-status').textContent = 'Call connected! You can now see and hear each other.';
-        } else if (peerConnection.connectionState === 'disconnected') {
-            document.getElementById('remote-status').textContent = 'Disconnected';
-            document.getElementById('remote-status').className = 'connection-status disconnected';
-            document.getElementById('video-status').textContent = 'Connection lost. Attempting to reconnect...';
-        } else if (peerConnection.connectionState === 'failed') {
-            document.getElementById('remote-status').textContent = 'Connection Failed';
-            document.getElementById('remote-status').className = 'connection-status disconnected';
-            document.getElementById('video-status').textContent = 'Connection failed. Please try again.';
-            // Auto-end call after failure
-            setTimeout(() => {
-                if (isCallActive) {
-                    endVideoCall();
+        // Add null check to prevent errors
+        if (!peerConnection) {
+            console.warn('PeerConnection is null in connection state change handler');
+            return;
+        }
+        
+        try {
+            const state = peerConnection.connectionState;
+            if (!state) {
+                console.warn('Connection state is undefined');
+                return;
+            }
+            
+            console.log('Connection state:', state);
+            
+            const remoteStatusEl = document.getElementById('remote-status');
+            const videoStatusEl = document.getElementById('video-status');
+            
+            if (state === 'connected') {
+                if (remoteStatusEl) {
+                    remoteStatusEl.textContent = 'Connected';
+                    remoteStatusEl.className = 'connection-status connected';
                 }
-            }, 3000);
-        } else if (peerConnection.connectionState === 'connecting') {
-            document.getElementById('video-status').textContent = 'Connecting...';
+                if (videoStatusEl) {
+                    videoStatusEl.textContent = 'Call connected! You can now see and hear each other.';
+                }
+            } else if (state === 'disconnected') {
+                if (remoteStatusEl) {
+                    remoteStatusEl.textContent = 'Disconnected';
+                    remoteStatusEl.className = 'connection-status disconnected';
+                }
+                if (videoStatusEl) {
+                    videoStatusEl.textContent = 'Connection lost. Attempting to reconnect...';
+                }
+            } else if (state === 'failed') {
+                if (remoteStatusEl) {
+                    remoteStatusEl.textContent = 'Connection Failed';
+                    remoteStatusEl.className = 'connection-status disconnected';
+                }
+                if (videoStatusEl) {
+                    videoStatusEl.textContent = 'Connection failed. Please try again.';
+                }
+                // Auto-end call after failure
+                setTimeout(() => {
+                    if (isCallActive && typeof endVideoCall === 'function') {
+                        endVideoCall();
+                    }
+                }, 3000);
+            } else if (state === 'connecting') {
+                if (videoStatusEl) {
+                    videoStatusEl.textContent = 'Connecting...';
+                }
+            }
+        } catch (error) {
+            console.error('Error in connection state change handler:', error);
         }
     };
     
     // Handle ICE gathering state changes
     peerConnection.onicegatheringstatechange = () => {
-        console.log('ICE gathering state:', peerConnection.iceGatheringState);
-        if (peerConnection.iceGatheringState === 'complete') {
-            console.log('ICE gathering completed');
+        // Add null check to prevent errors
+        if (!peerConnection) {
+            console.warn('PeerConnection is null in ICE gathering state change handler');
+            return;
+        }
+        
+        try {
+            const gatheringState = peerConnection.iceGatheringState;
+            if (!gatheringState) {
+                console.warn('ICE gathering state is undefined');
+                return;
+            }
+            
+            console.log('ICE gathering state:', gatheringState);
+            if (gatheringState === 'complete') {
+                console.log('ICE gathering completed');
+            }
+        } catch (error) {
+            console.error('Error in ICE gathering state change handler:', error);
         }
     };
     
     // Handle ICE connection state changes
     peerConnection.oniceconnectionstatechange = () => {
-        console.log('ICE connection state:', peerConnection.iceConnectionState);
-        if (peerConnection.iceConnectionState === 'failed') {
-            console.error('ICE connection failed');
-            document.getElementById('video-status').textContent = 'Connection failed. Please check your network and try again.';
-            // Try to restart ICE gathering
-            peerConnection.restartIce();
-        } else if (peerConnection.iceConnectionState === 'connected') {
-            console.log('ICE connection established');
-            document.getElementById('video-status').textContent = 'Call connected! You can now see and hear each other.';
-            // Ensure videos are playing
-            const localVideo = document.getElementById('local-video');
-            const remoteVideo = document.getElementById('remote-video');
-            if (localVideo && localVideo.srcObject) {
-                localVideo.play().catch(e => console.log('Local video play error:', e));
+        // Add null check to prevent errors
+        if (!peerConnection) {
+            console.warn('PeerConnection is null in ICE connection state change handler');
+            return;
+        }
+        
+        try {
+            const iceState = peerConnection.iceConnectionState;
+            if (!iceState) {
+                console.warn('ICE connection state is undefined');
+                return;
             }
-            if (remoteVideo && remoteVideo.srcObject) {
-                remoteVideo.play().catch(e => console.log('Remote video play error:', e));
+            
+            console.log('ICE connection state:', iceState);
+            const videoStatusEl = document.getElementById('video-status');
+            
+            if (iceState === 'failed') {
+                console.error('ICE connection failed');
+                if (videoStatusEl) {
+                    videoStatusEl.textContent = 'Connection failed. Please check your network and try again.';
+                }
+                // Try to restart ICE gathering
+                try {
+                    peerConnection.restartIce();
+                } catch (restartError) {
+                    console.warn('Failed to restart ICE:', restartError);
+                }
+            } else if (iceState === 'connected') {
+                console.log('ICE connection established');
+                if (videoStatusEl) {
+                    videoStatusEl.textContent = 'Call connected! You can now see and hear each other.';
+                }
+                // Ensure videos are playing with proper error handling
+                const localVideo = document.getElementById('local-video');
+                const remoteVideo = document.getElementById('remote-video');
+                
+                if (localVideo && localVideo.srcObject) {
+                    localVideo.play().catch(e => {
+                        // Ignore AbortError - it's common when video is reloaded
+                        if (e.name !== 'AbortError') {
+                            console.log('Local video play error:', e.name, e.message);
+                        }
+                    });
+                }
+                if (remoteVideo && remoteVideo.srcObject) {
+                    remoteVideo.play().catch(e => {
+                        // Ignore AbortError - it's common when video is reloaded
+                        if (e.name !== 'AbortError') {
+                            console.log('Remote video play error:', e.name, e.message);
+                        }
+                    });
+                }
+            } else if (iceState === 'checking') {
+                if (videoStatusEl) {
+                    videoStatusEl.textContent = 'Connecting... Please wait.';
+                }
+            } else if (iceState === 'disconnected') {
+                if (videoStatusEl) {
+                    videoStatusEl.textContent = 'Connection lost. Attempting to reconnect...';
+                }
             }
-        } else if (peerConnection.iceConnectionState === 'checking') {
-            document.getElementById('video-status').textContent = 'Connecting... Please wait.';
-        } else if (peerConnection.iceConnectionState === 'disconnected') {
-            document.getElementById('video-status').textContent = 'Connection lost. Attempting to reconnect...';
+        } catch (error) {
+            console.error('Error in ICE connection state change handler:', error);
         }
     };
     
