@@ -185,9 +185,16 @@ class FirebaseVideoIntegration {
             Object.keys(calls).forEach(callId => {
                 const call = calls[callId];
                 
-                // Skip very old calls (older than 5 minutes) to prevent processing stale data
+                // Skip very old calls (older than 1 minute) to prevent processing stale data
+                // Reduced from 5 minutes to 1 minute to prevent processing old answers
                 const callAge = Date.now() - (call.timestamp || 0);
-                if (callAge > 300000) { // 5 minutes
+                if (callAge > 60000) { // 1 minute - answers should arrive within seconds
+                    if (call.type === 'answer' || call.type === 'offer') {
+                        // Don't log for every old call, but log occasionally
+                        if (Math.random() < 0.01) { // Log 1% of the time to reduce noise
+                            this.log(`⏭️ Skipping old ${call.type} (${Math.round(callAge/1000)}s old)`, 'info');
+                        }
+                    }
                     return;
                 }
                 
@@ -240,14 +247,15 @@ class FirebaseVideoIntegration {
                     
                     // Check if this answer is for us (addressed to us)
                     const isForUs = call.toUserId === this.userId || call.toUserId == this.userId;
-                    // Match callId exactly or check if one contains the other (for flexible matching)
-                    const callIdMatches = call.callId === this.callId || 
-                        (typeof call.callId === 'string' && typeof this.callId === 'string' && 
-                         (call.callId.includes(this.callId) || this.callId.includes(call.callId)));
+                    
+                    // CRITICAL: Require EXACT callId match - no flexible matching for answers!
+                    // Processing an answer from a different call will break the connection
+                    const callIdMatches = call.callId === this.callId;
                     
                     // IMPORTANT: Only process if we're the initiator (caller) AND the answer is addressed to us
                     // The callee should never process their own answer
-                    const shouldProcess = isForUs && (callIdMatches || !this.callId) && this.isInitiator && call.answer;
+                    // CRITICAL: Must have exact callId match AND be active (or about to be active)
+                    const shouldProcess = isForUs && callIdMatches && this.isInitiator && call.answer && this.callId;
                     
                     // Log detailed info for debugging
                     if (isForUs && call.answer) {
@@ -299,40 +307,12 @@ class FirebaseVideoIntegration {
                         if (this.isInitiator && isForUs && call.answer) {
                             if (!callIdMatches && this.callId) {
                                 this.log(`⚠️ CRITICAL: Answer for us but callId mismatch! call.callId=${call.callId}, this.callId=${this.callId}`, 'error');
-                                this.log(`⚠️ Attempting to process anyway since answer is addressed to us...`, 'warning');
-                                // Try to process anyway if callId is close (contains our callId or vice versa)
-                                if (typeof call.callId === 'string' && typeof this.callId === 'string') {
-                                    // Check if callIds are related (one contains the other or they're similar)
-                                    const callIdSimilar = call.callId.includes(this.callId) || this.callId.includes(call.callId) || 
-                                                         call.callId.replace(/_5$|_9$/, '') === this.callId.replace(/_5$|_9$/, '');
-                                    if (callIdSimilar) {
-                                        this.log(`✅ CallIds are similar, processing answer anyway`, 'info');
-                                        processedCalls.add(callId);
-                                        
-                                        let answerData = call.answer;
-                                        if (typeof answerData === 'object' && answerData.type && answerData.sdp) {
-                                            if (!(answerData instanceof RTCSessionDescription)) {
-                                                answerData = new RTCSessionDescription(answerData);
-                                            }
-                                            this.handleCallAnswer(answerData);
-                                        }
-                                        return;
-                                    }
-                                }
+                                this.log(`⚠️ Rejecting answer - must have EXACT callId match to prevent processing wrong answer`, 'error');
+                                // DO NOT process - exact match required to prevent breaking the connection
                             }
-                            if (!this.isActive) {
-                                this.log(`⚠️ CRITICAL: Answer for us but call not active! Processing anyway...`, 'warning');
-                                // Process anyway - the answer is for us and we're the initiator
-                                processedCalls.add(callId);
-                                
-                                let answerData = call.answer;
-                                if (typeof answerData === 'object' && answerData.type && answerData.sdp) {
-                                    if (!(answerData instanceof RTCSessionDescription)) {
-                                        answerData = new RTCSessionDescription(answerData);
-                                    }
-                                    this.handleCallAnswer(answerData);
-                                }
-                                return;
+                            if (!this.isActive && callIdMatches) {
+                                this.log(`⚠️ Answer for us with matching callId but call not active yet - will process when active`, 'warning');
+                                // Don't process yet - wait for call to be active
                             }
                         }
                         
@@ -823,11 +803,15 @@ class FirebaseVideoIntegration {
             try {
                 const state = this.peerConnection.iceConnectionState;
                 const gatheringState = this.peerConnection.iceGatheringState;
+                const connectionState = this.peerConnection.connectionState;
                 
                 if (!state) {
                     this.log('⚠️ ICE connection state is undefined', 'warning');
                     return;
                 }
+                
+                this.log(`🧊 ICE connection state changed: ${state}`, 'info');
+                this.log(`📊 Connection state: ${connectionState || 'unknown'}, ICE gathering: ${gatheringState || 'unknown'}`);
                 
                 this.log(`🧊 ICE connection state: ${state}, gathering: ${gatheringState}`);
                 
