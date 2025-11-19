@@ -188,9 +188,24 @@ class FirebaseVideoIntegration {
                     return;
                 }
                 
-                // Skip if we've already processed this call
-                if (processedCalls.has(callId)) {
+                // Log all calls for debugging (but don't process duplicates)
+                if (call.type === 'answer' || call.type === 'offer') {
+                    this.log(`🔍 Firebase listener detected ${call.type}: callId=${call.callId}, fromUserId=${call.fromUserId}, toUserId=${call.toUserId}, our userId=${this.userId}, isInitiator=${this.isInitiator}, isActive=${this.isActive}`);
+                }
+                
+                // Skip if we've already processed this call (but allow re-processing answers if needed)
+                if (processedCalls.has(callId) && call.type !== 'answer') {
                     return;
+                }
+                
+                // For answers, allow re-processing if remote description isn't set yet
+                if (processedCalls.has(callId) && call.type === 'answer') {
+                    if (this.peerConnection && this.peerConnection.remoteDescription) {
+                        this.log(`⚠️ Answer ${callId} already processed and remote description is set, skipping`);
+                        return;
+                    } else {
+                        this.log(`🔄 Re-processing answer ${callId} - remote description not set yet`);
+                    }
                 }
                 
                 // Handle incoming offer - only for new offers after initialization
@@ -205,9 +220,18 @@ class FirebaseVideoIntegration {
                 
                 // Handle incoming answer - initiator should accept partner's answer
                 // Accept answers that match our current callId and are addressed to us
-                if (call.type === 'answer' && this.isInitiator && this.isActive) {
-                    if (call.callId === this.callId && call.toUserId === this.userId && call.answer) {
-                        this.log('📞 Call answered');
+                if (call.type === 'answer') {
+                    this.log(`🔍 Checking answer: callId=${call.callId}, this.callId=${this.callId}, toUserId=${call.toUserId}, this.userId=${this.userId}, isInitiator=${this.isInitiator}, isActive=${this.isActive}`);
+                    
+                    // Check if this answer is for us
+                    const isForUs = call.toUserId === this.userId || call.toUserId == this.userId;
+                    // Match callId exactly or check if one contains the other (for flexible matching)
+                    const callIdMatches = call.callId === this.callId || 
+                        (typeof call.callId === 'string' && typeof this.callId === 'string' && 
+                         (call.callId.includes(this.callId) || this.callId.includes(call.callId)));
+                    
+                    if (isForUs && (callIdMatches || !this.callId) && this.isInitiator && this.isActive && call.answer) {
+                        this.log('📞 Call answered - processing answer');
                         // Ensure answer is properly formatted
                         let answerData = call.answer;
                         if (typeof answerData === 'object' && answerData.type && answerData.sdp) {
@@ -215,10 +239,38 @@ class FirebaseVideoIntegration {
                             if (!(answerData instanceof RTCSessionDescription)) {
                                 answerData = new RTCSessionDescription(answerData);
                             }
+                            
+                            // Check if we've already set remote description
+                            if (this.peerConnection && this.peerConnection.remoteDescription) {
+                                const currentRemoteDesc = this.peerConnection.remoteDescription;
+                                if (currentRemoteDesc.type === 'answer' && currentRemoteDesc.sdp === answerData.sdp) {
+                                    this.log('⚠️ Answer already processed, skipping duplicate', 'warning');
+                                    processedCalls.add(callId);
+                                    return;
+                                }
+                            }
+                            
                             this.handleCallAnswer(answerData);
                             processedCalls.add(callId);
                         } else {
                             this.log('⚠️ Answer missing type or sdp', 'warning');
+                            this.log('Answer data:', answerData);
+                        }
+                    } else {
+                        if (!isForUs) {
+                            this.log(`⚠️ Answer not for us: toUserId=${call.toUserId}, our userId=${this.userId}`);
+                        }
+                        if (!callIdMatches && this.callId) {
+                            this.log(`⚠️ Answer callId mismatch: call.callId=${call.callId}, this.callId=${this.callId}`);
+                        }
+                        if (!this.isInitiator) {
+                            this.log('⚠️ Not the initiator, ignoring answer');
+                        }
+                        if (!this.isActive) {
+                            this.log('⚠️ Call not active, ignoring answer');
+                        }
+                        if (!call.answer) {
+                            this.log('⚠️ Answer missing in call object');
                         }
                     }
                 }
@@ -901,6 +953,20 @@ class FirebaseVideoIntegration {
             return;
         }
         
+        // Check if remote description is already set
+        if (this.peerConnection.remoteDescription) {
+            const currentType = this.peerConnection.remoteDescription.type;
+            if (currentType === 'answer') {
+                this.log('⚠️ Remote description already set to answer, checking if update needed...');
+                const currentSdp = this.peerConnection.remoteDescription.sdp;
+                const newSdp = answer.sdp || (answer instanceof RTCSessionDescription ? answer.sdp : null);
+                if (currentSdp === newSdp) {
+                    this.log('✅ Remote description already set with same SDP, skipping');
+                    return;
+                }
+            }
+        }
+        
         // Ensure answer is an RTCSessionDescription
         let rtcAnswer;
         if (answer instanceof RTCSessionDescription) {
@@ -909,25 +975,43 @@ class FirebaseVideoIntegration {
             rtcAnswer = new RTCSessionDescription(answer);
         } else {
             this.log('❌ Invalid answer format', 'error');
+            this.log('Answer object:', answer);
             return;
         }
         
-        await this.peerConnection.setRemoteDescription(rtcAnswer);
-        this.log('✅ Remote answer set');
+        try {
+            await this.peerConnection.setRemoteDescription(rtcAnswer);
+            this.log('✅ Remote answer set successfully');
+            this.log(`📊 Connection state after setting answer: ${this.peerConnection.connectionState}`);
+            this.log(`🧊 ICE connection state: ${this.peerConnection.iceConnectionState}`);
 
-        // Process any pending remote ICE candidates that arrived before remote description
-        if (this.pendingRemoteCandidates.length > 0) {
-            this.log(`🔄 Processing ${this.pendingRemoteCandidates.length} buffered ICE candidates (caller)...`);
-            for (const candidate of this.pendingRemoteCandidates) {
-                try {
-                    await this.peerConnection.addIceCandidate(candidate);
-                    this.log('✅ Buffered ICE candidate processed (caller)');
-                } catch (e) {
-                    this.log(`❌ Error processing buffered ICE candidate (caller): ${e.message}`, 'error');
+            // Process any pending remote ICE candidates that arrived before remote description
+            if (this.pendingRemoteCandidates.length > 0) {
+                this.log(`🔄 Processing ${this.pendingRemoteCandidates.length} buffered ICE candidates (caller)...`);
+                for (const candidate of this.pendingRemoteCandidates) {
+                    try {
+                        await this.peerConnection.addIceCandidate(candidate);
+                        this.log('✅ Buffered ICE candidate processed (caller)');
+                    } catch (e) {
+                        this.log(`❌ Error processing buffered ICE candidate (caller): ${e.message}`, 'error');
+                    }
+                }
+                this.pendingRemoteCandidates = [];
+                this.log('✅ All buffered ICE candidates processed (caller)');
+            }
+        } catch (error) {
+            this.log(`❌ Error setting remote description: ${error.message}`, 'error');
+            this.log(`Error details: ${error.name}, ${error.code || ''}`);
+            
+            // If it's an invalid state error, the description might already be set
+            if (error.name === 'InvalidStateError') {
+                this.log('⚠️ InvalidStateError - remote description may already be set');
+                if (this.peerConnection.remoteDescription) {
+                    this.log(`Current remote description type: ${this.peerConnection.remoteDescription.type}`);
                 }
             }
-            this.pendingRemoteCandidates = [];
-            this.log('✅ All buffered ICE candidates processed (caller)');
+            
+            this.onError(error);
         }
     }
     
