@@ -650,7 +650,7 @@ html, body {
         overflow-x: hidden !important;
         -webkit-overflow-scrolling: touch !important;
         padding: 1rem !important;
-        padding-bottom: 0.5rem !important;
+        padding-bottom: 120px !important; /* Extra padding to ensure last message is visible above fixed input */
     }
     
     .message-input-area {
@@ -695,7 +695,7 @@ html, body {
     
     /* Adjust messages container to account for fixed input */
     .chat-panel {
-        padding-bottom: 80px !important; /* Space for input area */
+        padding-bottom: 0 !important; /* Removed - padding is handled by messages-container */
     }
 }
 
@@ -898,6 +898,7 @@ html, body {
     
     .messages-container {
         padding: 0.75rem !important;
+        padding-bottom: 120px !important; /* Extra padding to ensure last message is visible above fixed input */
     }
 }
 

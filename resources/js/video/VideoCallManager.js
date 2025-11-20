@@ -811,7 +811,19 @@ export class VideoCallManager {
                     // Only set once to prevent play() interruptions
                     this.remoteVideoSet = true;
                     
-                    // Check WebRTC connection state before showing video
+                    // CRITICAL FIX: Check for tracks FIRST - if tracks are available, show video immediately
+                    // regardless of connection state. Some browsers/firewalls don't report "connected" 
+                    // state correctly even when media is flowing via TURN relay.
+                    const hasTracks = data.remoteStream && data.remoteStream.getTracks && data.remoteStream.getTracks().length > 0;
+                    
+                    if (hasTracks) {
+                        // Tracks are available - show video immediately
+                        console.log(`✅ Setting remote video with ${data.remoteStream.getTracks().length} tracks: audio, video`);
+                        this.setRemoteVideo(data.remoteStream);
+                        return;
+                    }
+                    
+                    // If no tracks yet, check WebRTC connection state and wait
                     if (this.firebaseVideoCall && this.firebaseVideoCall.peerConnection) {
                         const connectionState = this.firebaseVideoCall.peerConnection.connectionState;
                         const iceState = this.firebaseVideoCall.peerConnection.iceConnectionState;
@@ -819,24 +831,39 @@ export class VideoCallManager {
                         console.log('🔗 WebRTC Connection State:', connectionState);
                         console.log('🧊 ICE Connection State:', iceState);
                         
-                        // Wait for connection to be established before showing video
+                        // Wait for connection to be established OR tracks to become available
                         if (connectionState !== 'connected' && iceState !== 'connected' && iceState !== 'completed') {
                             console.log('⏳ Waiting for WebRTC connection to establish...');
                             
-                            // Wait for connection state change
+                            // Wait for connection state change OR tracks
                             const waitForConnection = () => {
                                 return new Promise((resolve) => {
                                     let timeoutId;
                                     let checkInterval;
                                     
                                     const checkConnection = () => {
+                                        if (!this.firebaseVideoCall || !this.firebaseVideoCall.peerConnection) {
+                                            clearInterval(checkInterval);
+                                            clearTimeout(timeoutId);
+                                            resolve();
+                                            return;
+                                        }
+                                        
                                         const state = this.firebaseVideoCall.peerConnection.connectionState;
                                         const iceState = this.firebaseVideoCall.peerConnection.iceConnectionState;
                                         
                                         console.log(`🔍 Checking connection: state=${state}, iceState=${iceState}`);
                                         
-                                        // Check if we have tracks even if connection isn't fully established
-                                        const hasTracks = data.remoteStream && data.remoteStream.getTracks().length > 0;
+                                        // PRIORITY: Check if we have tracks - if yes, show immediately
+                                        const hasTracksNow = data.remoteStream && data.remoteStream.getTracks && data.remoteStream.getTracks().length > 0;
+                                        
+                                        if (hasTracksNow) {
+                                            console.log('✅ Tracks available, showing video immediately');
+                                            clearInterval(checkInterval);
+                                            clearTimeout(timeoutId);
+                                            resolve();
+                                            return;
+                                        }
                                         
                                         if (state === 'connected' || (iceState === 'connected' || iceState === 'completed')) {
                                             console.log('✅ WebRTC connection established');
@@ -847,21 +874,7 @@ export class VideoCallManager {
                                             console.warn('⚠️ WebRTC connection failed');
                                             clearInterval(checkInterval);
                                             clearTimeout(timeoutId);
-                                            // Still try to show video if we have tracks
-                                            if (hasTracks) {
-                                                console.log('⚠️ Connection failed but tracks available, showing video anyway');
-                                                resolve();
-                                            } else {
-                                                console.error('❌ Connection failed and no tracks available');
-                                                this.showError('Connection failed. Please try again.');
-                                                resolve();
-                                            }
-                                        } else if (hasTracks && (iceState === 'checking' || state === 'connecting')) {
-                                            // If we have tracks and connection is in progress, show video immediately
-                                            console.log('✅ Tracks available, showing video while connection establishes');
-                                            clearInterval(checkInterval);
-                                            clearTimeout(timeoutId);
-                                            resolve();
+                                            resolve(); // Resolve anyway, we'll check tracks below
                                         } else {
                                             // Check again in 500ms
                                             checkInterval = setTimeout(checkConnection, 500);
@@ -871,14 +884,14 @@ export class VideoCallManager {
                                     // Start checking
                                     checkConnection();
                                     
-                                    // Timeout after 15 seconds (increased from 10)
+                                    // Timeout after 3 seconds (reduced from 15) - if tracks are available, show immediately
                                     timeoutId = setTimeout(() => {
-                                        console.warn('⚠️ Connection check timeout after 15s, checking if we can show video anyway');
+                                        console.warn('⚠️ Connection check timeout after 3s, checking if we can show video anyway');
                                         clearInterval(checkInterval);
                                         
                                         // Check if we have tracks to show
-                                        const hasTracks = data.remoteStream && data.remoteStream.getTracks().length > 0;
-                                        if (hasTracks) {
+                                        const hasTracksNow = data.remoteStream && data.remoteStream.getTracks && data.remoteStream.getTracks().length > 0;
+                                        if (hasTracksNow) {
                                             console.log('⚠️ Timeout but tracks available, showing video anyway');
                                             resolve();
                                         } else {
@@ -886,14 +899,15 @@ export class VideoCallManager {
                                             this.showError('Connection timeout. Please check your network and try again.');
                                             resolve();
                                         }
-                                    }, 15000);
+                                    }, 3000); // Reduced timeout - tracks should arrive quickly
                                 });
                             };
                             
                             // Wait for connection, then set video
                             waitForConnection().then(() => {
                                 // Double-check stream has tracks before setting
-                                if (data.remoteStream && data.remoteStream.getTracks().length > 0) {
+                                if (data.remoteStream && data.remoteStream.getTracks && data.remoteStream.getTracks().length > 0) {
+                                    console.log(`✅ Setting remote video with ${data.remoteStream.getTracks().length} tracks`);
                                     this.setRemoteVideo(data.remoteStream);
                                 } else {
                                     console.error('❌ Cannot set remote video: stream has no tracks');
