@@ -1085,6 +1085,33 @@ class FirebaseVideoIntegration {
                 this.log(`📊 Connection state after setting answer: ${this.peerConnection.connectionState}`);
                 this.log(`🧊 ICE connection state: ${this.peerConnection.iceConnectionState}`);
                 this.log(`📊 Signaling state after setting answer: ${this.peerConnection.signalingState}`);
+                
+                // Force connection state check - sometimes handlers don't fire immediately
+                setTimeout(() => {
+                    if (this.peerConnection) {
+                        const connState = this.peerConnection.connectionState;
+                        const iceState = this.peerConnection.iceConnectionState;
+                        const sigState = this.peerConnection.signalingState;
+                        this.log(`🔍 Post-answer state check (500ms): connection=${connState}, ice=${iceState}, signaling=${sigState}`);
+                        
+                        // If still in "new" state after 500ms, try to trigger ICE restart
+                        if (connState === 'new' && iceState === 'new' && sigState === 'stable') {
+                            this.log('⚠️ Connection stuck in "new" state - attempting ICE restart', 'warning');
+                            try {
+                                if (typeof this.peerConnection.restartIce === 'function') {
+                                    this.peerConnection.restartIce();
+                                    this.log('🔄 ICE restart initiated', 'info');
+                                } else {
+                                    this.log('⚠️ restartIce() not available, trying alternative approach', 'warning');
+                                    // Alternative: Create new offer/answer cycle
+                                    this.triggerIceRestart();
+                                }
+                            } catch (restartError) {
+                                this.log(`⚠️ Failed to restart ICE: ${restartError.message}`, 'warning');
+                            }
+                        }
+                    }
+                }, 500);
 
                 // Mark as processed
                 this.answerProcessed = true;
@@ -1480,6 +1507,94 @@ class FirebaseVideoIntegration {
         } catch (error) {
             this.log(`⚠️ Error checking call active state: ${error.message}`, 'warning');
             return false;
+        }
+    }
+    
+    // Diagnose connection issues
+    async diagnoseConnectionIssue() {
+        if (!this.peerConnection) {
+            this.log('⚠️ Cannot diagnose - peerConnection is null', 'warning');
+            return;
+        }
+        
+        try {
+            this.log('🔍 Diagnosing connection issue...', 'info');
+            this.log(`📊 Current states: connection=${this.peerConnection.connectionState}, ice=${this.peerConnection.iceConnectionState}, signaling=${this.peerConnection.signalingState}`);
+            this.log(`🧊 ICE gathering: ${this.peerConnection.iceGatheringState}`);
+            
+            // Check local and remote descriptions
+            const localDesc = this.peerConnection.localDescription;
+            const remoteDesc = this.peerConnection.remoteDescription;
+            
+            if (localDesc) {
+                this.log(`📝 Local description: type=${localDesc.type}, hasSDP=${!!localDesc.sdp}`);
+            } else {
+                this.log('⚠️ No local description set!', 'error');
+            }
+            
+            if (remoteDesc) {
+                this.log(`📝 Remote description: type=${remoteDesc.type}, hasSDP=${!!remoteDesc.sdp}`);
+            } else {
+                this.log('⚠️ No remote description set!', 'error');
+            }
+            
+            // Check ICE candidates
+            if (typeof this.peerConnection.getStats === 'function') {
+                try {
+                    const stats = await this.peerConnection.getStats();
+                    let localCandidates = 0;
+                    let remoteCandidates = 0;
+                    let candidatePairs = 0;
+                    
+                    stats.forEach(report => {
+                        if (report.type === 'local-candidate') {
+                            localCandidates++;
+                        } else if (report.type === 'remote-candidate') {
+                            remoteCandidates++;
+                        } else if (report.type === 'candidate-pair') {
+                            candidatePairs++;
+                            if (report.state === 'succeeded') {
+                                this.log(`✅ Found successful candidate pair: ${report.localCandidateId} <-> ${report.remoteCandidateId}`, 'success');
+                            }
+                        }
+                    });
+                    
+                    this.log(`📊 ICE stats: local=${localCandidates}, remote=${remoteCandidates}, pairs=${candidatePairs}`);
+                } catch (statsError) {
+                    this.log(`⚠️ Could not get stats: ${statsError.message}`, 'warning');
+                }
+            }
+            
+            // Try to restart ICE if available
+            if (typeof this.peerConnection.restartIce === 'function') {
+                this.log('🔄 Attempting ICE restart...', 'info');
+                this.peerConnection.restartIce();
+            }
+        } catch (error) {
+            this.log(`❌ Error diagnosing connection: ${error.message}`, 'error');
+        }
+    }
+    
+    // Trigger ICE restart by creating new offer
+    async triggerIceRestart() {
+        if (!this.peerConnection || !this.isInitiator) {
+            this.log('⚠️ Cannot trigger ICE restart - not initiator or no peerConnection', 'warning');
+            return;
+        }
+        
+        try {
+            this.log('🔄 Triggering ICE restart by creating new offer...', 'info');
+            
+            // Create new offer with iceRestart flag
+            const offer = await this.peerConnection.createOffer({ iceRestart: true });
+            await this.peerConnection.setLocalDescription(offer);
+            
+            // Send new offer via Firebase
+            await this.sendOffer(offer);
+            
+            this.log('✅ New offer created and sent for ICE restart', 'info');
+        } catch (error) {
+            this.log(`❌ Error triggering ICE restart: ${error.message}`, 'error');
         }
     }
     
