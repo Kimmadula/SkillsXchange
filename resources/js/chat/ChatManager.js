@@ -625,27 +625,47 @@ export class ChatManager {
             
             const data = await response.json();
             
-            if (data.success && data.count > this.lastMessageCount) {
-                // Get only the new messages
-                const newMessages = data.messages.slice(this.lastMessageCount);
-                this.lastMessageCount = data.count;
+            if (data.success) {
+                // If lastMessageCount is still 0, initialize it with current count
+                // This handles cases where initialization didn't work properly
+                if (this.lastMessageCount === 0 && data.count > 0) {
+                    this.lastMessageCount = data.count;
+                    console.log(`📊 Initialized message count: ${this.lastMessageCount}`);
+                    return; // Don't add messages on first poll if they're already rendered
+                }
                 
-                // Reset activity tracking
-                this.lastActivity = Date.now();
-                this.consecutiveEmptyPolls = 0;
+                if (data.count > this.lastMessageCount) {
+                    // Get only the new messages
+                    const newMessages = data.messages.slice(this.lastMessageCount);
+                    this.lastMessageCount = data.count;
+                    
+                    // Reset activity tracking
+                    this.lastActivity = Date.now();
+                    this.consecutiveEmptyPolls = 0;
 
-                // Add only new messages to chat
-                newMessages.forEach(msg => {
-                    if (msg.sender_id !== this.userId) {
-                        const senderName = msg.sender ? 
-                            `${msg.sender.firstname} ${msg.sender.lastname}` : 
-                            this.partnerName;
-                        const timestamp = msg.display_time || (msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
-                        this.addMessage(msg, senderName, timestamp, false);
-                    }
-                });
-                
-                console.log(`📨 Received ${newMessages.length} new messages`);
+                    // Add only new messages to chat (avoid duplicates by checking message IDs)
+                    newMessages.forEach(msg => {
+                        // Check if message already exists by ID to prevent duplicates
+                        const existingMessage = this.messagesContainer?.querySelector(`[data-message-id="${msg.id}"]`);
+                        if (!existingMessage) {
+                            if (msg.sender_id !== this.userId) {
+                                const senderName = msg.sender ? 
+                                    `${msg.sender.firstname} ${msg.sender.lastname}` : 
+                                    this.partnerName;
+                                const timestamp = msg.display_time || (msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
+                                this.addMessage(msg, senderName, timestamp, false);
+                            }
+                        } else {
+                            console.log(`⏭️ Skipping duplicate message ID: ${msg.id}`);
+                        }
+                    });
+                    
+                    console.log(`📨 Received ${newMessages.length} new messages`);
+                } else if (data.count < this.lastMessageCount) {
+                    // Message count decreased (unlikely but handle it)
+                    console.log(`⚠️ Message count decreased from ${this.lastMessageCount} to ${data.count}, resetting...`);
+                    this.lastMessageCount = data.count;
+                }
             } else {
                 this.consecutiveEmptyPolls++;
                 
