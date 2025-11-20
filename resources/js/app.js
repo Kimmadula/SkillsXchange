@@ -1,3 +1,6 @@
+// Import bootstrap first to initialize Echo and Pusher
+import './bootstrap.js';
+
 // Import managers
 import { ChatManager } from './chat/ChatManager.js';
 import { VideoCallManager } from './video/VideoCallManager.js';
@@ -6,7 +9,7 @@ import { TaskManager } from './tasks/TaskManager.js';
 import './session.js';
 
 // Wait for DOM to be ready
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Check if we're on a page that needs session initialization
     // Only initialize on pages with trade session data (chat pages, session pages)
     const hasSessionContainer = document.querySelector('.app-container') || 
@@ -49,10 +52,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     console.log('📊 Session Data:', { tradeId, userId, partnerId, partnerName });
 
-    // Check for Laravel Echo
-    if (typeof window.Echo === 'undefined') {
-        console.warn('⚠️ Laravel Echo not available, real-time features will use polling fallback');
-    }
+    // Wait for Echo to be available (it might load via Vite/bootstrap.js or fallback)
+    const waitForEcho = (maxWait = 3000) => {
+        return new Promise((resolve) => {
+            if (typeof window.Echo !== 'undefined' && window.Echo !== null) {
+                console.log('✅ Laravel Echo is available');
+                resolve(window.Echo);
+                return;
+            }
+            
+            let waitTime = 0;
+            const checkInterval = setInterval(() => {
+                waitTime += 100;
+                if (typeof window.Echo !== 'undefined' && window.Echo !== null) {
+                    clearInterval(checkInterval);
+                    console.log('✅ Laravel Echo loaded after', waitTime, 'ms');
+                    resolve(window.Echo);
+                } else if (waitTime >= maxWait) {
+                    clearInterval(checkInterval);
+                    console.warn('⚠️ Laravel Echo not available after', maxWait, 'ms, using polling fallback');
+                    resolve(null);
+                }
+            }, 100);
+        });
+    };
+
+    // Wait for Echo before initializing managers
+    const echo = await waitForEcho(3000);
 
     // Initialize managers
     try {
@@ -60,9 +86,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Chat Manager
         try {
-            chatManager = new ChatManager(tradeId, userId, window.Echo, partnerName);
+            chatManager = new ChatManager(tradeId, userId, echo || window.Echo, partnerName);
             chatManager.initialize();
             console.log('✅ Chat Manager initialized');
+            
+            // If Echo becomes available later, re-initialize listeners
+            if (!echo) {
+                const checkEchoInterval = setInterval(() => {
+                    if (typeof window.Echo !== 'undefined' && window.Echo !== null) {
+                        clearInterval(checkEchoInterval);
+                        console.log('🔄 Echo became available, re-initializing Chat Manager...');
+                        chatManager.echo = window.Echo;
+                        // Stop polling if running
+                        if (chatManager.messagePollingInterval) {
+                            clearInterval(chatManager.messagePollingInterval);
+                            chatManager.messagePollingInterval = null;
+                        }
+                        chatManager.setupEchoListeners();
+                    }
+                }, 500);
+                // Stop checking after 10 seconds
+                setTimeout(() => clearInterval(checkEchoInterval), 10000);
+            }
         } catch (error) {
             console.error('❌ Chat Manager initialization failed:', error);
         }
@@ -83,9 +128,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Task Manager
         try {
-            taskManager = new TaskManager(tradeId, userId, window.Echo);
+            taskManager = new TaskManager(tradeId, userId, echo || window.Echo);
             taskManager.initialize();
             console.log('✅ Task Manager initialized');
+            
+            // If Echo becomes available later, re-initialize listeners
+            if (!echo) {
+                const checkEchoInterval = setInterval(() => {
+                    if (typeof window.Echo !== 'undefined' && window.Echo !== null) {
+                        clearInterval(checkEchoInterval);
+                        console.log('🔄 Echo became available, re-initializing Task Manager...');
+                        taskManager.echo = window.Echo;
+                        taskManager.setupEchoListeners();
+                    }
+                }, 500);
+                // Stop checking after 10 seconds
+                setTimeout(() => clearInterval(checkEchoInterval), 10000);
+            }
         } catch (error) {
             console.error('❌ Task Manager initialization failed:', error);
         }

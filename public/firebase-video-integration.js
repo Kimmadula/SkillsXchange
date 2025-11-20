@@ -124,6 +124,9 @@ class FirebaseVideoIntegration {
             // Join the room
             await this.joinRoom();
             
+            // CRITICAL: Clean up old call data (16+ hours old) to prevent processing stale data
+            await this.cleanupOldCalls();
+            
             // Setup Firebase listeners
             this.setupFirebaseListeners();
             
@@ -164,6 +167,47 @@ class FirebaseVideoIntegration {
         this.setupPresenceCleanup();
     }
     
+    // Clean up old call data (16+ hours old) to prevent processing stale data
+    async cleanupOldCalls() {
+        try {
+            this.log('🧹 Cleaning up old call data...');
+            const callsRef = this.roomRef.child('calls');
+            const snapshot = await callsRef.once('value');
+            const calls = snapshot.val();
+            
+            if (!calls) {
+                this.log('✅ No calls to clean up');
+                return;
+            }
+            
+            const now = Date.now();
+            const maxAge = 16 * 60 * 60 * 1000; // 16 hours in milliseconds
+            let deletedCount = 0;
+            
+            const deletePromises = [];
+            Object.keys(calls).forEach(callId => {
+                const call = calls[callId];
+                const callAge = now - (call.timestamp || 0);
+                
+                // Delete calls older than 16 hours
+                if (callAge > maxAge) {
+                    deletePromises.push(callsRef.child(callId).remove());
+                    deletedCount++;
+                }
+            });
+            
+            if (deletePromises.length > 0) {
+                await Promise.all(deletePromises);
+                this.log(`✅ Cleaned up ${deletedCount} old call records (${Math.round(maxAge/3600000)}h+)`);
+            } else {
+                this.log('✅ No old calls to clean up');
+            }
+        } catch (error) {
+            this.log(`⚠️ Error cleaning up old calls: ${error.message}`, 'warning');
+            // Don't throw - cleanup failure shouldn't prevent initialization
+        }
+    }
+    
     // Setup Firebase listeners for call events
     setupFirebaseListeners() {
         // Prevent duplicate listeners - if already attached, detach first
@@ -172,7 +216,8 @@ class FirebaseVideoIntegration {
             this.detachCallListeners();
         }
         
-        const callsRef = this.roomRef.child('calls');
+        // Use limitToLast() to only get recent calls (last 50) for better performance
+        const callsRef = this.roomRef.child('calls').limitToLast(50);
         const initializationTime = Date.now();
         
         // Track which calls we've already processed to avoid duplicates
@@ -187,10 +232,20 @@ class FirebaseVideoIntegration {
             Object.keys(calls).forEach(callId => {
                 const call = calls[callId];
                 
-                // Skip very old calls (older than 1 minute) to prevent processing stale data
-                // Reduced from 5 minutes to 1 minute to prevent processing old answers
+                // Skip very old calls (older than 5 minutes) to prevent processing stale data
+                // Increased from 1 minute to 5 minutes to allow for network delays
+                // But still filter out 16+ hour old calls that should have been cleaned up
                 const callAge = Date.now() - (call.timestamp || 0);
-                if (callAge > 60000) { // 1 minute - answers should arrive within seconds
+                const maxCallAge = 5 * 60 * 1000; // 5 minutes
+                const veryOldAge = 16 * 60 * 60 * 1000; // 16 hours
+                
+                if (callAge > veryOldAge) {
+                    // Very old calls should have been cleaned up, skip silently
+                    return;
+                }
+                
+                if (callAge > maxCallAge) {
+                    // Calls older than 5 minutes are likely stale, skip
                     if (call.type === 'answer' || call.type === 'offer') {
                         // Don't log for every old call, but log occasionally
                         if (Math.random() < 0.01) { // Log 1% of the time to reduce noise
@@ -1326,6 +1381,11 @@ class FirebaseVideoIntegration {
                         timestamp: Date.now()
                     });
                     this.log('📤 End call signal sent to Firebase');
+                    
+                    // Clean up all call-related data for this callId after a delay
+                    setTimeout(async () => {
+                        await this.cleanupCallData(this.callId);
+                    }, 5000); // Wait 5 seconds to ensure partner receives the end signal
                 } catch (error) {
                     this.log(`⚠️ Error sending end call signal: ${error.message}`, 'warning');
                     // Continue with cleanup even if Firebase write fails
@@ -1363,6 +1423,36 @@ class FirebaseVideoIntegration {
             setTimeout(() => {
                 this.isEndingCall = false;
             }, 1000);
+        }
+    }
+    
+    // Clean up all data related to a specific call
+    async cleanupCallData(callId) {
+        try {
+            if (!callId || !this.roomRef) return;
+            
+            this.log(`🧹 Cleaning up call data for ${callId}...`);
+            const callsRef = this.roomRef.child('calls');
+            const snapshot = await callsRef.once('value');
+            const calls = snapshot.val();
+            
+            if (!calls) return;
+            
+            const deletePromises = [];
+            Object.keys(calls).forEach(key => {
+                const call = calls[key];
+                // Delete all records related to this callId (offer, answer, ICE candidates, end-call)
+                if (call.callId === callId || key.includes(callId)) {
+                    deletePromises.push(callsRef.child(key).remove());
+                }
+            });
+            
+            if (deletePromises.length > 0) {
+                await Promise.all(deletePromises);
+                this.log(`✅ Cleaned up ${deletePromises.length} records for call ${callId}`);
+            }
+        } catch (error) {
+            this.log(`⚠️ Error cleaning up call data: ${error.message}`, 'warning');
         }
     }
     

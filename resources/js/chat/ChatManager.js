@@ -258,51 +258,83 @@ export class ChatManager {
             return;
         }
 
+        // Stop polling if it's running - we're switching to real-time
+        if (this.messagePollingInterval) {
+            clearInterval(this.messagePollingInterval);
+            this.messagePollingInterval = null;
+            console.log('🔄 Stopped polling, switching to real-time WebSocket');
+        }
+
         // Connection status listeners
         if (this.echo.connector?.pusher?.connection) {
             this.echo.connector.pusher.connection.bind('connected', () => {
+                console.log('✅ Pusher connected - using real-time WebSocket');
                 this.updateConnectionStatus('connected');
             });
 
             this.echo.connector.pusher.connection.bind('disconnected', () => {
+                console.warn('⚠️ Pusher disconnected - falling back to polling');
                 this.updateConnectionStatus('disconnected');
+                // Fallback to polling if disconnected
+                if (!this.messagePollingInterval) {
+                    this.startSmartMessagePolling();
+                }
             });
 
             this.echo.connector.pusher.connection.bind('error', () => {
+                console.error('❌ Pusher connection error - falling back to polling');
                 this.updateConnectionStatus('error');
+                // Fallback to polling on error
+                if (!this.messagePollingInterval) {
+                    this.startSmartMessagePolling();
+                }
             });
 
             this.echo.connector.pusher.connection.bind('connecting', () => {
+                console.log('🔄 Pusher connecting...');
                 this.updateConnectionStatus('connecting');
             });
         }
 
-        // Listen for new messages
-        this.echo.channel(`trade-${this.tradeId}`)
-            .listen('new-message', (data) => {
-                console.log('Received new message event:', data);
-                
-                // Only add if it's not from the current user (to avoid duplicates)
-                if (data.message.sender_id !== this.userId) {
-                    this.addMessage(data.message, data.sender_name, data.timestamp, false);
-                } else {
-                    // For our own messages, just update the timestamp if needed
-                    const existingMessage = document.querySelector('[data-confirmed="true"]');
-                    if (existingMessage) {
-                        const timestampElement = existingMessage.querySelector('.message-time');
-                        if (timestampElement && data.timestamp) {
-                            timestampElement.textContent = data.timestamp;
+        // Listen for new messages via real-time WebSocket
+        try {
+            this.echo.channel(`trade-${this.tradeId}`)
+                .listen('new-message', (data) => {
+                    console.log('📨 Received new message via WebSocket:', data);
+                    
+                    // Only add if it's not from the current user (to avoid duplicates)
+                    if (data.message.sender_id !== this.userId) {
+                        this.addMessage(data.message, data.sender_name, data.timestamp, false);
+                    } else {
+                        // For our own messages, just update the timestamp if needed
+                        const existingMessage = document.querySelector('[data-confirmed="true"]');
+                        if (existingMessage) {
+                            const timestampElement = existingMessage.querySelector('.message-time');
+                            if (timestampElement && data.timestamp) {
+                                timestampElement.textContent = data.timestamp;
+                            }
                         }
                     }
-                }
-            });
+                });
+            
+            console.log('✅ Real-time message listener set up via Pusher/Echo');
+        } catch (error) {
+            console.error('❌ Error setting up Echo listener:', error);
+            // Fallback to polling if Echo listener setup fails
+            if (!this.messagePollingInterval) {
+                this.startSmartMessagePolling();
+            }
+        }
     }
 
     setupPollingFallback() {
         // Only start polling if Echo is not available
+        // This is a fallback - real-time WebSocket is preferred
         if (!this.echo) {
-            console.log('🔄 Laravel Echo not available, starting smart message polling...');
+            console.log('🔄 Laravel Echo not available, starting smart message polling fallback...');
             this.startSmartMessagePolling();
+        } else {
+            console.log('✅ Using real-time WebSocket (Pusher/Echo) for messages - no polling needed');
         }
     }
 

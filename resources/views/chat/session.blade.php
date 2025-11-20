@@ -2569,15 +2569,24 @@
     // Laravel Echo is already initialized in bootstrap.js
 // We'll use it to listen for events
 
-        // Debug information
-        console.log('=== CHAT DEBUG INFO ===');
-        console.log('Trade ID:', window.tradeId);
-        console.log('User ID:', window.authUserId);
-        console.log('Laravel Echo available:', !!window.Echo);
-        console.log('Pusher available:', !!window.Pusher);
-        console.log('Current URL:', window.location.href);
-        console.log('Base URL:', window.location.origin);
-        console.log('Generated message URL:', window.location.origin + '/chat/{{ $trade->id }}/message');
+        // Debug information - check after a delay to allow Echo to load
+        setTimeout(() => {
+            console.log('=== CHAT DEBUG INFO ===');
+            console.log('Trade ID:', window.tradeId);
+            console.log('User ID:', window.authUserId);
+            console.log('Laravel Echo available:', typeof window.Echo !== 'undefined' && window.Echo !== null);
+            console.log('Pusher available:', typeof window.Pusher !== 'undefined' && window.Pusher !== null);
+            console.log('Current URL:', window.location.href);
+            console.log('Base URL:', window.location.origin);
+            console.log('Generated message URL:', window.location.origin + '/chat/{{ $trade->id }}/message');
+            
+            // Additional Echo connection info
+            if (window.Echo && window.Echo.connector && window.Echo.connector.pusher) {
+                const pusher = window.Echo.connector.pusher;
+                console.log('Pusher connection state:', pusher.connection.state);
+                console.log('Pusher socket ID:', pusher.socket_id);
+            }
+        }, 2000); // Wait 2 seconds for Echo to load
 
 // Listen for events using Laravel Echo
 if (window.Echo) {
