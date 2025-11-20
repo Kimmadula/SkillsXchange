@@ -337,7 +337,19 @@ class ChatController extends Controller
     public function getMessages(Trade $trade)
     {
         try {
-            // Middleware('auth') already handles authentication - this method only runs if user is authenticated
+            // CRITICAL: Check authentication first - middleware might not catch all cases
+            if (!Auth::check() || !Auth::user()) {
+                Log::warning('Authentication failed for chat messages', [
+                    'trade_id' => $trade->id,
+                    'auth_check' => Auth::check(),
+                    'session_id' => session()->getId(),
+                    'url' => request()->url(),
+                    'ip' => request()->ip(),
+                    'user_agent' => request()->userAgent()
+                ]);
+                return response()->json(['error' => 'Unauthenticated'], 401);
+            }
+            
             // Add logging for debugging session issues
             Log::info('Chat messages request', [
                 'trade_id' => $trade->id,
@@ -373,11 +385,16 @@ class ChatController extends Controller
                 'message_count' => $messages->count()
             ]);
             
-            return response()->json([
+            $response = response()->json([
                 'success' => true,
                 'count' => $messages->count(),
                 'messages' => $messages
             ]);
+            
+            // Add CSRF token to response headers for client to update
+            $response->header('X-CSRF-TOKEN', csrf_token());
+            
+            return $response;
         } catch (\Exception $e) {
             Log::error('Get messages error: ' . $e->getMessage(), [
                 'trade_id' => $trade->id,

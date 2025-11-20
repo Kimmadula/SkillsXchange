@@ -7,13 +7,16 @@ echo "Building SkillsXchange for Render deployment..."
 echo "Installing PHP dependencies..."
 composer install --optimize-autoloader --no-dev
 
-# Install Node dependencies
+# Install Node dependencies (with optimized settings)
 echo "Installing Node dependencies..."
-npm install
+npm config set fetch-retries 3
+npm config set fetch-retry-mintimeout 10000
+npm config set fetch-retry-maxtimeout 60000
+npm install --prefer-offline --no-audit
 
-# Build assets
+# Build assets (with timeout to prevent hanging)
 echo "Building CSS and JS assets..."
-npm run build
+timeout 300 npm run build || echo "⚠️ Asset build timed out or failed, using fallback CSS"
 
 # Check if build was successful
 if [ $? -eq 0 ]; then

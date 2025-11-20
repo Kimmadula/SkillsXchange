@@ -22,6 +22,7 @@ export class ChatManager {
         this.consecutiveEmptyPolls = 0;
         this.isPolling = false; // Prevent overlapping requests
         this.lastPollTime = 0; // Track last poll time for debouncing
+        this.authFailureCount = 0; // Track authentication failures
         
         // CSRF token
         this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
@@ -53,14 +54,24 @@ export class ChatManager {
 
     formatExistingTimestamps() {
         // Format all existing timestamps from server to user's local timezone
+        // But preserve server-provided display_time if it exists (more accurate)
         const timestampElements = document.querySelectorAll('.message-time[data-timestamp]');
         timestampElements.forEach(element => {
+            // Check if element already has server-formatted time (from display_time)
+            if (element.textContent && element.textContent.match(/\d{1,2}:\d{2}\s?(AM|PM)/i)) {
+                // Already formatted by server, keep it
+                return;
+            }
+            
             const timestamp = element.getAttribute('data-timestamp');
             if (timestamp) {
                 try {
-                    const localTime = new Date(timestamp).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit'
+                    const date = new Date(timestamp);
+                    // Use 12-hour format with AM/PM to match server format
+                    const localTime = date.toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
                     });
                     element.textContent = localTime;
                 } catch (e) {
@@ -460,9 +471,42 @@ export class ChatManager {
 
         // Handle both string messages and message objects
         const messageText = typeof message === 'string' ? message : message.message;
-        const messageTime = timestamp || (message.created_at ? 
-            new Date(message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 
-            new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}));
+        
+        // Use server-provided display_time if available (most accurate)
+        // Otherwise format from created_at, or use provided timestamp
+        let messageTime;
+        if (message && typeof message === 'object' && message.display_time) {
+            // Server-provided time is most accurate
+            messageTime = message.display_time;
+        } else if (timestamp) {
+            // Use provided timestamp
+            messageTime = timestamp;
+        } else if (message && message.created_at) {
+            // Format from created_at - ensure we use the server timezone
+            try {
+                const date = new Date(message.created_at);
+                // Use 12-hour format with AM/PM to match server format
+                messageTime = date.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            } catch (e) {
+                // Fallback to current time if parsing fails
+                messageTime = new Date().toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            }
+        } else {
+            // Last resort - current time
+            messageTime = new Date().toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
 
         // Check if message contains image, video, or file
         let messageContent = '';
@@ -636,22 +680,59 @@ export class ChatManager {
         this.lastPollTime = now;
         
         try {
+            // Get CSRF token for the request
+            const csrfToken = this.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            
             const response = await fetch(`/chat/${this.tradeId}/messages`, {
-                credentials: 'same-origin',
+                method: 'GET',
+                credentials: 'same-origin', // Include cookies for session
                 headers: {
                     'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken || '' // Include CSRF token
                 }
             });
             
             // Handle auth errors gracefully
             if (response.status === 401 || response.status === 403) {
                 console.warn('⚠️ Authentication failed for message polling - session may have expired');
+                // Stop polling and try to reload page to re-authenticate
+                if (this.messagePollingInterval) {
+                    clearInterval(this.messagePollingInterval);
+                    this.messagePollingInterval = null;
+                }
+                // Only reload if we get multiple auth failures
+                if (!this.authFailureCount) this.authFailureCount = 0;
+                this.authFailureCount++;
+                if (this.authFailureCount >= 3) {
+                    console.error('❌ Multiple authentication failures - reloading page');
+                    window.location.reload();
+                }
                 this.isPolling = false;
                 return;
             }
             
+            // Reset auth failure count on success
+            if (response.ok) {
+                this.authFailureCount = 0;
+                
+                // Update CSRF token from response headers if available
+                const newCsrfToken = response.headers.get('X-CSRF-TOKEN');
+                if (newCsrfToken) {
+                    this.csrfToken = newCsrfToken;
+                    // Update meta tag if it exists
+                    const metaTag = document.querySelector('meta[name="csrf-token"]');
+                    if (metaTag) {
+                        metaTag.setAttribute('content', newCsrfToken);
+                    }
+                }
+            }
+            
             if (!response.ok) {
+                // If it's a 401/403, we already handled it above
+                if (response.status === 401 || response.status === 403) {
+                    return;
+                }
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             

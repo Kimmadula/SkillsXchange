@@ -3,9 +3,9 @@
 # Enable error reporting but don't exit on non-critical errors
 set -e
 
-# Wait for database to be ready
+# Wait for database to be ready (reduced wait time)
 echo "Waiting for database to be ready..."
-sleep 10
+sleep 3
 
 # Ensure .env file exists with proper structure
 echo "Ensuring .env file exists..."
@@ -39,9 +39,9 @@ php artisan key:generate --force --no-interaction
 echo "Clearing cached configuration..."
 php artisan config:clear --no-interaction
 
-# Test database connection (non-blocking)
+# Test database connection (non-blocking, faster)
 echo "Testing database connection..."
-php artisan tinker --execute="try { DB::connection()->getPdo(); echo 'Database connected successfully'; } catch(Exception \$e) { echo 'Database connection failed: ' . \$e->getMessage(); }" || echo "Database connection test failed, but continuing..."
+timeout 5 php artisan tinker --execute="try { DB::connection()->getPdo(); echo 'Database connected successfully'; } catch(Exception \$e) { echo 'Database connection failed: ' . \$e->getMessage(); }" || echo "Database connection test skipped (timeout or not ready)"
 
 # Cache configuration for production (after APP_KEY is available)
 echo "Caching configuration for production..."

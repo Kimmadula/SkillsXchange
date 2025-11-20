@@ -51,7 +51,13 @@ services:
       - key: SESSION_DRIVER
         value: file
       - key: SESSION_LIFETIME
-        value: "120"
+        value: "525600"
+      - key: SESSION_DOMAIN
+        value: ".skillsxchange.site"
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
+      - key: SESSION_SAME_SITE
+        value: "lax"
       - key: QUEUE_CONNECTION
         value: sync
       # ✅ Resend Email Configuration (HTTP API - Cloud Platform Compatible)

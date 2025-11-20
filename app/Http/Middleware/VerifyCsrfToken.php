@@ -17,6 +17,20 @@ class VerifyCsrfToken extends Middleware
     protected $except = [
         'webhooks/paymongo',
     ];
+    
+    /**
+     * Determine if the session and input CSRF tokens match.
+     * GET requests don't need CSRF verification.
+     */
+    protected function tokensMatch($request)
+    {
+        // GET requests don't need CSRF verification
+        if ($request->isMethod('GET')) {
+            return true;
+        }
+        
+        return parent::tokensMatch($request);
+    }
 
     /**
      * Handle an incoming request.

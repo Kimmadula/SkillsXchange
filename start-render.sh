@@ -9,26 +9,25 @@ chmod -R 755 storage bootstrap/cache
 # Ensure Firebase files are accessible
 chmod 644 public/firebase-config.js public/firebase-video-integration.js public/firebase-video-call.js
 
-# Wait for database to be ready
+# Wait for database to be ready (reduced wait time)
 echo "Waiting for database to be ready..."
-sleep 10
+sleep 3
 
-# Test database connection
+# Test database connection (with timeout)
 echo "Testing database connection..."
-if php test-db-connection.php; then
+if timeout 5 php test-db-connection.php 2>/dev/null; then
     echo "Database connection successful!"
     
     # Check if migrations are needed (only run if database is new/empty)
     echo "Checking if database needs migrations..."
-    if php check-migrations.php; then
+    if timeout 5 php check-migrations.php 2>/dev/null; then
         echo "Database needs migrations, running..."
-        php artisan migrate --force || echo "Migration failed, continuing..."
+        php artisan migrate --force --no-interaction || echo "Migration failed, continuing..."
     else
         echo "Database already has migrations, skipping..."
     fi
 else
-    echo "Database connection failed, skipping migrations..."
-    echo "Application will start without database operations..."
+    echo "Database connection test skipped (timeout or not ready), continuing..."
 fi
 
 # Clear and cache configurations

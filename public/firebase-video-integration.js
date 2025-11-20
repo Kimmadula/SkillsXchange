@@ -373,18 +373,19 @@ class FirebaseVideoIntegration {
                             }
                         }
                         
+                        // Only log "Answer not for us" if it's actually unexpected (we're initiator and it's addressed to us but wrong callId)
+                        // Otherwise, this is normal - answers from other calls or for other users should be ignored silently
                         if (!processedCalls.has(callId + '_ignored')) {
-                            if (!isForUs) {
-                                this.log(`⚠️ Answer not for us: toUserId=${call.toUserId}, our userId=${this.userId}`);
-                            }
-                            if (!callIdMatches && this.callId) {
-                                this.log(`⚠️ Answer callId mismatch: call.callId=${call.callId}, this.callId=${this.callId}`);
-                            }
-                            if (!this.isInitiator) {
-                                // This is normal for callee - they shouldn't process answers
-                            }
-                            if (!call.answer) {
-                                this.log('⚠️ Answer missing in call object');
+                            // Only log if it's a potential issue (not just a normal case of ignoring other users' answers)
+                            if (!isForUs && this.isInitiator && this.callId) {
+                                // This is normal - answer is for someone else, ignore silently
+                                // Don't log to reduce console noise
+                            } else if (!callIdMatches && this.callId && isForUs && this.isInitiator) {
+                                // This is a potential issue - answer is for us but wrong callId
+                                this.log(`⚠️ Answer callId mismatch: call.callId=${call.callId}, this.callId=${this.callId}`, 'warning');
+                            } else if (!this.isInitiator && isForUs) {
+                                // Callee receiving answer meant for them - this shouldn't happen, but don't log as error
+                                // This is handled by the callee not processing answers
                             }
                             processedCalls.add(callId + '_ignored');
                         }
