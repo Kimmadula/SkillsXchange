@@ -1133,6 +1133,9 @@ class FirebaseVideoIntegration {
                     this.pendingRemoteCandidates = [];
                     this.log('✅ All buffered ICE candidates processed (caller)');
                 }
+                
+                // Start periodic connection monitoring if stuck in "new" state
+                this.startConnectionMonitoring();
             } else {
                 // Check if already set
                 if (this.peerConnection.remoteDescription && this.peerConnection.remoteDescription.type === 'answer') {
