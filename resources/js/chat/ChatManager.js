@@ -12,7 +12,8 @@ export class ChatManager {
         
         // State management
         this.isSending = false;
-        this.lastMessageCount = 0;
+        // Initialize with count of messages already rendered on page to prevent duplicates
+        this.lastMessageCount = window.initialMessageCount || this.getInitialMessageCount();
         this.messagePollingInterval = null;
         this.pollingFrequency = 5000; // Start with 5 seconds (optimized)
         this.minPollingFrequency = 5000; // Never poll faster than 5 seconds
@@ -28,11 +29,26 @@ export class ChatManager {
     }
 
     initialize() {
+        // Ensure lastMessageCount is set correctly based on existing messages
+        if (this.lastMessageCount === 0) {
+            this.lastMessageCount = this.getInitialMessageCount();
+        }
+        
         this.setupEventListeners();
         this.setupEchoListeners();
         this.setupPollingFallback();
         this.formatExistingTimestamps();
         this.scrollToBottom();
+    }
+    
+    getInitialMessageCount() {
+        // Count messages already rendered on the page
+        if (this.messagesContainer) {
+            const existingMessages = this.messagesContainer.querySelectorAll('.message');
+            return existingMessages.length;
+        }
+        // Fallback to window variable if available
+        return window.initialMessageCount || 0;
     }
 
     formatExistingTimestamps() {
@@ -400,6 +416,11 @@ export class ChatManager {
 
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${isOwn ? 'own' : ''}`;
+        
+        // Add message ID if available to prevent duplicates
+        if (message && typeof message === 'object' && message.id) {
+            messageDiv.setAttribute('data-message-id', message.id);
+        }
         
         if (tempId) {
             messageDiv.setAttribute('data-temp-id', tempId);
