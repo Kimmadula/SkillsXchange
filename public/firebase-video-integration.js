@@ -33,6 +33,8 @@ class FirebaseVideoIntegration {
         this.timer = null;
         // Buffer for remote ICE candidates that arrive before remote description is set
         this.pendingRemoteCandidates = [];
+        // Connection monitoring interval
+        this.connectionMonitorInterval = null;
         
         // Callbacks
         this.onCallReceived = options.onCallReceived || (() => {});
@@ -1377,6 +1379,9 @@ class FirebaseVideoIntegration {
     
     // Clean up call resources (shared by endCall and handleCallEnd)
     cleanupCallResources() {
+        // Stop connection monitoring
+        this.stopConnectionMonitoring();
+        
         // Reset answer processing flags
         this.isProcessingAnswer = false;
         this.answerProcessed = false;
@@ -1595,6 +1600,72 @@ class FirebaseVideoIntegration {
             this.log('✅ New offer created and sent for ICE restart', 'info');
         } catch (error) {
             this.log(`❌ Error triggering ICE restart: ${error.message}`, 'error');
+        }
+    }
+    
+    // Start periodic connection monitoring
+    startConnectionMonitoring() {
+        // Clear any existing monitor
+        this.stopConnectionMonitoring();
+        
+        let checkCount = 0;
+        const maxChecks = 10; // Monitor for 10 seconds (10 checks * 1 second)
+        
+        this.connectionMonitorInterval = setInterval(() => {
+            if (!this.peerConnection || !this.isActive) {
+                this.stopConnectionMonitoring();
+                return;
+            }
+            
+            checkCount++;
+            const connState = this.peerConnection.connectionState;
+            const iceState = this.peerConnection.iceConnectionState;
+            const sigState = this.peerConnection.signalingState;
+            
+            this.log(`🔍 Connection monitor (${checkCount}/${maxChecks}): connection=${connState}, ice=${iceState}, signaling=${sigState}`);
+            
+            // If connected, stop monitoring
+            if (connState === 'connected' || iceState === 'connected' || iceState === 'completed') {
+                this.log('✅ Connection established - stopping monitor', 'success');
+                this.stopConnectionMonitoring();
+                return;
+            }
+            
+            // If stuck in "new" state after multiple checks, try to fix it
+            if (checkCount >= 3 && connState === 'new' && iceState === 'new' && sigState === 'stable') {
+                this.log('⚠️ Connection stuck in "new" state - attempting diagnostics and restart', 'warning');
+                this.diagnoseConnectionIssue();
+                
+                // Try ICE restart
+                try {
+                    if (typeof this.peerConnection.restartIce === 'function') {
+                        this.peerConnection.restartIce();
+                        this.log('🔄 ICE restart called', 'info');
+                    } else if (this.isInitiator) {
+                        this.triggerIceRestart();
+                    }
+                } catch (restartError) {
+                    this.log(`⚠️ Failed to restart ICE: ${restartError.message}`, 'warning');
+                }
+            }
+            
+            // Stop after max checks
+            if (checkCount >= maxChecks) {
+                this.log('⏱️ Connection monitor timeout - stopping', 'warning');
+                if (connState !== 'connected' && iceState !== 'connected' && iceState !== 'completed') {
+                    this.log('⚠️ Connection failed to establish after monitoring period', 'error');
+                    this.diagnoseConnectionIssue();
+                }
+                this.stopConnectionMonitoring();
+            }
+        }, 1000); // Check every second
+    }
+    
+    // Stop connection monitoring
+    stopConnectionMonitoring() {
+        if (this.connectionMonitorInterval) {
+            clearInterval(this.connectionMonitorInterval);
+            this.connectionMonitorInterval = null;
         }
     }
     
