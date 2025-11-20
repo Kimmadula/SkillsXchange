@@ -392,14 +392,42 @@ class FirebaseVideoIntegration {
                     }
                 }
                 
-                // Handle ICE candidates - only if we have an active call and matching call ID
-                if (call.type === 'ice-candidate' && this.isActive && call.callId === this.callId) {
-                    if ((call.toUserId === this.userId && call.fromUserId !== this.userId) ||
-                        (call.fromUserId === this.userId && call.toUserId !== this.userId)) {
-                        // Only process ICE candidates created after call started
-                        if (call.timestamp && call.timestamp > this.startTime) {
-                            processedCalls.add(callId);
-                            this.handleIceCandidate(call.candidate);
+                // Handle ICE candidates - accept if we have a peer connection and matching call ID
+                // Don't require isActive to be true, as ICE candidates from callee may arrive before answer is processed
+                if (call.type === 'ice-candidate') {
+                    // Log all ICE candidates for debugging
+                    if (this.peerConnection && call.callId === this.callId) {
+                        // Only process ICE candidates from the partner (not our own)
+                        const isFromPartner = (call.toUserId === this.userId && call.fromUserId !== this.userId) ||
+                                             (call.fromUserId === this.userId && call.toUserId !== this.userId);
+                        
+                        if (isFromPartner) {
+                            // Only process ICE candidates created after call started (if startTime is set)
+                            // For incoming calls, startTime might not be set, so allow all recent candidates
+                            const isRecent = !this.startTime || (call.timestamp && call.timestamp > this.startTime);
+                            if (isRecent) {
+                                this.log(`📥 Received ICE candidate from partner: fromUserId=${call.fromUserId}, toUserId=${call.toUserId}, our userId=${this.userId}`);
+                                // Don't add to processedCalls for ICE candidates - they can be processed multiple times
+                                this.handleIceCandidate(call.candidate);
+                            } else {
+                                // Log old candidates for debugging
+                                if (call.timestamp && this.startTime) {
+                                    const age = (call.timestamp - this.startTime) / 1000;
+                                    if (age > 60) { // Only log if very old (>1 minute)
+                                        this.log(`⏭️ Skipping old ICE candidate (${Math.round(age)}s old)`, 'info');
+                                    }
+                                }
+                            }
+                        } else {
+                            // Log when we receive our own ICE candidates (shouldn't happen, but useful for debugging)
+                            this.log(`🔄 Received own ICE candidate (ignoring): fromUserId=${call.fromUserId}, toUserId=${call.toUserId}, our userId=${this.userId}`, 'info');
+                        }
+                    } else {
+                        // Log ICE candidates that don't match our call
+                        if (call.callId !== this.callId) {
+                            this.log(`⚠️ ICE candidate callId mismatch: call.callId=${call.callId}, this.callId=${this.callId}`, 'info');
+                        } else if (!this.peerConnection) {
+                            this.log(`⚠️ ICE candidate received but no peer connection: callId=${call.callId}`, 'info');
                         }
                     }
                 }
@@ -1245,8 +1273,9 @@ class FirebaseVideoIntegration {
     
     // Handle ICE candidate
     async handleIceCandidate(candidate) {
-        // Ignore when there's no active call or peer connection
-        if (!this.peerConnection || !this.isActive) {
+        // Only require peer connection - don't require isActive, as ICE candidates may arrive before call is marked active
+        if (!this.peerConnection) {
+            this.log('⚠️ Skipping ICE candidate - no peer connection', 'warning');
             return;
         }
 
@@ -1260,8 +1289,17 @@ class FirebaseVideoIntegration {
 
         // Otherwise, add immediately
         this.log('📡 Handling ICE candidate...');
-        await this.peerConnection.addIceCandidate(candidate);
-        this.log('✅ ICE candidate added');
+        try {
+            await this.peerConnection.addIceCandidate(candidate);
+            this.log('✅ ICE candidate added');
+        } catch (error) {
+            // Some errors are non-critical (e.g., candidate already added, invalid state)
+            if (error.name === 'OperationError' || error.name === 'InvalidStateError') {
+                this.log(`⚠️ ICE candidate add failed (non-critical): ${error.message}`, 'warning');
+            } else {
+                this.log(`❌ ICE candidate add failed: ${error.message}`, 'error');
+            }
+        }
     }
     
     // Handle call end (called when partner ends the call)
