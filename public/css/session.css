@@ -876,5 +876,28 @@ html, body {
     .modal-body {
         padding: 1rem;
     }
+    
+    /* Extra small mobile - ensure input is always visible */
+    .message-input-area {
+        padding: 0.625rem 0.75rem !important;
+    }
+    
+    .message-input {
+        padding: 0.5rem 2rem 0.5rem 0.75rem !important;
+        font-size: 16px !important; /* Prevent iOS zoom */
+    }
+    
+    .send-btn {
+        padding: 0.5rem 1rem !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .chat-header {
+        padding: 0.75rem 1rem !important;
+    }
+    
+    .messages-container {
+        padding: 0.75rem !important;
+    }
 }
 
