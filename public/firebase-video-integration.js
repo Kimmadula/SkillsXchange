@@ -1067,19 +1067,39 @@ class FirebaseVideoIntegration {
                 return;
             }
             
+            // CRITICAL: Convert RTCIceCandidate to plain object for Firebase serialization
+            // Firebase cannot serialize RTCIceCandidate objects directly
+            const candidateData = {
+                candidate: candidate.candidate || null,
+                sdpMLineIndex: candidate.sdpMLineIndex !== null && candidate.sdpMLineIndex !== undefined ? candidate.sdpMLineIndex : null,
+                sdpMid: candidate.sdpMid || null
+            };
+            
+            // Validate candidate data
+            if (!candidateData.candidate) {
+                this.log('⚠️ ICE candidate missing candidate string, skipping', 'warning');
+                return;
+            }
+            
+            // Log candidate details for debugging
+            this.log(`📤 Sending ICE candidate: ${candidate.type || 'unknown'} ${candidate.protocol || 'unknown'} ${candidate.address || 'unknown'}:${candidate.port || 'unknown'}`);
+            this.log(`   Candidate string: ${candidateData.candidate.substring(0, 50)}...`);
+            this.log(`   sdpMLineIndex: ${candidateData.sdpMLineIndex}, sdpMid: ${candidateData.sdpMid}`);
+            
             const callRef = this.roomRef.child(`calls/${this.callId}_ice_${Date.now()}`);
             await callRef.set({
                 type: 'ice-candidate',
                 fromUserId: this.userId,
                 toUserId: this.partnerId,
-                candidate: candidate,
+                candidate: candidateData, // Send as plain object, not RTCIceCandidate
                 callId: this.callId,
                 timestamp: Date.now()
             });
-            this.log('📤 ICE candidate sent via Firebase');
+            this.log('✅ ICE candidate sent via Firebase');
         } catch (error) {
             // ICE candidate errors are non-critical, log but don't throw
             this.log(`⚠️ Error sending ICE candidate (non-critical): ${error.message}`, 'warning');
+            this.log(`   Error details: ${error.name}, ${error.stack || 'no stack'}`, 'warning');
         }
     }
     
@@ -1175,32 +1195,59 @@ class FirebaseVideoIntegration {
                 this.log(`🧊 ICE connection state: ${this.peerConnection.iceConnectionState}`);
                 this.log(`📊 Signaling state after setting answer: ${this.peerConnection.signalingState}`);
                 
-                // Force connection state check - sometimes handlers don't fire immediately
-                setTimeout(() => {
-                    if (this.peerConnection) {
-                        const connState = this.peerConnection.connectionState;
-                        const iceState = this.peerConnection.iceConnectionState;
-                        const sigState = this.peerConnection.signalingState;
-                        this.log(`🔍 Post-answer state check (500ms): connection=${connState}, ice=${iceState}, signaling=${sigState}`);
+                // CRITICAL: Force immediate ICE candidate processing and connection check
+                // Sometimes the connection state doesn't update immediately after setRemoteDescription
+                const forceConnectionCheck = async () => {
+                    if (!this.peerConnection) return;
+                    
+                    const connState = this.peerConnection.connectionState;
+                    const iceState = this.peerConnection.iceConnectionState;
+                    const sigState = this.peerConnection.signalingState;
+                    
+                    this.log(`🔍 Connection state check: connection=${connState}, ice=${iceState}, signaling=${sigState}`);
+                    
+                    // If still in "new" state, try to trigger ICE restart immediately
+                    if (connState === 'new' && iceState === 'new' && sigState === 'stable') {
+                        this.log('⚠️ Connection stuck in "new" state - attempting ICE restart', 'warning');
                         
-                        // If still in "new" state after 500ms, try to trigger ICE restart
-                        if (connState === 'new' && iceState === 'new' && sigState === 'stable') {
-                            this.log('⚠️ Connection stuck in "new" state - attempting ICE restart', 'warning');
-                            try {
-                                if (typeof this.peerConnection.restartIce === 'function') {
-                                    this.peerConnection.restartIce();
-                                    this.log('🔄 ICE restart initiated', 'info');
-                                } else {
-                                    this.log('⚠️ restartIce() not available, trying alternative approach', 'warning');
-                                    // Alternative: Create new offer/answer cycle
-                                    this.triggerIceRestart();
-                                }
-                            } catch (restartError) {
-                                this.log(`⚠️ Failed to restart ICE: ${restartError.message}`, 'warning');
+                        // Try multiple approaches to restart ICE
+                        try {
+                            // Method 1: Use restartIce() if available
+                            if (typeof this.peerConnection.restartIce === 'function') {
+                                this.peerConnection.restartIce();
+                                this.log('🔄 ICE restart initiated (method 1)', 'info');
+                            } 
+                            // Method 2: Create new offer with iceRestart flag (for initiator)
+                            else if (this.isInitiator) {
+                                this.log('🔄 Triggering ICE restart via new offer (method 2)', 'info');
+                                this.triggerIceRestart();
                             }
+                            // Method 3: Force ICE gathering restart
+                            else {
+                                this.log('🔄 Attempting to force ICE gathering restart (method 3)', 'info');
+                                // Create a dummy offer to trigger ICE restart
+                                try {
+                                    const dummyOffer = await this.peerConnection.createOffer({ iceRestart: true });
+                                    await this.peerConnection.setLocalDescription(dummyOffer);
+                                    this.log('🔄 ICE restart via dummy offer initiated', 'info');
+                                } catch (e) {
+                                    this.log(`⚠️ Dummy offer failed: ${e.message}`, 'warning');
+                                }
+                            }
+                        } catch (restartError) {
+                            this.log(`⚠️ Failed to restart ICE: ${restartError.message}`, 'warning');
                         }
                     }
-                }, 500);
+                };
+                
+                // Check immediately
+                forceConnectionCheck();
+                
+                // Also check after a short delay
+                setTimeout(forceConnectionCheck, 500);
+                
+                // Check again after 2 seconds
+                setTimeout(forceConnectionCheck, 2000);
 
                 // Mark as processed
                 this.answerProcessed = true;
@@ -1282,25 +1329,85 @@ class FirebaseVideoIntegration {
             return;
         }
 
+        // CRITICAL: Handle both RTCIceCandidate objects and plain objects from Firebase
+        // Firebase stores candidates as plain objects: { candidate, sdpMLineIndex, sdpMid }
+        let candidateToAdd;
+        
+        if (candidate instanceof RTCIceCandidate) {
+            // Already an RTCIceCandidate object
+            candidateToAdd = candidate;
+        } else if (candidate && typeof candidate === 'object') {
+            // Plain object from Firebase - validate and use directly
+            if (!candidate.candidate) {
+                this.log('⚠️ ICE candidate missing candidate string, skipping', 'warning');
+                this.log('   Candidate object:', candidate);
+                return;
+            }
+            
+            // Create RTCIceCandidate from plain object
+            // addIceCandidate accepts plain objects, but let's create RTCIceCandidate for consistency
+            try {
+                candidateToAdd = new RTCIceCandidate({
+                    candidate: candidate.candidate,
+                    sdpMLineIndex: candidate.sdpMLineIndex !== null && candidate.sdpMLineIndex !== undefined ? candidate.sdpMLineIndex : 0,
+                    sdpMid: candidate.sdpMid || '0'
+                });
+            } catch (e) {
+                // If RTCIceCandidate constructor fails, use plain object (addIceCandidate accepts both)
+                this.log('⚠️ Could not create RTCIceCandidate, using plain object', 'warning');
+                candidateToAdd = {
+                    candidate: candidate.candidate,
+                    sdpMLineIndex: candidate.sdpMLineIndex !== null && candidate.sdpMLineIndex !== undefined ? candidate.sdpMLineIndex : 0,
+                    sdpMid: candidate.sdpMid || '0'
+                };
+            }
+        } else {
+            this.log('⚠️ Invalid ICE candidate format, skipping', 'warning');
+            this.log('   Candidate:', candidate);
+            return;
+        }
+
+        // Log candidate details for debugging
+        const candidateString = candidateToAdd.candidate || (candidateToAdd instanceof RTCIceCandidate ? candidateToAdd.candidate : 'unknown');
+        const candidateType = candidateToAdd.type || (candidateString.includes('typ host') ? 'host' : candidateString.includes('typ srflx') ? 'srflx' : candidateString.includes('typ relay') ? 'relay' : 'unknown');
+        const candidateProtocol = candidateToAdd.protocol || (candidateString.includes(' UDP ') ? 'udp' : candidateString.includes(' TCP ') ? 'tcp' : 'unknown');
+        
+        this.log(`📡 Handling ICE candidate: ${candidateType} ${candidateProtocol}`);
+        this.log(`   Candidate string: ${candidateString.substring(0, 80)}...`);
+        this.log(`   sdpMLineIndex: ${candidateToAdd.sdpMLineIndex}, sdpMid: ${candidateToAdd.sdpMid}`);
+
         // If remote description isn't set yet, buffer the candidate
         const remoteDescSet = this.peerConnection.remoteDescription && this.peerConnection.remoteDescription.type;
         if (!remoteDescSet) {
-            this.pendingRemoteCandidates.push(candidate);
-            this.log(`🔄 ICE candidate buffered (${this.pendingRemoteCandidates.length} total)`);
+            this.pendingRemoteCandidates.push(candidateToAdd);
+            this.log(`🔄 ICE candidate buffered (${this.pendingRemoteCandidates.length} total) - waiting for remote description`);
             return;
         }
 
         // Otherwise, add immediately
-        this.log('📡 Handling ICE candidate...');
         try {
-            await this.peerConnection.addIceCandidate(candidate);
-            this.log('✅ ICE candidate added');
+            await this.peerConnection.addIceCandidate(candidateToAdd);
+            this.log(`✅ ICE candidate added successfully: ${candidateType} ${candidateProtocol}`);
+            
+            // Log connection state after adding candidate
+            const connState = this.peerConnection.connectionState;
+            const iceState = this.peerConnection.iceConnectionState;
+            this.log(`📊 Connection state after adding candidate: connection=${connState}, ice=${iceState}`);
+            
+            // If connection is established, log success
+            if (iceState === 'connected' || iceState === 'completed') {
+                this.log('✅ ICE connection established!', 'success');
+            }
         } catch (error) {
             // Some errors are non-critical (e.g., candidate already added, invalid state)
             if (error.name === 'OperationError' || error.name === 'InvalidStateError') {
                 this.log(`⚠️ ICE candidate add failed (non-critical): ${error.message}`, 'warning');
+                this.log(`   Candidate was: ${candidateType} ${candidateProtocol}`);
             } else {
                 this.log(`❌ ICE candidate add failed: ${error.message}`, 'error');
+                this.log(`   Candidate was: ${candidateType} ${candidateProtocol}`);
+                this.log(`   Candidate string: ${candidateString.substring(0, 100)}`);
+                this.log(`   Error details: ${error.name}, ${error.code || 'no code'}`);
             }
         }
     }
@@ -1668,15 +1775,28 @@ class FirebaseVideoIntegration {
             
             if (localDesc) {
                 this.log(`📝 Local description: type=${localDesc.type}, hasSDP=${!!localDesc.sdp}`);
+                // Check if SDP has ICE candidates
+                if (localDesc.sdp) {
+                    const iceCandidateCount = (localDesc.sdp.match(/a=candidate:/g) || []).length;
+                    this.log(`📝 Local SDP has ${iceCandidateCount} ICE candidate lines`);
+                }
             } else {
                 this.log('⚠️ No local description set!', 'error');
             }
             
             if (remoteDesc) {
                 this.log(`📝 Remote description: type=${remoteDesc.type}, hasSDP=${!!remoteDesc.sdp}`);
+                // Check if SDP has ICE candidates
+                if (remoteDesc.sdp) {
+                    const iceCandidateCount = (remoteDesc.sdp.match(/a=candidate:/g) || []).length;
+                    this.log(`📝 Remote SDP has ${iceCandidateCount} ICE candidate lines`);
+                }
             } else {
                 this.log('⚠️ No remote description set!', 'error');
             }
+            
+            // Check pending candidates
+            this.log(`📦 Pending remote candidates: ${this.pendingRemoteCandidates.length}`);
             
             // Check ICE candidates
             if (typeof this.peerConnection.getStats === 'function') {
@@ -1685,21 +1805,34 @@ class FirebaseVideoIntegration {
                     let localCandidates = 0;
                     let remoteCandidates = 0;
                     let candidatePairs = 0;
+                    let succeededPairs = 0;
+                    let failedPairs = 0;
                     
                     stats.forEach(report => {
                         if (report.type === 'local-candidate') {
                             localCandidates++;
+                            this.log(`📡 Local candidate: ${report.candidateType} ${report.protocol} ${report.address || 'unknown'}:${report.port || 'unknown'}`);
                         } else if (report.type === 'remote-candidate') {
                             remoteCandidates++;
+                            this.log(`📥 Remote candidate: ${report.candidateType} ${report.protocol} ${report.address || 'unknown'}:${report.port || 'unknown'}`);
                         } else if (report.type === 'candidate-pair') {
                             candidatePairs++;
                             if (report.state === 'succeeded') {
-                                this.log(`✅ Found successful candidate pair: ${report.localCandidateId} <-> ${report.remoteCandidateId}`, 'success');
+                                succeededPairs++;
+                                this.log(`✅ Successful candidate pair: ${report.localCandidateId} <-> ${report.remoteCandidateId}`, 'success');
+                                this.log(`   Local: ${report.localCandidateId}, Remote: ${report.remoteCandidateId}, State: ${report.state}`);
+                            } else if (report.state === 'failed') {
+                                failedPairs++;
+                                this.log(`❌ Failed candidate pair: ${report.localCandidateId} <-> ${report.remoteCandidateId}`, 'error');
                             }
                         }
                     });
                     
-                    this.log(`📊 ICE stats: local=${localCandidates}, remote=${remoteCandidates}, pairs=${candidatePairs}`);
+                    this.log(`📊 ICE stats summary: local=${localCandidates}, remote=${remoteCandidates}, pairs=${candidatePairs}, succeeded=${succeededPairs}, failed=${failedPairs}`);
+                    
+                    if (succeededPairs === 0 && candidatePairs > 0) {
+                        this.log('⚠️ No successful candidate pairs found! This is why connection is stuck.', 'error');
+                    }
                 } catch (statsError) {
                     this.log(`⚠️ Could not get stats: ${statsError.message}`, 'warning');
                 }
