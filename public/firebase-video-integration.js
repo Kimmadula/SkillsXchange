@@ -398,8 +398,8 @@ class FirebaseVideoIntegration {
                     // Log all ICE candidates for debugging
                     if (this.peerConnection && call.callId === this.callId) {
                         // Only process ICE candidates from the partner (not our own)
-                        const isFromPartner = (call.toUserId === this.userId && call.fromUserId !== this.userId) ||
-                                             (call.fromUserId === this.userId && call.toUserId !== this.userId);
+                        // Simple check: if fromUserId is not us, it's from the partner
+                        const isFromPartner = call.fromUserId !== this.userId;
                         
                         if (isFromPartner) {
                             // Only process ICE candidates created after call started (if startTime is set)
@@ -419,8 +419,11 @@ class FirebaseVideoIntegration {
                                 }
                             }
                         } else {
-                            // Log when we receive our own ICE candidates (shouldn't happen, but useful for debugging)
-                            this.log(`🔄 Received own ICE candidate (ignoring): fromUserId=${call.fromUserId}, toUserId=${call.toUserId}, our userId=${this.userId}`, 'info');
+                            // Ignore our own ICE candidates (they echo back from Firebase)
+                            // Only log occasionally to reduce noise
+                            if (Math.random() < 0.01) { // Log 1% of the time
+                                this.log(`🔄 Ignoring own ICE candidate: fromUserId=${call.fromUserId}, toUserId=${call.toUserId}, our userId=${this.userId}`, 'info');
+                            }
                         }
                     } else {
                         // Log ICE candidates that don't match our call
