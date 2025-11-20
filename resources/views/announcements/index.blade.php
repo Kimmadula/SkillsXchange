@@ -24,12 +24,12 @@
                             📣 {{ $announcement->title }}
                         </div>
                         <div style="color:#6b7280; font-size:0.9rem; margin-bottom:8px;">
-                            {{ $announcement->content }}
+                            {{ $announcement->message }}
                         </div>
-                        @if($announcement->audience)
+                        @if($announcement->audience_type)
                             <div style="background:#f3f4f6; padding:6px 8px; border-radius:4px; margin-bottom:8px; display:inline-block;">
                                 <span style="font-size:0.8rem; color:#374151;">
-                                    <strong>Audience:</strong> {{ ucfirst($announcement->audience) }}
+                                    <strong>Audience:</strong> {{ ucfirst($announcement->audience_type) }}{{ $announcement->audience_type === 'role' && $announcement->audience_value ? ' (' . implode(', ', json_decode($announcement->audience_value, true)) . ')' : '' }}
                                 </span>
                             </div>
                         @endif

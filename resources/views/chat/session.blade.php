@@ -375,6 +375,70 @@
         }
     };
     
+    // Toggle tasks sidebar from header button (works for both desktop and mobile)
+    window.toggleTasksSidebar = function() {
+        const tasksSidebar = document.querySelector('.tasks-sidebar');
+        const tasksToggleBtn = document.getElementById('tasks-toggle-btn');
+        
+        if (!tasksSidebar) {
+            console.warn('Tasks sidebar not found');
+            return;
+        }
+        
+        // Check if sidebar is currently visible
+        const isVisible = tasksSidebar.style.display !== 'none' && 
+                         tasksSidebar.style.display !== '' &&
+                         window.getComputedStyle(tasksSidebar).display !== 'none';
+        
+        if (isVisible) {
+            // Hide sidebar
+            tasksSidebar.style.display = 'none';
+            tasksSidebar.classList.remove('show', 'fullscreen');
+            
+            // Update button title
+            if (tasksToggleBtn) {
+                tasksToggleBtn.title = 'Show Tasks';
+            }
+            
+            // Hide close buttons
+            const closeButtonMobile = document.getElementById('close-tasks-mobile');
+            const closeButtonDesktop = document.getElementById('close-tasks-desktop');
+            if (closeButtonMobile) closeButtonMobile.style.display = 'none';
+            if (closeButtonDesktop) closeButtonDesktop.style.display = 'none';
+            
+            // Show chat panel if it was hidden (mobile)
+            const chatPanel = document.querySelector('.chat-panel');
+            if (chatPanel && window.innerWidth <= 768) {
+                chatPanel.style.display = 'flex';
+            }
+            
+            console.log('Tasks sidebar hidden');
+        } else {
+            // Show sidebar
+            tasksSidebar.style.display = 'flex';
+            tasksSidebar.classList.add('show');
+            tasksSidebar.classList.remove('fullscreen');
+            
+            // Update button title
+            if (tasksToggleBtn) {
+                tasksToggleBtn.title = 'Hide Tasks';
+            }
+            
+            // Show appropriate close button based on screen size
+            if (window.innerWidth <= 768) {
+                // Mobile
+                const closeButtonMobile = document.getElementById('close-tasks-mobile');
+                if (closeButtonMobile) closeButtonMobile.style.display = 'inline-block';
+            } else {
+                // Desktop
+                const closeButtonDesktop = document.getElementById('close-tasks-desktop');
+                if (closeButtonDesktop) closeButtonDesktop.style.display = 'inline-block';
+            }
+            
+            console.log('Tasks sidebar shown');
+        }
+    };
+    
     // Mobile full-screen tasks functionality
     window.toggleFullScreenTasks = function() {
         const tasksSidebar = document.querySelector('.tasks-sidebar');
@@ -427,6 +491,24 @@
             if (desktopCloseButton) {
                 desktopCloseButton.style.display = 'inline-block';
             }
+        }
+        
+        // Add click event listener to header tasks toggle button
+        const tasksToggleBtn = document.getElementById('tasks-toggle-btn');
+        if (tasksToggleBtn) {
+            tasksToggleBtn.addEventListener('click', function() {
+                window.toggleTasksSidebar();
+            });
+            
+            // Set initial button title based on sidebar visibility
+            if (tasksSidebar) {
+                const isVisible = tasksSidebar.style.display !== 'none' && 
+                                 tasksSidebar.style.display !== '' &&
+                                 window.getComputedStyle(tasksSidebar).display !== 'none';
+                tasksToggleBtn.title = isVisible ? 'Hide Tasks' : 'Show Tasks';
+            }
+            
+            console.log('✅ Tasks toggle button event listener attached');
         }
         
         // Update task count badge - Now handled by TaskManager
@@ -3551,6 +3633,45 @@ let timeInterval = setInterval(function() {
 // Keep track of the last message count
 let lastMessageCount = window.initialMessageCount;
 
+// Convert all message timestamps to user's local timezone
+document.addEventListener('DOMContentLoaded', function() {
+    function convertMessageTimes() {
+        document.querySelectorAll('.message-time[data-timestamp]').forEach(function(timeElement) {
+            const timestamp = timeElement.getAttribute('data-timestamp');
+            if (timestamp && !timeElement.dataset.converted) {
+                try {
+                    const date = new Date(timestamp);
+                    const localTime = date.toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    });
+                    timeElement.textContent = localTime;
+                    timeElement.dataset.converted = 'true';
+                } catch (e) {
+                    console.warn('Failed to convert timestamp:', e);
+                }
+            }
+        });
+    }
+    
+    // Convert existing messages
+    convertMessageTimes();
+    
+    // Watch for new messages and convert their times
+    const observer = new MutationObserver(function(mutations) {
+        convertMessageTimes();
+    });
+    
+    const messagesContainer = document.getElementById('messages');
+    if (messagesContainer) {
+        observer.observe(messagesContainer, {
+            childList: true,
+            subtree: true
+        });
+    }
+});
+
 // Message polling is now handled by ChatManager.js
 // This inline polling code has been disabled to prevent duplicate polling
 // ChatManager will handle polling if Echo is not available
@@ -3560,6 +3681,9 @@ function openReportUserModal() {
     var modal = document.getElementById('report-user-modal');
     if (modal) modal.style.display = 'block';
 }
+
+// Make sure it's available on window object to override any placeholder
+window.openReportUserModal = openReportUserModal;
 
 function closeReportUserModal() {
     var modal = document.getElementById('report-user-modal');

@@ -96,11 +96,38 @@
         }
     </style>
     <div class="container">
-        <!-- Welcome Section -->
+        <!-- Welcome Section (only for new and returning users, not for long-time users) -->
+        @php
+            $isFirstVisit = auth()->user()->created_at->isToday();
+            $daysSinceJoined = auth()->user()->created_at->diffInDays(now());
+            $isLongTimeUser = $daysSinceJoined >= 7; // Hide after 7 days
+            
+            // Dynamic subtitle for returning users based on activity
+            $subtitle = "Here's what's happening with your skill trades today.";
+            if (!$isFirstVisit && !$isLongTimeUser && isset($userStats)) {
+                if ($userStats['pendingRequests'] > 0) {
+                    $subtitle = "You have {$userStats['pendingRequests']} pending request(s) waiting for your response.";
+                } elseif ($userStats['pendingRequestsToMe'] > 0) {
+                    $subtitle = "You have {$userStats['pendingRequestsToMe']} new request(s) on your trades.";
+                } elseif ($userStats['ongoingSessions'] > 0) {
+                    $subtitle = "You have {$userStats['ongoingSessions']} active session(s). Keep up the great work!";
+                } elseif ($userStats['completedSessions'] > 0) {
+                    $subtitle = "You've completed {$userStats['completedSessions']} session(s). Well done!";
+                }
+            }
+        @endphp
+        
+        @if(!$isLongTimeUser)
         <div class="mb-4 mb-md-5">
-            <h1 class="h2 fw-bold text-gradient mb-2">Welcome back, {{ auth()->user()->firstname }}!</h1>
-            <p class="text-muted">Here's what's happening with your skill trades today.</p>
+            @if($isFirstVisit)
+                <h1 class="h2 fw-bold text-gradient mb-2">Welcome to SkillsXchange, {{ auth()->user()->firstname }}! <span class="badge" style="background: #10b981; color: white; font-size: 0.6rem; vertical-align: middle; margin-left: 8px;">New</span></h1>
+                <p class="text-muted">Start by posting your first trade or browsing available matches.</p>
+            @else
+                <h1 class="h2 fw-bold text-gradient mb-2">Welcome back, {{ auth()->user()->firstname }}!</h1>
+                <p class="text-muted">{{ $subtitle }}</p>
+            @endif
         </div>
+        @endif
 
         <!-- Admin Approval Notice -->
         @if(!auth()->user()->is_verified)
@@ -202,6 +229,58 @@
             @if($expiredSessions->count() > 3)
             <div class="text-center mt-3">
                 <small class="text-muted">And {{ $expiredSessions->count() - 3 }} more expired sessions...</small>
+            </div>
+            @endif
+        </div>
+        @endif
+
+        <!-- Active Announcements -->
+        @if(isset($announcements) && $announcements->count() > 0)
+        <div class="dashboard-card slide-up">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-bullhorn me-2" style="color: #6366f1;"></i>
+                    <h5 class="mb-0 text-gradient">Announcements</h5>
+                </div>
+                <a href="{{ route('announcements.index') }}" class="text-decoration-none" style="font-size: 0.875rem; color: #6366f1;">
+                    View All <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div style="display:grid; gap:12px;">
+                @foreach($announcements->take(3) as $announcement)
+                <div style="background:{{ $announcement->type === 'danger' ? '#fef2f2' : ($announcement->type === 'warning' ? '#fffbeb' : ($announcement->type === 'success' ? '#ecfdf5' : '#eff6ff')) }}; border:1px solid {{ $announcement->type === 'danger' ? '#fecaca' : ($announcement->type === 'warning' ? '#fde68a' : ($announcement->type === 'success' ? '#a7f3d0' : '#bfdbfe')) }}; border-radius:8px; padding:12px;">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div style="flex:1;">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="fas {{ $announcement->type === 'danger' ? 'fa-exclamation-circle' : ($announcement->type === 'warning' ? 'fa-exclamation-triangle' : ($announcement->type === 'success' ? 'fa-check-circle' : 'fa-info-circle')) }}" style="color:{{ $announcement->type === 'danger' ? '#dc2626' : ($announcement->type === 'warning' ? '#d97706' : ($announcement->type === 'success' ? '#059669' : '#2563eb')) }};"></i>
+                                <div style="font-weight:600; color:#1f2937;">{{ $announcement->title }}</div>
+                                @if($announcement->priority === 'urgent')
+                                <span class="badge" style="background:#dc2626; color:white; font-size:0.7rem;">URGENT</span>
+                                @elseif($announcement->priority === 'high')
+                                <span class="badge" style="background:#d97706; color:white; font-size:0.7rem;">HIGH</span>
+                                @endif
+                            </div>
+                            <div style="color:#4b5563; font-size:0.875rem; margin-bottom:8px;">
+                                {{ Str::limit($announcement->message, 150) }}
+                            </div>
+                            <div style="font-size:0.75rem; color:#6b7280;">
+                                {{ $announcement->created_at->diffForHumans() }}
+                            </div>
+                        </div>
+                        @if(!$announcement->isReadBy(Auth::user()))
+                        <div class="ms-2">
+                            <div class="rounded-circle" style="width: 10px; height: 10px; background: #6366f1;"></div>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            @if($announcements->count() > 3)
+            <div class="text-center mt-3">
+                <a href="{{ route('announcements.index') }}" class="text-decoration-none" style="color: #6366f1; font-size: 0.875rem;">
+                    View {{ $announcements->count() - 3 }} more announcement(s) <i class="fas fa-arrow-right ms-1"></i>
+                </a>
             </div>
             @endif
         </div>

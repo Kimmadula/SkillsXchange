@@ -947,6 +947,307 @@ class AdminController extends Controller
         return view('admin.settings.index', compact('notifications'));
     }
 
+    /**
+     * Export User Reports as CSV
+     */
+    public function exportUsersCsv()
+    {
+        $users = User::with('skill')->orderBy('created_at', 'desc')->get();
+        
+        $filename = 'users_report_' . now()->format('Y-m-d_His') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($users) {
+            $file = fopen('php://output', 'w');
+            
+            // CSV headers
+            fputcsv($file, [
+                'ID', 'First Name', 'Last Name', 'Username', 'Email', 'Role', 'Plan', 
+                'Token Balance', 'Primary Skill', 'Is Verified', 'Created At', 'Last Updated'
+            ]);
+
+            // CSV data
+            foreach ($users as $user) {
+                fputcsv($file, [
+                    $user->id,
+                    $user->firstname,
+                    $user->lastname,
+                    $user->username,
+                    $user->email,
+                    $user->role,
+                    $user->plan,
+                    $user->token_balance,
+                    $user->skill->name ?? 'N/A',
+                    $user->is_verified ? 'Yes' : 'No',
+                    $user->created_at->format('Y-m-d H:i:s'),
+                    $user->updated_at->format('Y-m-d H:i:s'),
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export Trade Reports as CSV
+     */
+    public function exportTradesCsv()
+    {
+        $trades = Trade::with(['user', 'offeringSkill', 'lookingSkill'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        $filename = 'trades_report_' . now()->format('Y-m-d_His') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($trades) {
+            $file = fopen('php://output', 'w');
+            
+            fputcsv($file, [
+                'ID', 'Owner', 'Offering Skill', 'Looking Skill', 'Status', 
+                'Start Date', 'End Date', 'Available From', 'Available To', 'Created At'
+            ]);
+
+            foreach ($trades as $trade) {
+                fputcsv($file, [
+                    $trade->id,
+                    $trade->user->firstname . ' ' . $trade->user->lastname,
+                    $trade->offeringSkill->name ?? 'N/A',
+                    $trade->lookingSkill->name ?? 'N/A',
+                    $trade->status,
+                    $trade->start_date ? Carbon::parse($trade->start_date)->format('Y-m-d') : 'N/A',
+                    $trade->end_date ? Carbon::parse($trade->end_date)->format('Y-m-d') : 'N/A',
+                    $trade->available_from ?? 'N/A',
+                    $trade->available_to ?? 'N/A',
+                    $trade->created_at->format('Y-m-d H:i:s'),
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export Activity Reports as CSV (Messages/Chat activity)
+     */
+    public function exportActivityCsv()
+    {
+        // Get trade requests as activity indicator
+        $requests = DB::table('trade_requests')
+            ->join('trades', 'trade_requests.trade_id', '=', 'trades.id')
+            ->join('users as requesters', 'trade_requests.requester_id', '=', 'requesters.id')
+            ->select(
+                'trade_requests.id',
+                'trade_requests.status',
+                'trade_requests.message',
+                'requesters.firstname as requester_firstname',
+                'requesters.lastname as requester_lastname',
+                'trades.id as trade_id',
+                'trade_requests.created_at',
+                'trade_requests.responded_at'
+            )
+            ->orderBy('trade_requests.created_at', 'desc')
+            ->get();
+        
+        $filename = 'activity_report_' . now()->format('Y-m-d_His') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($requests) {
+            $file = fopen('php://output', 'w');
+            
+            fputcsv($file, [
+                'Request ID', 'Trade ID', 'Requester', 'Status', 'Message', 
+                'Created At', 'Responded At'
+            ]);
+
+            foreach ($requests as $request) {
+                fputcsv($file, [
+                    $request->id,
+                    $request->trade_id,
+                    $request->requester_firstname . ' ' . $request->requester_lastname,
+                    $request->status,
+                    $request->message ?? 'N/A',
+                    Carbon::parse($request->created_at)->format('Y-m-d H:i:s'),
+                    $request->responded_at ? Carbon::parse($request->responded_at)->format('Y-m-d H:i:s') : 'N/A',
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export Token Analytics as CSV
+     */
+    public function exportTokensCsv()
+    {
+        $transactions = TokenTransaction::with('user')
+            ->where('status', 'completed')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        $filename = 'token_analytics_' . now()->format('Y-m-d_His') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($transactions) {
+            $file = fopen('php://output', 'w');
+            
+            fputcsv($file, [
+                'ID', 'User', 'Type', 'Quantity', 'Amount', 'Status', 'Notes', 'Created At'
+            ]);
+
+            foreach ($transactions as $transaction) {
+                $type = $transaction->quantity > 0 ? 'Token Purchase' : 'Premium Subscription';
+                fputcsv($file, [
+                    $transaction->id,
+                    $transaction->user->firstname . ' ' . $transaction->user->lastname,
+                    $type,
+                    $transaction->quantity,
+                    number_format($transaction->amount, 2),
+                    $transaction->status,
+                    $transaction->notes ?? 'N/A',
+                    $transaction->created_at->format('Y-m-d H:i:s'),
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export Fee Reports as CSV
+     */
+    public function exportFeesCsv()
+    {
+        $fees = FeeTransaction::with('user')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        $filename = 'fee_reports_' . now()->format('Y-m-d_His') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($fees) {
+            $file = fopen('php://output', 'w');
+            
+            fputcsv($file, [
+                'ID', 'User', 'Fee Type', 'Amount', 'Status', 'Trade ID', 'Created At'
+            ]);
+
+            foreach ($fees as $fee) {
+                fputcsv($file, [
+                    $fee->id,
+                    $fee->user ? ($fee->user->firstname . ' ' . $fee->user->lastname) : 'N/A',
+                    $fee->fee_type,
+                    number_format(abs($fee->amount), 2),
+                    $fee->status,
+                    $fee->trade_id ?? 'N/A',
+                    $fee->created_at->format('Y-m-d H:i:s'),
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export Financial Summary as CSV
+     */
+    public function exportFinancialCsv()
+    {
+        // Combine token transactions and fee transactions
+        $tokenRevenue = TokenTransaction::where('status', 'completed')
+            ->where('quantity', '>', 0)
+            ->sum('amount');
+        
+        $premiumRevenue = TokenTransaction::where('status', 'completed')
+            ->where('quantity', 0)
+            ->where(function($query) {
+                $query->where('notes', 'like', '%premium_subscription%')
+                      ->orWhere('notes', 'like', '%Premium subscription%');
+            })
+            ->sum('amount');
+        
+        $feeRevenue = abs(FeeTransaction::where('status', 'completed')->sum('amount'));
+        
+        $filename = 'financial_summary_' . now()->format('Y-m-d_His') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($tokenRevenue, $premiumRevenue, $feeRevenue) {
+            $file = fopen('php://output', 'w');
+            
+            fputcsv($file, ['Financial Summary Report']);
+            fputcsv($file, ['Generated At', now()->format('Y-m-d H:i:s')]);
+            fputcsv($file, []);
+            fputcsv($file, ['Revenue Type', 'Amount']);
+            fputcsv($file, ['Token Sales', number_format($tokenRevenue, 2)]);
+            fputcsv($file, ['Premium Subscriptions', number_format($premiumRevenue, 2)]);
+            fputcsv($file, ['Fee Collections', number_format($feeRevenue, 2)]);
+            fputcsv($file, ['Total Revenue', number_format($tokenRevenue + $premiumRevenue + $feeRevenue, 2)]);
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export reports as PDF (placeholder - returns CSV for now)
+     * TODO: Implement PDF generation with a library like DomPDF
+     */
+    public function exportPdf($type)
+    {
+        // For now, redirect to CSV export
+        // In the future, implement PDF generation
+        $methods = [
+            'users' => 'exportUsersCsv',
+            'trades' => 'exportTradesCsv',
+            'activity' => 'exportActivityCsv',
+            'tokens' => 'exportTokensCsv',
+            'fees' => 'exportFeesCsv',
+            'financial' => 'exportFinancialCsv',
+        ];
+
+        if (isset($methods[$type])) {
+            return $this->{$methods[$type]}();
+        }
+
+        return redirect()->back()->with('error', 'Invalid export type');
+    }
+
     public function profile()
     {
         $user = auth()->user();

@@ -867,6 +867,14 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
         Route::get('/admin/skills', [AdminController::class, 'skillsIndex'])->name('admin.skills.index');
         Route::get('/admin/exchanges', [AdminController::class, 'exchangesIndex'])->name('admin.exchanges.index');
         Route::get('/admin/reports', [AdminController::class, 'reportsIndex'])->name('admin.reports.index');
+        // Export routes
+        Route::get('/admin/reports/export/users/csv', [AdminController::class, 'exportUsersCsv'])->name('admin.reports.export.users.csv');
+        Route::get('/admin/reports/export/trades/csv', [AdminController::class, 'exportTradesCsv'])->name('admin.reports.export.trades.csv');
+        Route::get('/admin/reports/export/activity/csv', [AdminController::class, 'exportActivityCsv'])->name('admin.reports.export.activity.csv');
+        Route::get('/admin/reports/export/tokens/csv', [AdminController::class, 'exportTokensCsv'])->name('admin.reports.export.tokens.csv');
+        Route::get('/admin/reports/export/fees/csv', [AdminController::class, 'exportFeesCsv'])->name('admin.reports.export.fees.csv');
+        Route::get('/admin/reports/export/financial/csv', [AdminController::class, 'exportFinancialCsv'])->name('admin.reports.export.financial.csv');
+        Route::get('/admin/reports/export/{type}/pdf', [AdminController::class, 'exportPdf'])->name('admin.reports.export.pdf');
         Route::get('/admin/messages', [AdminController::class, 'messagesIndex'])->name('admin.messages.index');
         Route::get('/admin/settings', [AdminController::class, 'settingsIndex'])->name('admin.settings.index');
 

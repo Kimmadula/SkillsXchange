@@ -472,20 +472,14 @@ export class ChatManager {
         // Handle both string messages and message objects
         const messageText = typeof message === 'string' ? message : message.message;
         
-        // Use server-provided display_time if available (most accurate)
-        // Otherwise format from created_at, or use provided timestamp
+        // Always convert to user's local timezone for consistency
+        // Server times are in UTC, but we want to show user's local time
         let messageTime;
-        if (message && typeof message === 'object' && message.display_time) {
-            // Server-provided time is most accurate
-            messageTime = message.display_time;
-        } else if (timestamp) {
-            // Use provided timestamp
-            messageTime = timestamp;
-        } else if (message && message.created_at) {
-            // Format from created_at - ensure we use the server timezone
+        if (message && message.created_at) {
+            // Parse the server timestamp and convert to local time
             try {
                 const date = new Date(message.created_at);
-                // Use 12-hour format with AM/PM to match server format
+                // Use 12-hour format with AM/PM in user's local timezone
                 messageTime = date.toLocaleTimeString('en-US', {
                     hour: 'numeric',
                     minute: '2-digit',
@@ -498,6 +492,18 @@ export class ChatManager {
                     minute: '2-digit',
                     hour12: true
                 });
+            }
+        } else if (timestamp) {
+            // Use provided timestamp (should be ISO string)
+            try {
+                const date = new Date(timestamp);
+                messageTime = date.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            } catch (e) {
+                messageTime = timestamp; // Fallback to raw timestamp
             }
         } else {
             // Last resort - current time

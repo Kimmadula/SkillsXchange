@@ -16,7 +16,7 @@
             <div class="message {{ $message->sender_id === Auth::id() ? 'own' : '' }}" data-message-id="{{ $message->id }}">
                 <div class="message-bubble">
                     <div class="message-text">{{ $message->message }}</div>
-                    <div class="message-time" data-timestamp="{{ $message->created_at->toIso8601String() }}">{{ $message->created_at->format('g:i A') }}</div>
+                    <div class="message-time" data-timestamp="{{ $message->created_at->toIso8601String() }}"></div>
                 </div>
             </div>
         @endforeach

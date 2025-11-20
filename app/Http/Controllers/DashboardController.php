@@ -108,12 +108,17 @@ class DashboardController extends Controller
 
             Log::info('UserDashboard: Loading for user ' . $user->id . ' with stats: ' . json_encode($userStats));
 
-            // Fetch active announcements targeted for this user's role
-            $announcements = \App\Models\Announcement::active()
+            // Fetch active announcements targeted for this user's role (only unread ones for dashboard)
+            $allAnnouncements = \App\Models\Announcement::active()
                 ->audienceForUser($user)
                 ->orderBy('priority', 'desc')
                 ->orderBy('created_at', 'desc')
                 ->get();
+            
+            // Filter out read announcements for dashboard display
+            $announcements = $allAnnouncements->reject(function ($announcement) use ($user) {
+                return $announcement->isReadBy($user);
+            });
 
             return view('dashboard', compact(
                 'completedSessions',

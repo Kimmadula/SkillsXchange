@@ -333,7 +333,7 @@
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="flex-grow-1">
                                 <div class="fw-semibold text-dark">{{ $announcement->title }}</div>
-                                <div class="text-muted small">{{ Str::limit($announcement->content, 60) }}</div>
+                                <div class="text-muted small">{{ Str::limit($announcement->message, 60) }}</div>
                                 <div class="text-muted" style="font-size: 0.75rem;">{{ $announcement->created_at->diffForHumans() }}</div>
                             </div>
                             @if(!$announcement->isReadBy(Auth::user()))

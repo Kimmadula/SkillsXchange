@@ -244,11 +244,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         };
 
-        window.openReportUserModal = () => {
-            // TODO: Implement report modal
-            console.log('Open report modal');
-            alert('Report user feature coming soon');
-        };
+        // openReportUserModal is now implemented in session.blade.php
+        // The function is defined inline in the session view, so we don't define it here
+        // to avoid conflicts. The session view's function will handle opening the modal.
 
 		// Legacy compatibility shims for older inline Blade functions
 		window.addMessageToChat = (message, senderName, timestamp, isOwn) => {

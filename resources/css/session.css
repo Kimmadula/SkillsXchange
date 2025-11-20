@@ -43,6 +43,7 @@ body {
     color: white;
     cursor: pointer;
     transition: all 0.3s;
+    text-decoration: none;
 }
 
 .back-btn:hover {

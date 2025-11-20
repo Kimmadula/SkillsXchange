@@ -3,18 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserReport;
+use App\Models\Trade;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class UserReportController extends Controller
 {
-    public function store(Request $request, $tradeId)
+    public function store(Request $request, Trade $trade)
     {
         $validated = $request->validate([
             'reported_user_id' => 'required|exists:users,id',
             'reason' => 'required|in:harassment,spam,inappropriate,fraud,safety,other',
             'description' => 'required|string|min:10|max:2000',
         ]);
+        
         if ((int) $request->input('reported_user_id') === (int) Auth::id()) {
             return response()->json([
                 'success' => false,
@@ -25,7 +27,7 @@ class UserReportController extends Controller
         $report = UserReport::create([
             'reporter_id' => Auth::id(),
             'reported_user_id' => $request->input('reported_user_id'),
-            'trade_id' => $tradeId,
+            'trade_id' => $trade->id,
             'context' => 'chat_session',
             'reason' => $request->input('reason'),
             'description' => $request->input('description'),

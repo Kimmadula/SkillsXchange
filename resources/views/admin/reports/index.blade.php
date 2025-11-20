@@ -734,57 +734,57 @@
             <div class="export-section">
                 <h3 class="section-title">Export Reports</h3>
                 <div class="export-cards">
-                    <div class="export-card">
+                    <div class="export-card" data-export-type="users">
                         <h4 class="export-title">User Reports</h4>
                         <p class="export-description">Export user data and registration trends</p>
                         <div class="export-buttons">
-                            <button class="btn btn-csv">CSV</button>
-                            <button class="btn btn-pdf">PDF</button>
+                            <button class="btn btn-csv" data-format="csv">CSV</button>
+                            <button class="btn btn-pdf" data-format="pdf">PDF</button>
                         </div>
                     </div>
 
-                    <div class="export-card">
+                    <div class="export-card" data-export-type="trades">
                         <h4 class="export-title">Trade Reports</h4>
                         <p class="export-description">Export trade data and completion rates</p>
                         <div class="export-buttons">
-                            <button class="btn btn-csv">CSV</button>
-                            <button class="btn btn-pdf">PDF</button>
+                            <button class="btn btn-csv" data-format="csv">CSV</button>
+                            <button class="btn btn-pdf" data-format="pdf">PDF</button>
                         </div>
                     </div>
 
-                    <div class="export-card">
+                    <div class="export-card" data-export-type="activity">
                         <h4 class="export-title">Activity Reports</h4>
                         <p class="export-description">Export message and activity data</p>
                         <div class="export-buttons">
-                            <button class="btn btn-csv">CSV</button>
-                            <button class="btn btn-pdf">PDF</button>
+                            <button class="btn btn-csv" data-format="csv">CSV</button>
+                            <button class="btn btn-pdf" data-format="pdf">PDF</button>
                         </div>
                     </div>
 
-                    <div class="export-card">
+                    <div class="export-card" data-export-type="tokens">
                         <h4 class="export-title">Token Analytics</h4>
                         <p class="export-description">Export token purchases and revenue data</p>
                         <div class="export-buttons">
-                            <button class="btn btn-csv">CSV</button>
-                            <button class="btn btn-pdf">PDF</button>
+                            <button class="btn btn-csv" data-format="csv">CSV</button>
+                            <button class="btn btn-pdf" data-format="pdf">PDF</button>
                         </div>
                     </div>
 
-                    <div class="export-card">
+                    <div class="export-card" data-export-type="fees">
                         <h4 class="export-title">Fee Reports</h4>
                         <p class="export-description">Export fee collection and transaction data</p>
                         <div class="export-buttons">
-                            <button class="btn btn-csv">CSV</button>
-                            <button class="btn btn-pdf">PDF</button>
+                            <button class="btn btn-csv" data-format="csv">CSV</button>
+                            <button class="btn btn-pdf" data-format="pdf">PDF</button>
                         </div>
                     </div>
 
-                    <div class="export-card">
+                    <div class="export-card" data-export-type="financial">
                         <h4 class="export-title">Financial Summary</h4>
                         <p class="export-description">Export comprehensive financial reports</p>
                         <div class="export-buttons">
-                            <button class="btn btn-csv">CSV</button>
-                            <button class="btn btn-pdf">PDF</button>
+                            <button class="btn btn-csv" data-format="csv">CSV</button>
+                            <button class="btn btn-pdf" data-format="pdf">PDF</button>
                         </div>
                     </div>
                 </div>
@@ -1322,5 +1322,56 @@
     }
 }
 </style>
+
+<script>
+// Export functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const routes = {
+        users: {
+            csv: '{{ route("admin.reports.export.users.csv") }}',
+            pdf: '{{ route("admin.reports.export.pdf", "users") }}'
+        },
+        trades: {
+            csv: '{{ route("admin.reports.export.trades.csv") }}',
+            pdf: '{{ route("admin.reports.export.pdf", "trades") }}'
+        },
+        activity: {
+            csv: '{{ route("admin.reports.export.activity.csv") }}',
+            pdf: '{{ route("admin.reports.export.pdf", "activity") }}'
+        },
+        tokens: {
+            csv: '{{ route("admin.reports.export.tokens.csv") }}',
+            pdf: '{{ route("admin.reports.export.pdf", "tokens") }}'
+        },
+        fees: {
+            csv: '{{ route("admin.reports.export.fees.csv") }}',
+            pdf: '{{ route("admin.reports.export.pdf", "fees") }}'
+        },
+        financial: {
+            csv: '{{ route("admin.reports.export.financial.csv") }}',
+            pdf: '{{ route("admin.reports.export.pdf", "financial") }}'
+        }
+    };
+
+    // Add click handlers to all export buttons
+    document.querySelectorAll('.export-card').forEach(card => {
+        const exportType = card.getAttribute('data-export-type');
+        const csvBtn = card.querySelector('.btn-csv');
+        const pdfBtn = card.querySelector('.btn-pdf');
+
+        if (csvBtn && routes[exportType]) {
+            csvBtn.addEventListener('click', () => {
+                window.location.href = routes[exportType].csv;
+            });
+        }
+
+        if (pdfBtn && routes[exportType]) {
+            pdfBtn.addEventListener('click', () => {
+                window.location.href = routes[exportType].pdf;
+            });
+        }
+    });
+});
+</script>
 </body>
 </html>
