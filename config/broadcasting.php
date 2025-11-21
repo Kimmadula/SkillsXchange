@@ -37,11 +37,12 @@ return [
             'app_id' => env('PUSHER_APP_ID'),
             'options' => [
                 'cluster' => env('PUSHER_APP_CLUSTER', 'ap1'),
-                'host' => env('PUSHER_HOST') ?: 'api.pusherapp.com',
+                // Set host based on cluster for proper API endpoint
+                'host' => env('PUSHER_HOST') ?: (env('PUSHER_APP_CLUSTER') ? 'api-' . env('PUSHER_APP_CLUSTER') . '.pusher.com' : 'api.pusherapp.com'),
                 'port' => env('PUSHER_PORT', 443),
                 'scheme' => env('PUSHER_SCHEME', 'https'),
-                'useTLS' => env('PUSHER_USE_TLS', false),
-                'encrypted' => env('PUSHER_ENCRYPTED', false),
+                'useTLS' => env('PUSHER_USE_TLS', true),
+                'encrypted' => env('PUSHER_ENCRYPTED', true),
                 'timeout' => 5,
                 'keep_alive' => true,
                 'curl_options' => [
