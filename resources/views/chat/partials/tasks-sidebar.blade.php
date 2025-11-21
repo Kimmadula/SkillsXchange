@@ -200,8 +200,8 @@
 </div>
 
 <!-- View Submission Modal -->
-<div id="viewSubmissionModal" class="modal-overlay" style="display: none;" onclick="closeViewSubmissionModal(event)">
-    <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;" onclick="event.stopPropagation()">
+<div id="viewSubmissionModal" class="modal-overlay" style="display: none; z-index: 1000;" onclick="closeViewSubmissionModal(event)">
+    <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto; z-index: 1001;" onclick="event.stopPropagation()">
         <div class="modal-header">
             <h3 class="modal-title">View Partner's Work</h3>
             <button class="modal-close" onclick="closeViewSubmissionModal()">&times;</button>
@@ -268,7 +268,7 @@
             </form>
         </div>
         <div class="modal-footer">
-            <button class="modal-btn btn-primary" onclick="submitGrade()">
+            <button class="modal-btn btn-primary" onclick="submitGrade()" id="submitGradeBtn">
                 <i class="fas fa-check" style="margin-right: 4px;"></i>Submit Grade
             </button>
             <button class="modal-btn btn-secondary" onclick="closeGradeTaskModal()">Cancel</button>
@@ -372,16 +372,10 @@ function showTaskDetails(taskId) {
             
             // Check if user can grade this task (creator viewing submitted work)
             if (task.can_be_graded && task.has_submission) {
-                const hasBeenGraded = task.evaluation && task.evaluation.has_been_graded;
                 footerHtml = `
                     <button class="modal-btn btn-info" onclick="viewPartnerWork(${task.id})" style="margin-right: 8px;">
                         <i class="fas fa-eye" style="margin-right: 4px;"></i>View Work
                     </button>
-                    ${!hasBeenGraded ? `
-                    <button class="modal-btn btn-success" onclick="openGradeTaskModal(${task.id})" style="margin-right: 8px;">
-                        <i class="fas fa-check-circle" style="margin-right: 4px;"></i>Grade Task
-                    </button>
-                    ` : ''}
                     <button class="modal-btn btn-secondary" onclick="closeTaskDetails()">Close</button>
                 `;
             }
@@ -427,6 +421,28 @@ function closeTaskDetails(event) {
 
 // View Partner's Work
 function viewPartnerWork(taskId) {
+    // Validate taskId
+    if (!taskId || taskId === 'null' || taskId === null) {
+        console.error('Invalid taskId:', taskId);
+        alert('Invalid task ID. Please try again.');
+        return;
+    }
+    
+    // Auto-mark as viewed when opening the modal
+    fetch(`/tasks/${taskId}/mark-viewed`, {
+        method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
+        }
+    })
+    .catch(error => {
+        console.warn('Failed to mark as viewed (non-critical):', error);
+        // Continue anyway - this is non-critical
+    });
+    
     fetch(`/tasks/${taskId}/submission-details`, {
         headers: {
             'Accept': 'application/json',
@@ -481,26 +497,57 @@ function viewPartnerWork(taskId) {
             content += `</div></div>`;
         }
         
-        document.getElementById('viewSubmissionContent').innerHTML = content;
-        
-        // Update footer
-        let footerHtml = '';
-        if (!evaluation || !evaluation.has_been_viewed) {
-            footerHtml = `
-                <button class="modal-btn btn-primary" onclick="markSubmissionViewed(${taskId})" style="margin-right: 8px;">
-                    <i class="fas fa-check" style="margin-right: 4px;"></i>Mark as Viewed
-                </button>
+        // Show existing grade if already graded
+        if (evaluation && evaluation.has_been_graded) {
+            content += `
+                <div style="margin-top: 20px; padding: 16px; background: #f0f9ff; border-radius: 4px; border-left: 4px solid #3b82f6;">
+                    <h5 style="margin-bottom: 12px; color: #1e40af;">Current Grade</h5>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div>
+                            <label style="font-weight: 600; display: block; margin-bottom: 4px; color: #6b7280;">Grade:</label>
+                            <div style="font-size: 24px; font-weight: bold; color: #3b82f6;">${evaluation.grade || 'N/A'}</div>
+                        </div>
+                        <div>
+                            <label style="font-weight: 600; display: block; margin-bottom: 4px; color: #6b7280;">Score:</label>
+                            <div style="font-size: 20px; font-weight: bold; color: #059669;">${evaluation.score_percentage || 0}%</div>
+                        </div>
+                    </div>
+                    ${evaluation.feedback ? `
+                        <div style="margin-top: 12px;">
+                            <label style="font-weight: 600; display: block; margin-bottom: 4px; color: #6b7280;">Feedback:</label>
+                            <div style="background: white; padding: 8px; border-radius: 4px; white-space: pre-wrap;">${evaluation.feedback}</div>
+                        </div>
+                    ` : ''}
+                </div>
             `;
         }
-        if (data.can_grade && (!evaluation || !evaluation.has_been_graded)) {
-            footerHtml += `
-                <button class="modal-btn btn-success" onclick="closeViewSubmissionModal(); openGradeTaskModal(${taskId});" style="margin-right: 8px;">
-                    <i class="fas fa-check-circle" style="margin-right: 4px;"></i>Grade Task
-                </button>
-            `;
+        
+        document.getElementById('viewSubmissionContent').innerHTML = content;
+        
+        // Update footer - only show grade/edit grade button
+        let footerHtml = '';
+        if (data.can_grade) {
+            if (evaluation && evaluation.has_been_graded) {
+                // Show edit grade button
+                footerHtml = `
+                    <button class="modal-btn btn-warning" onclick="openGradeTaskModal(${taskId}, true)" style="margin-right: 8px;">
+                        <i class="fas fa-edit" style="margin-right: 4px;"></i>Edit Grade
+                    </button>
+                `;
+            } else {
+                // Show grade button (can_grade means they've viewed it)
+                footerHtml = `
+                    <button class="modal-btn btn-success" onclick="openGradeTaskModal(${taskId}, false)" style="margin-right: 8px;">
+                        <i class="fas fa-check-circle" style="margin-right: 4px;"></i>Grade Task
+                    </button>
+                `;
+            }
         }
         footerHtml += `<button class="modal-btn btn-secondary" onclick="closeViewSubmissionModal()">Close</button>`;
         document.getElementById('viewSubmissionFooter').innerHTML = footerHtml;
+        
+        // Store taskId for later use
+        window.currentViewingTaskId = taskId;
         
         // Show modal
         document.getElementById('viewSubmissionModal').style.display = 'flex';
@@ -514,38 +561,8 @@ function viewPartnerWork(taskId) {
 function closeViewSubmissionModal(event) {
     if (!event || event.target.classList.contains('modal-overlay')) {
         document.getElementById('viewSubmissionModal').style.display = 'none';
+        window.currentViewingTaskId = null;
     }
-}
-
-function markSubmissionViewed(taskId) {
-    fetch(`/tasks/${taskId}/mark-viewed`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update footer to show grade button
-            const footer = document.getElementById('viewSubmissionFooter');
-            footer.innerHTML = `
-                <button class="modal-btn btn-success" onclick="closeViewSubmissionModal(); openGradeTaskModal(${taskId});" style="margin-right: 8px;">
-                    <i class="fas fa-check-circle" style="margin-right: 4px;"></i>Grade Task
-                </button>
-                <button class="modal-btn btn-secondary" onclick="closeViewSubmissionModal()">Close</button>
-            `;
-        } else {
-            alert('Failed to mark as viewed: ' + (data.error || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        console.error('Error marking as viewed:', error);
-        alert('Failed to mark as viewed: ' + error.message);
-    });
 }
 
 // Grade Task Modal
@@ -554,10 +571,17 @@ let currentGradingMaxScore = 100;
 let currentGradingPassingScore = 70;
 window.currentGradingPassingPercentage = 70;
 
-function openGradeTaskModal(taskId) {
+function openGradeTaskModal(taskId, isEdit = false) {
+    // Validate taskId
+    if (!taskId || taskId === 'null' || taskId === null) {
+        console.error('Invalid taskId:', taskId);
+        alert('Invalid task ID. Please try again.');
+        return;
+    }
+    
     currentGradingTaskId = taskId;
     
-    // Fetch task details to get max score
+    // Fetch task details to get max score and existing evaluation
     fetch(`/tasks/${taskId}`, {
         headers: {
             'Accept': 'application/json',
@@ -584,10 +608,28 @@ function openGradeTaskModal(taskId) {
         document.getElementById('gradeScore').max = currentGradingMaxScore;
         document.getElementById('gradeTaskId').value = taskId;
         
-        // Reset form
-        document.getElementById('gradeTaskForm').reset();
-        document.getElementById('gradeTaskId').value = taskId;
-        document.getElementById('calculatedGrade').textContent = '-';
+            // If editing, populate form with existing evaluation
+            if (isEdit && task.evaluation && task.evaluation.has_been_graded) {
+                const eval = task.evaluation;
+                // Convert percentage back to raw score for display
+                const rawScore = Math.round((eval.score_percentage / 100) * currentGradingMaxScore);
+                document.getElementById('gradeScore').value = rawScore;
+                document.getElementById('gradeStatus').value = eval.status || 'pass';
+                document.getElementById('gradeFeedback').value = eval.feedback || '';
+                document.getElementById('gradeImprovementNotes').value = eval.improvement_notes || '';
+                updateGradeDisplay();
+                
+                // Update modal title and button
+                document.querySelector('#gradeTaskModal .modal-title').textContent = 'Edit Grade';
+                document.getElementById('submitGradeBtn').innerHTML = '<i class="fas fa-save" style="margin-right: 4px;"></i>Update Grade';
+            } else {
+                // Reset form for new grade
+                document.getElementById('gradeTaskForm').reset();
+                document.getElementById('gradeTaskId').value = taskId;
+                document.getElementById('calculatedGrade').textContent = '-';
+                document.querySelector('#gradeTaskModal .modal-title').textContent = 'Grade Task';
+                document.getElementById('submitGradeBtn').innerHTML = '<i class="fas fa-check" style="margin-right: 4px;"></i>Submit Grade';
+            }
         
         // Show modal
         document.getElementById('gradeTaskModal').style.display = 'flex';
@@ -638,9 +680,16 @@ function updateGradeDisplay() {
 }
 
 function submitGrade() {
+    // Validate taskId
+    if (!currentGradingTaskId || currentGradingTaskId === 'null' || currentGradingTaskId === null) {
+        console.error('Invalid taskId:', currentGradingTaskId);
+        alert('Invalid task ID. Please try again.');
+        return;
+    }
+    
     const form = document.getElementById('gradeTaskForm');
     const formData = new FormData(form);
-    const score = parseInt(formData.get('score_percentage'));
+    const score = parseInt(document.getElementById('gradeScore').value) || 0;
     const maxScore = currentGradingMaxScore;
     const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
     
@@ -661,17 +710,28 @@ function submitGrade() {
         if (data.success) {
             alert('Task graded successfully!');
             closeGradeTaskModal();
+            
+            // If view modal is open, refresh it to show updated grade
+            if (document.getElementById('viewSubmissionModal').style.display === 'flex' && window.currentViewingTaskId) {
+                viewPartnerWork(window.currentViewingTaskId);
+            }
+            
             // Refresh task details if modal is open
             if (document.getElementById('taskDetailsModal').style.display === 'flex') {
                 showTaskDetails(currentGradingTaskId);
             }
+            
             // Reload page to update task list
             location.reload();
         } else {
             if (data.requires_viewing) {
                 alert('You must view the submission before grading it.');
                 closeGradeTaskModal();
-                viewPartnerWork(currentGradingTaskId);
+                if (window.currentViewingTaskId) {
+                    viewPartnerWork(window.currentViewingTaskId);
+                } else {
+                    viewPartnerWork(currentGradingTaskId);
+                }
             } else {
                 alert('Failed to grade task: ' + (data.error || 'Unknown error'));
             }
