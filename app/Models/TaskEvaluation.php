@@ -14,18 +14,21 @@ class TaskEvaluation extends Model
         'submission_id',
         'evaluated_by',
         'score_percentage',
+        'grade',
         'status',
         'feedback',
         'improvement_notes',
         'skills_to_add',
         'skills_added',
-        'evaluated_at'
+        'evaluated_at',
+        'viewed_at'
     ];
 
     protected $casts = [
         'skills_to_add' => 'array',
         'skills_added' => 'boolean',
         'evaluated_at' => 'datetime',
+        'viewed_at' => 'datetime',
         'score_percentage' => 'integer'
     ];
 
@@ -97,6 +100,12 @@ class TaskEvaluation extends Model
 
     public function getGradeLetterAttribute()
     {
+        // If grade is explicitly set, use it
+        if ($this->grade) {
+            return $this->grade;
+        }
+        
+        // Otherwise, calculate from score_percentage
         if (!$this->score_percentage) {
             return 'N/A';
         }
@@ -114,6 +123,30 @@ class TaskEvaluation extends Model
             $this->score_percentage >= 50 => 'D',
             default => 'F'
         };
+    }
+    
+    /**
+     * Get checked_at date (alias for evaluated_at for UI clarity)
+     */
+    public function getCheckedAtAttribute()
+    {
+        return $this->evaluated_at;
+    }
+    
+    /**
+     * Check if submission has been viewed by evaluator
+     */
+    public function hasBeenViewed()
+    {
+        return !is_null($this->viewed_at);
+    }
+    
+    /**
+     * Check if task has been graded
+     */
+    public function hasBeenGraded()
+    {
+        return !is_null($this->evaluated_at) && !is_null($this->score_percentage);
     }
 
     /**
@@ -154,6 +187,26 @@ class TaskEvaluation extends Model
             ->pluck('name')
             ->toArray();
     }
+    
+    /**
+     * Calculate letter grade from score percentage
+     */
+    protected function calculateGradeFromScore($score)
+    {
+        return match(true) {
+            $score >= 95 => 'A+',
+            $score >= 90 => 'A',
+            $score >= 85 => 'A-',
+            $score >= 80 => 'B+',
+            $score >= 75 => 'B',
+            $score >= 70 => 'B-',
+            $score >= 65 => 'C+',
+            $score >= 60 => 'C',
+            $score >= 55 => 'C-',
+            $score >= 50 => 'D',
+            default => 'F'
+        };
+    }
 
     /**
      * Boot method to handle model events
@@ -163,7 +216,21 @@ class TaskEvaluation extends Model
         parent::boot();
 
         static::creating(function ($evaluation) {
-            $evaluation->evaluated_at = now();
+            if (!$evaluation->evaluated_at) {
+                $evaluation->evaluated_at = now();
+            }
+            
+            // Auto-calculate grade from score_percentage if not set
+            if ($evaluation->score_percentage && !$evaluation->grade) {
+                $evaluation->grade = $evaluation->calculateGradeFromScore($evaluation->score_percentage);
+            }
+        });
+        
+        static::updating(function ($evaluation) {
+            // Auto-calculate grade from score_percentage if score changed and grade not explicitly set
+            if ($evaluation->isDirty('score_percentage') && !$evaluation->grade) {
+                $evaluation->grade = $evaluation->calculateGradeFromScore($evaluation->score_percentage);
+            }
         });
 
         static::updating(function ($evaluation) {

@@ -170,10 +170,11 @@ class TaskController extends Controller
             return redirect()->back()->with('error', 'You are not authorized to view this task.');
         }
 
-        $task->load(['trade', 'creator', 'assignee', 'verifier']);
+        $task->load(['trade', 'creator', 'assignee', 'verifier', 'latestEvaluation']);
         
         // If this is an AJAX request, return JSON
         if (request()->wantsJson()) {
+            $evaluation = $task->latestEvaluation;
             return response()->json([
                 'success' => true,
                 'task' => [
@@ -194,6 +195,8 @@ class TaskController extends Controller
                     'assigned_to' => $task->assigned_to,
                     'can_be_submitted' => $task->canBeSubmitted() && $task->assigned_to === $user->id,
                     'can_be_started' => $task->canBeStarted() && $task->assigned_to === $user->id,
+                    'can_be_graded' => $task->canBeEvaluated() && $task->created_by === $user->id,
+                    'has_submission' => $task->latestSubmission !== null,
                     'creator' => $task->creator ? [
                         'firstname' => $task->creator->firstname,
                         'lastname' => $task->creator->lastname
@@ -201,6 +204,14 @@ class TaskController extends Controller
                     'assignee' => $task->assignee ? [
                         'firstname' => $task->assignee->firstname,
                         'lastname' => $task->assignee->lastname
+                    ] : null,
+                    'evaluation' => $evaluation ? [
+                        'score_percentage' => $evaluation->score_percentage,
+                        'grade' => $evaluation->grade_letter,
+                        'status' => $evaluation->status,
+                        'feedback' => $evaluation->feedback,
+                        'checked_at' => $evaluation->checked_at ? $evaluation->checked_at->toISOString() : null,
+                        'has_been_graded' => $evaluation->hasBeenGraded()
                     ] : null
                 ]
             ]);
@@ -651,7 +662,7 @@ class TaskController extends Controller
 
         try {
             $request->validate([
-                'score_percentage' => 'required|integer|min:0|max:' . $task->max_score,
+                'score_percentage' => 'required|integer|min:0|max:100', // Percentage is always 0-100
                 'status' => 'required|in:pass,fail,needs_improvement',
                 'feedback' => 'nullable|string|max:2000',
                 'improvement_notes' => 'nullable|string|max:2000'
@@ -673,22 +684,56 @@ class TaskController extends Controller
         try {
             $latestSubmission = $task->latestSubmission;
             
+            // Check if submission has been viewed first
+            $existingEvaluation = $task->latestEvaluation;
+            if (!$existingEvaluation || !$existingEvaluation->hasBeenViewed()) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'You must view the submission before grading it.',
+                        'requires_viewing' => true
+                    ], 400);
+                }
+                return redirect()->back()->with('error', 'You must view the submission before grading it.');
+            }
+            
             // Determine pass/fail based on score
-            $status = $request->score_percentage >= $task->passing_score ? 'pass' : 'fail';
+            // Convert passing_score to percentage for comparison
+            $passingPercentage = $task->max_score > 0 ? round(($task->passing_score / $task->max_score) * 100) : 70;
+            $status = $request->score_percentage >= $passingPercentage ? 'pass' : 'fail';
             if ($request->status === 'needs_improvement') {
                 $status = 'needs_improvement';
             }
 
-            // Create evaluation
-            $evaluation = TaskEvaluation::create([
-                'task_id' => $task->id,
-                'submission_id' => $latestSubmission?->id,
-                'evaluated_by' => $user->id,
-                'score_percentage' => $request->score_percentage,
-                'status' => $status,
-                'feedback' => $request->feedback,
-                'improvement_notes' => $request->improvement_notes
-            ]);
+            // Calculate grade from score
+            $grade = $this->calculateGradeFromScore($request->score_percentage);
+
+            // Update existing evaluation or create new one
+            if ($existingEvaluation && $existingEvaluation->status === 'pending') {
+                $evaluation = $existingEvaluation;
+                $evaluation->update([
+                    'score_percentage' => $request->score_percentage,
+                    'grade' => $grade,
+                    'status' => $status,
+                    'feedback' => $request->feedback,
+                    'improvement_notes' => $request->improvement_notes,
+                    'evaluated_at' => now() // Set evaluated_at when grading
+                ]);
+            } else {
+                // Create new evaluation
+                $evaluation = TaskEvaluation::create([
+                    'task_id' => $task->id,
+                    'submission_id' => $latestSubmission?->id,
+                    'evaluated_by' => $user->id,
+                    'score_percentage' => $request->score_percentage,
+                    'grade' => $grade,
+                    'status' => $status,
+                    'feedback' => $request->feedback,
+                    'improvement_notes' => $request->improvement_notes,
+                    'viewed_at' => $existingEvaluation?->viewed_at ?? now(),
+                    'evaluated_at' => now()
+                ]);
+            }
 
             // Auto-assign skills if task has associated skills
             if ($task->hasAssociatedSkills()) {
@@ -785,6 +830,11 @@ class TaskController extends Controller
                 return response()->json(['error' => 'No submission found for this task.'], 404);
             }
 
+            // Get existing evaluation if any
+            $evaluation = $task->latestEvaluation;
+            $hasBeenViewed = $evaluation && $evaluation->hasBeenViewed();
+            $hasBeenGraded = $evaluation && $evaluation->hasBeenGraded();
+
             return response()->json([
                 'success' => true,
                 'task' => [
@@ -792,7 +842,9 @@ class TaskController extends Controller
                     'title' => $task->title,
                     'description' => $task->description,
                     'submission_instructions' => $task->submission_instructions,
-                    'allowed_file_types' => $task->allowed_file_types
+                    'allowed_file_types' => $task->allowed_file_types,
+                    'max_score' => $task->max_score,
+                    'passing_score' => $task->passing_score
                 ],
                 'submission' => [
                     'id' => $submission->id,
@@ -800,12 +852,97 @@ class TaskController extends Controller
                     'submission_notes' => $submission->submission_notes,
                     'file_paths' => $submission->file_paths,
                     'created_at' => $submission->created_at->toISOString()
-                ]
+                ],
+                'evaluation' => $evaluation ? [
+                    'id' => $evaluation->id,
+                    'score_percentage' => $evaluation->score_percentage,
+                    'grade' => $evaluation->grade_letter,
+                    'status' => $evaluation->status,
+                    'feedback' => $evaluation->feedback,
+                    'improvement_notes' => $evaluation->improvement_notes,
+                    'checked_at' => $evaluation->checked_at ? $evaluation->checked_at->toISOString() : null,
+                    'has_been_viewed' => $hasBeenViewed,
+                    'has_been_graded' => $hasBeenGraded
+                ] : null,
+                'can_grade' => $hasBeenViewed || !$evaluation, // Can grade if viewed or no evaluation exists
+                'has_been_viewed' => $hasBeenViewed,
+                'has_been_graded' => $hasBeenGraded
             ]);
             
         } catch (\Exception $e) {
             Log::error('Get submission details error: ' . $e->getMessage());
             return response()->json(['error' => 'Failed to load submission details.'], 500);
+        }
+    }
+    
+    /**
+     * Calculate letter grade from score percentage (0-100)
+     */
+    private function calculateGradeFromScore($percentage)
+    {
+        return match(true) {
+            $percentage >= 95 => 'A+',
+            $percentage >= 90 => 'A',
+            $percentage >= 85 => 'A-',
+            $percentage >= 80 => 'B+',
+            $percentage >= 75 => 'B',
+            $percentage >= 70 => 'B-',
+            $percentage >= 65 => 'C+',
+            $percentage >= 60 => 'C',
+            $percentage >= 55 => 'C-',
+            $percentage >= 50 => 'D',
+            default => 'F'
+        };
+    }
+    
+    /**
+     * Mark submission as viewed by evaluator (AJAX)
+     */
+    public function markSubmissionViewed(TradeTask $task)
+    {
+        $user = Auth::user();
+        
+        // Check if user is the task creator
+        if ($task->created_by !== $user->id) {
+            return response()->json(['error' => 'You can only view submissions for tasks you created.'], 403);
+        }
+
+        try {
+            // Get the latest submission
+            $submission = $task->latestSubmission;
+            
+            if (!$submission) {
+                return response()->json(['error' => 'No submission found for this task.'], 404);
+            }
+
+            // Get or create evaluation
+            $evaluation = $task->latestEvaluation;
+            
+            if (!$evaluation) {
+                // Create a pending evaluation record to track viewing
+                $evaluation = TaskEvaluation::create([
+                    'task_id' => $task->id,
+                    'submission_id' => $submission->id,
+                    'evaluated_by' => $user->id,
+                    'status' => 'pending',
+                    'viewed_at' => now()
+                ]);
+            } else {
+                // Update existing evaluation with viewed_at
+                if (!$evaluation->viewed_at) {
+                    $evaluation->update(['viewed_at' => now()]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Submission marked as viewed. You can now grade this task.',
+                'viewed_at' => $evaluation->viewed_at->toISOString()
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Mark submission viewed error: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to mark submission as viewed.'], 500);
         }
     }
 
@@ -832,14 +969,23 @@ class TaskController extends Controller
                 'status_color' => $task->status_color,
                 'status_icon' => $task->status_icon,
                 'can_be_started' => $task->canBeStarted(),
-                'can_be_submitted' => $task->canBeSubmitted(),
-                'can_be_evaluated' => $task->canBeEvaluated(),
-                'is_completed' => $task->isCompleted(),
-                'latest_submission' => $task->latestSubmission,
-                'latest_evaluation' => $task->latestEvaluation,
-                'days_until_due' => $task->days_until_due,
-                'is_overdue' => $task->is_overdue
-            ]
-        ]);
+                    'can_be_submitted' => $task->canBeSubmitted(),
+                    'can_be_evaluated' => $task->canBeEvaluated(),
+                    'is_completed' => $task->isCompleted(),
+                    'latest_submission' => $task->latestSubmission,
+                    'latest_evaluation' => $task->latestEvaluation ? [
+                        'id' => $task->latestEvaluation->id,
+                        'score_percentage' => $task->latestEvaluation->score_percentage,
+                        'grade' => $task->latestEvaluation->grade_letter,
+                        'status' => $task->latestEvaluation->status,
+                        'feedback' => $task->latestEvaluation->feedback,
+                        'checked_at' => $task->latestEvaluation->checked_at ? $task->latestEvaluation->checked_at->toISOString() : null,
+                        'has_been_viewed' => $task->latestEvaluation->hasBeenViewed(),
+                        'has_been_graded' => $task->latestEvaluation->hasBeenGraded()
+                    ] : null,
+                    'days_until_due' => $task->days_until_due,
+                    'is_overdue' => $task->is_overdue
+                ]
+            ]);
+        }
     }
-}

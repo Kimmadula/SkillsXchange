@@ -723,6 +723,7 @@ Route::get('/tasks/{task}/evaluate', [\App\Http\Controllers\TaskController::clas
 Route::post('/tasks/{task}/evaluation', [\App\Http\Controllers\TaskController::class, 'storeEvaluation'])->name('tasks.store-evaluation');
 Route::get('/tasks/{task}/progress', [\App\Http\Controllers\TaskController::class, 'getTaskProgress'])->name('tasks.progress');
 Route::get('/tasks/{task}/submission-details', [\App\Http\Controllers\TaskController::class, 'getSubmissionDetails'])->name('tasks.submission-details');
+Route::post('/tasks/{task}/mark-viewed', [\App\Http\Controllers\TaskController::class, 'markSubmissionViewed'])->name('tasks.mark-viewed');
 
 // Skill Management Routes - READ ONLY (CRUD operations removed)
 // Only allow viewing skills, no create/edit/delete operations
