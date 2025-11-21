@@ -12,7 +12,7 @@
     window.partnerId = parseInt('{{ $partner->id }}');
     window.partnerName = '{{ addslashes(($partner->firstname ?? "Unknown") . " " . ($partner->lastname ?? "User")) }}';
     window.initialMessageCount = parseInt('{{ $messages->count() }}');
-    
+
     // Initialize video call session data (will be populated by auto-initialization)
     window.videoCallSession = {
         tradeId: null,
@@ -24,11 +24,11 @@
         initialized: false,
         firebaseConnected: false
     };
-    
+
     // Auto-initialize video call session on page load (non-blocking)
     document.addEventListener('DOMContentLoaded', async function() {
         console.log('🚀 Auto-initializing video call session in background...');
-        
+
         // Keep button enabled - initialization happens in background
         const videoCallBtn = document.getElementById('video-call-btn');
         if (videoCallBtn) {
@@ -37,13 +37,13 @@
             videoCallBtn.style.cursor = 'pointer';
             videoCallBtn.title = 'Start Video Call';
         }
-        
+
         try {
             // Fetch session data from API with timeout
             // Create AbortController for timeout (fallback for browsers without AbortSignal.timeout)
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
-            
+
             const fetchPromise = fetch('/api/trades/get-current-session?trade_id=' + window.tradeId, {
                 method: 'GET',
                 headers: {
@@ -54,10 +54,10 @@
                 credentials: 'same-origin',
                 signal: controller.signal
             });
-            
+
             const response = await fetchPromise;
             clearTimeout(timeoutId);
-            
+
             // Check if response is HTML (error page) instead of JSON
             const contentType = response.headers.get('content-type');
             if (!contentType || !contentType.includes('application/json')) {
@@ -66,18 +66,18 @@
                 console.error('Response preview:', text.substring(0, 200));
                 throw new Error('API returned HTML instead of JSON. Check if the endpoint exists.');
             }
-            
+
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ message: response.statusText }));
                 throw new Error('Failed to fetch session data: ' + (errorData.message || response.statusText));
             }
-            
+
             const result = await response.json();
-            
+
             if (!result.success || !result.data) {
                 throw new Error(result.message || 'No session data returned');
             }
-            
+
             // Store session data globally
             window.videoCallSession = {
                 tradeId: result.data.tradeId,
@@ -89,14 +89,14 @@
                 initialized: true,
                 firebaseConnected: false
             };
-            
+
             console.log('✅ Session data loaded:', window.videoCallSession);
-            
+
             // Prepare Firebase room connection with timeout
             try {
                 await Promise.race([
                     prepareFirebaseRoom(),
-                    new Promise((_, reject) => 
+                    new Promise((_, reject) =>
                         setTimeout(() => reject(new Error('Firebase initialization timeout')), 5000)
                     )
                 ]);
@@ -105,25 +105,25 @@
                 // Continue anyway - Firebase can be initialized later when call starts
                 window.videoCallSession.firebaseConnected = false;
             }
-            
+
             // Update button title to show initialization complete
             if (videoCallBtn) {
                 videoCallBtn.title = 'Start Video Call (ready)';
             }
-            
+
             console.log('✅ Video call session auto-initialization complete');
-            
+
         } catch (error) {
             console.error('❌ Failed to auto-initialize video call session:', error);
             console.log('ℹ️ Video call will initialize when button is clicked');
-            
+
             // Button remains enabled - initialization will happen on click
             if (videoCallBtn) {
                 videoCallBtn.title = 'Start Video Call (will initialize on click)';
             }
         }
     });
-    
+
     /**
      * Prepare Firebase room connection and set user presence
      */
@@ -132,21 +132,21 @@
             console.error('❌ Cannot prepare Firebase room: session not initialized');
             return;
         }
-        
+
         if (typeof firebase === 'undefined') {
             console.error('❌ Firebase SDK not loaded');
             return;
         }
-        
+
         try {
             console.log('🔥 Preparing Firebase room connection...');
-            
+
             // Get Firebase config
             const firebaseConfig = window.firebaseConfig;
             if (!firebaseConfig) {
                 throw new Error('Firebase configuration not found');
             }
-            
+
             // Initialize Firebase app if not already initialized
             let app;
             try {
@@ -158,11 +158,11 @@
                     app = firebase.initializeApp(firebaseConfig);
                 }
             }
-            
+
             const database = firebase.database();
             // Use the full path: video_rooms/{roomId}
             const roomRef = database.ref(window.videoCallSession.firebaseRoomPath);
-            
+
             // Set user presence as online with ready: false
             const userRef = roomRef.child(`users/${window.videoCallSession.userId}`);
             await userRef.set({
@@ -172,9 +172,9 @@
                 joinedAt: Date.now(),
                 lastSeen: Date.now()
             });
-            
+
             console.log('✅ User presence set in Firebase room');
-            
+
             // Set up room metadata
             const roomMetaRef = roomRef.child('metadata');
             await roomMetaRef.set({
@@ -184,7 +184,7 @@
                 createdAt: Date.now(),
                 maxUsers: 2
             });
-            
+
             // Listen for partner online status
             const partnerRef = roomRef.child(`users/${window.videoCallSession.partnerId}`);
             partnerRef.on('value', (snapshot) => {
@@ -192,7 +192,7 @@
                 if (partnerData) {
                     const isOnline = partnerData.status === 'online';
                     console.log(`👤 Partner ${isOnline ? 'is online' : 'is offline'}`);
-                    
+
                     // Update UI to show partner status if needed
                     const videoCallBtn = document.getElementById('video-call-btn');
                     if (videoCallBtn && isOnline) {
@@ -202,26 +202,26 @@
                     console.log('👤 Partner is offline');
                 }
             });
-            
+
             // Update last seen every 30 seconds
             setInterval(() => {
                 userRef.update({ lastSeen: Date.now() });
             }, 30000);
-            
+
             // Clean up on page unload
             window.addEventListener('beforeunload', () => {
                 userRef.remove();
             });
-            
+
             window.videoCallSession.firebaseConnected = true;
             console.log('✅ Firebase room prepared and connected');
-            
+
         } catch (error) {
             console.error('❌ Error preparing Firebase room:', error);
             throw error;
         }
     }
-    
+
     // Define openVideoChat immediately as a fallback (will be overridden by app.js if it loads)
     window.openVideoChat = function() {
         console.log('🎥 Opening video chat modal (fallback function)...');
@@ -229,13 +229,13 @@
         if (videoModal) {
             videoModal.style.display = 'flex';
             console.log('✅ Video chat modal opened');
-            
+
             // Initialize video status
             const videoStatus = document.getElementById('video-status');
             if (videoStatus) {
                 videoStatus.textContent = 'Ready to start call';
             }
-            
+
             // Show start call button, hide end call button
             const startCallBtn = document.getElementById('start-call-btn');
             const endCallBtn = document.getElementById('end-call-btn');
@@ -246,7 +246,7 @@
             alert('Video chat modal not found. Please refresh the page.');
         }
     };
-    
+
     // Define closeVideoChat immediately as a fallback
     window.closeVideoChat = function() {
         console.log('❌ Closing video chat modal (fallback function)...');
@@ -254,13 +254,13 @@
         if (videoModal) {
             videoModal.style.display = 'none';
             console.log('✅ Video chat modal closed');
-            
+
             // Stop any active streams
             if (window.localStream) {
                 window.localStream.getTracks().forEach(track => track.stop());
                 window.localStream = null;
             }
-            
+
             const localVideo = document.getElementById('local-video');
             const remoteVideo = document.getElementById('remote-video');
             if (localVideo) {
@@ -271,7 +271,7 @@
             }
         }
     };
-    
+
 
     // Emoji picker functions
     window.toggleEmojiPicker = function() {
@@ -287,17 +287,17 @@
         const input = document.getElementById('message-input');
         const currentValue = input.value;
         const cursorPosition = input.selectionStart;
-        
+
         // Insert emoji at cursor position
         const newValue = currentValue.slice(0, cursorPosition) + emoji + currentValue.slice(cursorPosition);
         input.value = newValue;
-        
+
         // Set cursor position after the emoji
         input.setSelectionRange(cursorPosition + emoji.length, cursorPosition + emoji.length);
-        
+
         // Focus back to input
         input.focus();
-        
+
         // Hide emoji picker
         document.getElementById('emoji-picker').style.display = 'none';
     };
@@ -306,124 +306,124 @@
     document.addEventListener('click', function(event) {
         const picker = document.getElementById('emoji-picker');
         const button = document.getElementById('emoji-button');
-        
+
         if (picker && !picker.contains(event.target) && !button.contains(event.target)) {
             picker.style.display = 'none';
         }
     });
-    
+
     // Mobile tasks toggle functionality
     window.toggleMobileTasks = function() {
         const tasksSidebar = document.querySelector('.tasks-sidebar');
         const toggleButton = document.getElementById('mobile-tasks-toggle');
         const closeButton = document.getElementById('close-tasks-mobile');
-        
+
         if (tasksSidebar && toggleButton) {
             tasksSidebar.style.display = 'flex';
             tasksSidebar.classList.add('show');
             toggleButton.textContent = '✖️';
             toggleButton.title = 'Hide Tasks';
-            
+
             if (closeButton) {
                 closeButton.style.display = 'inline-block';
             }
         }
     };
-    
+
     // Close mobile tasks
     window.closeMobileTasks = function() {
         console.log('Closing mobile tasks...');
         const tasksSidebar = document.querySelector('.tasks-sidebar');
         const toggleButton = document.getElementById('mobile-tasks-toggle');
         const closeButton = document.getElementById('close-tasks-mobile');
-        
+
         if (tasksSidebar && toggleButton) {
             tasksSidebar.style.display = 'none';
             tasksSidebar.classList.remove('show', 'fullscreen');
             toggleButton.textContent = '☑️';
             toggleButton.title = 'Show Tasks';
-            
+
             if (closeButton) {
                 closeButton.style.display = 'none';
             }
-            
+
             // Show chat panel again if it was hidden
             const chatPanel = document.querySelector('.chat-panel');
             if (chatPanel) {
                 chatPanel.style.display = 'flex';
             }
-            
+
             console.log('Mobile tasks closed successfully');
         }
     };
-    
+
     // Close desktop tasks
     window.closeTasksDesktop = function() {
         console.log('Closing desktop tasks...');
         const tasksSidebar = document.querySelector('.tasks-sidebar');
         const closeButton = document.getElementById('close-tasks-desktop');
-        
+
         if (tasksSidebar) {
             tasksSidebar.style.display = 'none';
             tasksSidebar.classList.remove('show', 'fullscreen');
-            
+
             if (closeButton) {
                 closeButton.style.display = 'none';
             }
-            
+
             console.log('Desktop tasks closed successfully');
         }
     };
-    
+
     // Toggle tasks sidebar from header button (works for both desktop and mobile)
     window.toggleTasksSidebar = function() {
         const tasksSidebar = document.querySelector('.tasks-sidebar');
         const tasksToggleBtn = document.getElementById('tasks-toggle-btn');
-        
+
         if (!tasksSidebar) {
             console.warn('Tasks sidebar not found');
             return;
         }
-        
+
         // Check if sidebar is currently visible
-        const isVisible = tasksSidebar.style.display !== 'none' && 
+        const isVisible = tasksSidebar.style.display !== 'none' &&
                          tasksSidebar.style.display !== '' &&
                          window.getComputedStyle(tasksSidebar).display !== 'none';
-        
+
         if (isVisible) {
             // Hide sidebar
             tasksSidebar.style.display = 'none';
             tasksSidebar.classList.remove('show', 'fullscreen');
-            
+
             // Update button title
             if (tasksToggleBtn) {
                 tasksToggleBtn.title = 'Show Tasks';
             }
-            
+
             // Hide close buttons
             const closeButtonMobile = document.getElementById('close-tasks-mobile');
             const closeButtonDesktop = document.getElementById('close-tasks-desktop');
             if (closeButtonMobile) closeButtonMobile.style.display = 'none';
             if (closeButtonDesktop) closeButtonDesktop.style.display = 'none';
-            
+
             // Show chat panel if it was hidden (mobile)
             const chatPanel = document.querySelector('.chat-panel');
             if (chatPanel && window.innerWidth <= 768) {
                 chatPanel.style.display = 'flex';
             }
-            
+
             console.log('Tasks sidebar hidden');
         } else {
             // Show sidebar
             tasksSidebar.style.display = 'flex';
             tasksSidebar.classList.add('show');
             tasksSidebar.classList.remove('fullscreen');
-            
+
             // Update button title
             if (tasksToggleBtn) {
                 tasksToggleBtn.title = 'Hide Tasks';
             }
-            
+
             // Show appropriate close button based on screen size
             if (window.innerWidth <= 768) {
                 // Mobile
@@ -434,20 +434,20 @@
                 const closeButtonDesktop = document.getElementById('close-tasks-desktop');
                 if (closeButtonDesktop) closeButtonDesktop.style.display = 'inline-block';
             }
-            
+
             console.log('Tasks sidebar shown');
         }
     };
-    
+
     // Mobile full-screen tasks functionality
     window.toggleFullScreenTasks = function() {
         const tasksSidebar = document.querySelector('.tasks-sidebar');
         const fullScreenButton = document.getElementById('mobile-full-tasks');
         const chatPanel = document.querySelector('.chat-panel');
-        
+
         if (tasksSidebar && fullScreenButton && chatPanel) {
             const isFullScreen = tasksSidebar.classList.contains('fullscreen');
-            
+
             if (isFullScreen) {
                 // Exit full screen
                 tasksSidebar.classList.remove('fullscreen');
@@ -463,12 +463,12 @@
             }
         }
     };
-    
+
     // Initialize mobile tasks visibility on page load
     document.addEventListener('DOMContentLoaded', function() {
         const tasksSidebar = document.querySelector('.tasks-sidebar');
         const toggleButton = document.getElementById('mobile-tasks-toggle');
-        
+
         // Check if we're on mobile
         if (window.innerWidth <= 768) {
             if (tasksSidebar) {
@@ -492,31 +492,31 @@
                 desktopCloseButton.style.display = 'inline-block';
             }
         }
-        
+
         // Add click event listener to header tasks toggle button
         const tasksToggleBtn = document.getElementById('tasks-toggle-btn');
         if (tasksToggleBtn) {
             tasksToggleBtn.addEventListener('click', function() {
                 window.toggleTasksSidebar();
             });
-            
+
             // Set initial button title based on sidebar visibility
             if (tasksSidebar) {
-                const isVisible = tasksSidebar.style.display !== 'none' && 
+                const isVisible = tasksSidebar.style.display !== 'none' &&
                                  tasksSidebar.style.display !== '' &&
                                  window.getComputedStyle(tasksSidebar).display !== 'none';
                 tasksToggleBtn.title = isVisible ? 'Hide Tasks' : 'Show Tasks';
             }
-            
+
             console.log('✅ Tasks toggle button event listener attached');
         }
-        
+
         // Update task count badge - Now handled by TaskManager
         // updateTaskCountBadge(); // Removed - TaskManager handles this
     });
-    
+
     // OLD updateTaskCountBadge REMOVED - Now handled by TaskManager.updateTaskCountBadge()
-    
+
     // Show notification function
     function showNotification(message, type = 'info') {
         // Create notification element
@@ -536,10 +536,10 @@
             animation: slideIn 0.3s ease-out;
         `;
         notification.textContent = message;
-        
+
         // Add to page
         document.body.appendChild(notification);
-        
+
         // Remove after 3 seconds
         setTimeout(() => {
             notification.style.animation = 'slideOut 0.3s ease-in';
@@ -550,12 +550,12 @@
             }, 300);
         }, 3000);
     }
-    
+
     // Handle window resize
     window.addEventListener('resize', function() {
         const tasksSidebar = document.querySelector('.tasks-sidebar');
         const toggleButton = document.getElementById('mobile-tasks-toggle');
-        
+
         if (window.innerWidth <= 768) {
             if (toggleButton) {
                 toggleButton.style.display = 'inline-block';
@@ -594,11 +594,11 @@
             }
         }
     });
-    
+
     // Pusher Configuration
     window.PUSHER_APP_KEY = '{{ env('PUSHER_APP_KEY', '5c02e54d01ca577ae77e') }}';
     window.PUSHER_APP_CLUSTER = '{{ env('PUSHER_APP_CLUSTER', 'ap1') }}';
-    
+
     // Firebase Video Call Integration
     let firebaseVideoCall = null;
     let videoCallListenersInitialized = false;
@@ -617,29 +617,29 @@
         lastCallTime: 0,
         callCooldown: 2000 // 2 seconds between calls
     };
-    
+
     // Handle user joined event
     function handleUserJoined(data) {
         console.log('👤 User joined:', data);
-        
+
         // Check if the joined user is our partner
         if (data.user_id == window.partnerId) {
             updatePresenceStatus(true, data.user_name || 'Partner');
             console.log('✅ Partner is now online');
         }
     }
-    
+
     // Handle user left event
     function handleUserLeft(data) {
         console.log('👤 User left:', data);
-        
+
         // Check if the left user is our partner
         if (data.user_id == window.partnerId) {
             updatePresenceStatus(false, data.user_name || 'Partner');
             console.log('❌ Partner is now offline');
         }
     }
-    
+
     // Update presence status display
     function updatePresenceStatus(isOnline, userName = 'Partner') {
         const presenceStatus = document.getElementById('presence-status');
@@ -653,7 +653,7 @@
             }
         }
     }
-    
+
     // Broadcast user presence
     function broadcastUserPresence(action) {
         if (typeof window.Echo !== 'undefined') {
@@ -672,19 +672,19 @@
             }
         }
     }
-    
+
     // Check initial presence status
     function checkInitialPresenceStatus() {
         console.log('🔍 Checking initial presence status...');
-        
+
         // Broadcast that current user joined
         broadcastUserPresence('joined');
-        
+
         // For now, we'll assume partner is offline initially
         // In a real implementation, you might want to check with the server
         // or use a presence channel to get the current state
         updatePresenceStatus(false, '{{ $partner->firstname ?? "Partner" }}');
-        
+
         // You could add an API call here to check if the partner is currently online
         // fetch('/api/trade/{{ $trade->id }}/presence')
         //     .then(response => response.json())
@@ -697,7 +697,7 @@
         //         console.log('Could not check initial presence status:', error);
         //     });
     }
-    
+
     // Listen for user presence events
     function initializePresenceListeners() {
         if (typeof window.Echo !== 'undefined') {
@@ -721,7 +721,7 @@
                             handleUserLeft(data);
                         }
                     });
-                    
+
                 console.log('✅ Presence listeners initialized');
             } catch (error) {
                 console.error('Error setting up presence listeners:', error);
@@ -730,17 +730,17 @@
             console.error('Laravel Echo not available. Make sure Pusher is properly configured.');
         }
     }
-    
+
     // Cleanup presence when user leaves
     function cleanupPresence() {
         console.log('🧹 Cleaning up presence...');
         broadcastUserPresence('left');
     }
-    
+
     // Add cleanup on page unload
     window.addEventListener('beforeunload', cleanupPresence);
     window.addEventListener('pagehide', cleanupPresence);
-    
+
     // Define updateCallStatus function before Firebase initialization
     function updateCallStatus(status) {
         const statusElement = document.getElementById('video-status');
@@ -751,10 +751,10 @@
                 console.warn('⚠️ Error updating call status:', error);
                 return;
             }
-            
+
             // Add visual indicators based on status
             statusElement.className = 'call-status';
-            
+
             switch (status.toLowerCase()) {
                 case 'calling...':
                     statusElement.className += ' calling';
@@ -796,15 +796,15 @@
     // Define video call handler functions early to make them globally available
     function handleVideoCallEnd(data) {
         console.log('📞 Video call ended:', data);
-        
+
         // Stop any notification sounds/alarms
         if (window.notificationService && typeof window.notificationService.stopRingtone === 'function') {
             window.notificationService.stopRingtone();
         }
-        
+
         // Reset remote video flag
         remoteVideoSet = false;
-        
+
         if (typeof window.endVideoCall === 'function') {
             window.endVideoCall();
         }
@@ -815,7 +815,7 @@
 
     async function handleVideoCallOffer(data) {
         console.log('📞 Handling video call offer:', data);
-        
+
         try {
             // Ensure video chat modal is visible when answering
             const videoModal = document.getElementById('video-chat-modal');
@@ -825,7 +825,7 @@
                     console.log('✅ Video chat modal opened for incoming call');
                 }
             }
-            
+
             // Store offer and wait for explicit user Accept
             if (!firebaseVideoCall) throw new Error('Firebase video call not available');
 
@@ -855,7 +855,7 @@
             if (endBtn) endBtn.style.display = 'none';
 
             // Ringtone handled by notificationService; stop it on accept later
-            
+
         } catch (error) {
             console.error('Error handling offer:', error);
             alert('Failed to answer call: ' + error.message);
@@ -867,17 +867,17 @@
 
     // Track if remote video has been set to prevent duplicate assignments
     let remoteVideoSet = false;
-    
+
     async function handleVideoCallAnswer(data) {
         console.log('📞 Handling video call answer:', data);
-        
+
         try {
             // If we have a remote stream from Firebase, display it
             if (data.remoteStream) {
                 const remoteVideo = document.getElementById('remote-video');
                 const remoteVideoItem = document.getElementById('remote-video-item');
                 const videoModal = document.getElementById('video-chat-modal');
-                
+
                 // Ensure video chat modal is visible
                 if (videoModal) {
                     if (videoModal.style.display === 'none' || !videoModal.style.display) {
@@ -885,27 +885,27 @@
                         console.log('✅ Video chat modal made visible');
                     }
                 }
-                
+
                 if (remoteVideo && !remoteVideoSet) {
                     // Only set once to prevent play() interruptions
                     remoteVideoSet = true;
-                    
+
                     // Clear any existing stream first
                     if (remoteVideo.srcObject) {
                         remoteVideo.srcObject.getTracks().forEach(track => track.stop());
                     }
-                    
+
                     // Ensure remote video container is visible
                     if (remoteVideoItem) {
                         remoteVideoItem.style.display = 'flex';
                         remoteVideoItem.style.visibility = 'visible';
                         console.log('✅ Remote video container made visible');
                     }
-                    
+
                     // Check if stream has tracks
                     const tracks = data.remoteStream.getTracks();
                     console.log('📹 Remote stream tracks:', tracks.map(t => `${t.kind} (${t.readyState})`).join(', '));
-                    
+
                     remoteVideo.srcObject = data.remoteStream;
                     remoteVideo.style.display = 'block';
                     remoteVideo.style.visibility = 'visible';
@@ -918,21 +918,21 @@
                     remoteVideo.autoplay = true;
                     remoteVideo.playsInline = true;
                     remoteVideo.muted = false; // Allow audio for remote video
-                    
+
                     // Ensure video container doesn't hide the video
                     if (remoteVideoItem) {
                         remoteVideoItem.style.backgroundColor = '#000';
                         remoteVideoItem.style.overflow = 'hidden';
                         remoteVideoItem.style.zIndex = '1';
                     }
-                    
+
                     // Update connection status
                     const remoteStatus = document.getElementById('remote-status');
                     if (remoteStatus) {
                         remoteStatus.textContent = 'Connected';
                         remoteStatus.style.color = '#10b981';
                     }
-                    
+
                     // Force video to play immediately and handle with user interaction
                     const playVideo = async () => {
                         try {
@@ -944,10 +944,10 @@
                                 videoWidth: remoteVideo.videoWidth,
                                 videoHeight: remoteVideo.videoHeight
                             });
-                            
+
                             // Try to play
                             await remoteVideo.play();
-                            
+
                             console.log('✅ Remote video started playing');
                             console.log('📐 Remote video dimensions:', {
                                 videoWidth: remoteVideo.videoWidth,
@@ -969,7 +969,7 @@
                                 opacity: window.getComputedStyle(remoteVideoItem).opacity,
                                 zIndex: window.getComputedStyle(remoteVideoItem).zIndex
                             } : 'Container not found');
-                            
+
                             // Log computed styles for debugging
                             const videoStyles = window.getComputedStyle(remoteVideo);
                             console.log('🎨 Remote video computed styles:', {
@@ -981,7 +981,7 @@
                                 zIndex: videoStyles.zIndex,
                                 position: videoStyles.position
                             });
-                            
+
                         } catch (e) {
                             console.error('❌ Remote video play error:', e.name, e.message);
                             console.error('Error details:', e);
@@ -989,7 +989,7 @@
                                 // Ignore aborts triggered by stream changes during teardown
                                 return;
                             }
-                            
+
                             // Try again after user interaction
                             if (e.name === 'NotAllowedError' || e.name === 'NotSupportedError') {
                                 console.log('⚠️ Autoplay blocked, video will play on next user interaction');
@@ -1016,16 +1016,16 @@
                             }
                         }
                     };
-                    
+
                     // Wait a moment for the stream to be ready
                     setTimeout(playVideo, 150);
-                    
+
                     // Also try playing on loadedmetadata event
                     remoteVideo.addEventListener('loadedmetadata', () => {
                         console.log('📹 Remote video metadata loaded, attempting play...');
                         playVideo();
                     }, { once: true });
-                    
+
                     // Try playing on loadeddata event as well
                     remoteVideo.addEventListener('loadeddata', () => {
                         console.log('📹 Remote video data loaded, attempting play...');
@@ -1033,7 +1033,7 @@
                             playVideo();
                         }
                     }, { once: true });
-                    
+
                     // Track when video actually starts playing/showing frames
                     remoteVideo.addEventListener('playing', () => {
                         console.log('🎬✅ Remote video is now playing and rendering!');
@@ -1042,14 +1042,14 @@
                             videoHeight: remoteVideo.videoHeight
                         });
                     }, { once: true });
-                    
+
                     remoteVideo.addEventListener('canplay', () => {
                         console.log('📹 Remote video can play');
                         if (remoteVideo.paused) {
                             playVideo();
                         }
                     }, { once: true });
-                    
+
                     // Check periodically if video has dimensions (means it's rendering)
                     const checkVideoRendering = setInterval(() => {
                         if (remoteVideo.videoWidth > 0 && remoteVideo.videoHeight > 0) {
@@ -1062,7 +1062,7 @@
                             clearInterval(checkVideoRendering);
                         }
                     }, 500);
-                    
+
                     // Clear the interval after 10 seconds
                     setTimeout(() => {
                         clearInterval(checkVideoRendering);
@@ -1077,14 +1077,14 @@
                             });
                         }
                     }, 10000);
-                    
+
                     console.log('✅ Remote video stream received and displayed');
                 } else if (remoteVideoSet) {
                     console.log('⚠️ Remote video already set, skipping duplicate assignment');
                 } else if (!remoteVideo) {
                     console.error('❌ Remote video element not found!');
                 }
-                
+
                 // Check WebRTC connection state if available
                 if (firebaseVideoCall && firebaseVideoCall.peerConnection) {
                     try {
@@ -1095,24 +1095,24 @@
                         if (pc && pc.iceConnectionState) {
                             console.log('🧊 ICE Connection State:', pc.iceConnectionState);
                         }
-                        
+
                         // If connection isn't fully established, the video might not render yet
                         if (pc && pc.connectionState && pc.connectionState !== 'connected') {
                             console.warn('⚠️ WebRTC connection not fully established yet. Video may not render until connection is complete.');
-                            
+
                             // Listen for connection state change
                             const onConnectionStateChange = () => {
                                 // Check if peerConnection still exists
                                 if (!firebaseVideoCall || !firebaseVideoCall.peerConnection) {
                                     return;
                                 }
-                                
+
                                 try {
                                     const state = firebaseVideoCall.peerConnection.connectionState;
                                     if (!state) return;
-                                    
+
                                     console.log('🔗 Connection state changed to:', state);
-                                    
+
                                     if (state === 'connected' && remoteVideo && remoteVideo.paused) {
                                         console.log('🎬 Connection established, attempting to play video...');
                                         remoteVideo.play().catch(e => {
@@ -1122,7 +1122,7 @@
                                             }
                                         });
                                     }
-                                    
+
                                     if (state === 'connected' || state === 'failed' || state === 'closed') {
                                         if (firebaseVideoCall.peerConnection) {
                                             firebaseVideoCall.peerConnection.removeEventListener('connectionstatechange', onConnectionStateChange);
@@ -1132,7 +1132,7 @@
                                     console.warn('Error in connection state change handler:', err);
                                 }
                             };
-                            
+
                             if (pc) {
                                 pc.addEventListener('connectionstatechange', onConnectionStateChange);
                             }
@@ -1141,11 +1141,11 @@
                         console.warn('Error checking connection state:', err);
                     }
                 }
-                
+
                 videoCallState.isActive = true;
                 videoCallState.isConnected = true;
             }
-            
+
         } catch (error) {
             console.error('Error handling answer:', error);
         }
@@ -1161,13 +1161,13 @@
 
     // Modified to return a promise and only initialize once
     let initializingVideoCall = false;
-    
+
     async function initializeVideoCallListenersOnce() {
         if (videoCallListenersInitialized) {
             console.log('⚠️ Video call listeners already initialized, skipping...');
             return true;
         }
-        
+
         if (initializingVideoCall) {
             // Wait for current initialization to complete
             while (initializingVideoCall) {
@@ -1175,10 +1175,10 @@
             }
             return videoCallListenersInitialized;
         }
-        
+
         initializingVideoCall = true;
         console.log('🔧 Setting up Firebase video call listeners...');
-        
+
         return new Promise((resolve) => {
             initializeVideoCallListeners().then(() => {
                 initializingVideoCall = false;
@@ -1189,14 +1189,14 @@
             });
         });
     }
-    
+
     function initializeVideoCallListeners() {
         if (videoCallListenersInitialized) {
             return Promise.resolve(true);
         }
-        
+
         return new Promise((resolve, reject) => {
-        
+
         try {
             // Initialize Firebase video call integration
             if (typeof FirebaseVideoIntegration !== 'undefined') {
@@ -1206,7 +1206,7 @@
                     partnerId: {{ $partner->id }},
                     onCallReceived: async (call) => {
                         console.log('📞 Incoming call received via Firebase:', call);
-                        
+
                         // Show notification for incoming call
                         if (window.notificationService) {
                             console.log('📞 Showing notification for incoming call from:', call.fromUserId);
@@ -1216,7 +1216,7 @@
                                 {{ $trade->id }}
                             );
                         }
-                        
+
                         await window.handleVideoCallOffer(call);
                     },
                     onCallAnswered: (remoteStream) => {
@@ -1242,7 +1242,7 @@
                         updateCallStatus(status);
                     }
                 });
-                
+
                 // Initialize Firebase
                 firebaseVideoCall.initialize().then(success => {
                     if (success) {
@@ -1471,11 +1471,11 @@
 
 <div style="height: 100vh; display: flex; flex-direction: column;">
     @include('chat.partials.session-header')
-    
+
     <!-- Main Content -->
     <div style="flex: 1; display: flex; overflow: hidden;" class="main-content-container">
         @include('chat.partials.chat-panel')
-        
+
         @include('chat.partials.tasks-sidebar')
     </div>
 
@@ -1496,30 +1496,30 @@
                                 this.peerConnection = null;
                                 this.localStream = null;
                                 this.remoteStream = null;
-                                
+
                                 // ICE candidate buffering
                                 this.iceCandidateBuffer = [];
                                 this.remoteDescriptionSet = false;
-                                
+
                                 // Initialize Firebase after a short delay to ensure it's loaded
                                 setTimeout(() => {
                                     this.initFirebase();
                                 }, 100);
                             }
-                            
+
                             initFirebase() {
                                 try {
                                     console.log('🔍 Initializing Firebase for WebRTC signaling...');
                                     console.log('🔍 window.firebaseDatabase available:', !!window.firebaseDatabase);
                                     console.log('🔍 firebase object available:', typeof firebase !== 'undefined');
-                                    
+
                                     // First try to use the global Firebase database from firebase-config.js
                                     if (window.firebaseDatabase) {
                                         this.database = window.firebaseDatabase;
                                         console.log('✅ Firebase database initialized from global reference (v9 compat)');
                                         return true;
                                     }
-                                    
+
                                     // If not available, wait a bit and retry
                                     console.log('🔄 Firebase database not available, waiting and retrying...');
                                     setTimeout(() => {
@@ -1531,9 +1531,9 @@
                                             this.initFirebaseDirect();
                                         }
                                     }, 1000);
-                                    
+
                                     return false;
-                                    
+
                                 } catch (error) {
                                     console.error('❌ Error initializing Firebase:', error);
                                     console.error('❌ Error details:', {
@@ -1545,7 +1545,7 @@
                                     return false;
                                 }
                             }
-                            
+
                             initFirebaseDirect() {
                                 try {
                                     // Fallback: Wait for Firebase to be fully loaded
@@ -1553,7 +1553,7 @@
                                         console.error('❌ Firebase SDK not loaded');
                                         return false;
                                     }
-                                    
+
                                     // Check if Firebase app is initialized
                                     let app;
                                     try {
@@ -1566,25 +1566,25 @@
                                         }
                                         throw error;
                                     }
-                                    
+
                                     // Get database reference
                                     this.database = firebase.database();
                                     console.log('✅ Firebase database initialized for WebRTC signaling');
                                     return true;
-                                    
+
                                 } catch (error) {
                                     console.error('❌ Error initializing Firebase directly:', error);
                                     return false;
                                 }
                             }
-                            
+
                             // Process buffered ICE candidates
                             async processBufferedIceCandidates() {
                                 console.log(`🔄 Processing ${this.iceCandidateBuffer.length} buffered ICE candidates...`);
-                                
+
                                 while (this.iceCandidateBuffer.length > 0) {
                                     const candidateData = this.iceCandidateBuffer.shift();
-                                    
+
                                     try {
                                         await this.peerConnection.addIceCandidate(candidateData);
                                         console.log('✅ Buffered ICE candidate processed successfully');
@@ -1592,105 +1592,105 @@
                                         console.error('❌ Error processing buffered ICE candidate:', error);
                                     }
                                 }
-                                
+
                                 console.log('✅ All buffered ICE candidates processed');
                             }
-                            
+
                             async startCall(partnerId) {
                                 console.log('🚀 Starting WebRTC call with partner:', partnerId);
-                                
+
                                 this.partnerId = partnerId;
                                 this.callId = 'call_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
                                 this.isInitiator = true;
-                                
+
                                 // Reset buffering state
                                 this.iceCandidateBuffer = [];
                                 this.remoteDescriptionSet = false;
-                                
+
                                 try {
                                     // Get local stream
                                     this.localStream = await navigator.mediaDevices.getUserMedia({
                                         video: true,
                                         audio: true
                                     });
-                                    
+
                                     // Set up peer connection
                                     await this.setupPeerConnection();
-                                    
+
                                     // Create offer
                                     const offer = await this.peerConnection.createOffer();
                                     await this.peerConnection.setLocalDescription(offer);
-                                    
+
                                     // Send offer to Firebase
                                     await this.sendOffer(offer);
-                                    
+
                                     console.log('✅ WebRTC call initiated successfully');
                                     return true;
-                                    
+
                                 } catch (error) {
                                     console.error('❌ Error starting WebRTC call:', error);
                                     return false;
                                 }
                             }
-                            
+
                             async answerCall(callId) {
                                 console.log('📞 Answering WebRTC call:', callId);
-                                
+
                                 this.callId = callId;
                                 this.isInitiator = false;
-                                
+
                                 // Reset buffering state
                                 this.iceCandidateBuffer = [];
                                 this.remoteDescriptionSet = false;
-                                
+
                                 try {
                                     // Get local stream
                                     this.localStream = await navigator.mediaDevices.getUserMedia({
                                         video: true,
                                         audio: true
                                     });
-                                    
+
                                     // Set up peer connection
                                     await this.setupPeerConnection();
-                                    
+
                                     // Listen for offer
                                     this.listenForOffer();
-                                    
+
                                     console.log('✅ WebRTC call answering setup complete');
                                     return true;
-                                    
+
                                 } catch (error) {
                                     console.error('❌ Error answering WebRTC call:', error);
                                     return false;
                                 }
                             }
-                            
+
                             async setupPeerConnection() {
                                 console.log('🔧 Setting up peer connection...');
-                                
+
                                 const configuration = {
                                     iceServers: [
                                         { urls: 'stun:stun.l.google.com:19302' },
                                         { urls: 'stun:stun1.l.google.com:19302' }
                                     ]
                                 };
-                                
+
                                 this.peerConnection = new RTCPeerConnection(configuration);
-                                
+
                                 // Add local stream
                                 if (this.localStream) {
                                     this.localStream.getTracks().forEach(track => {
                                         this.peerConnection.addTrack(track, this.localStream);
                                     });
                                 }
-                                
+
                                 // Handle remote stream
                                 this.peerConnection.ontrack = (event) => {
                                     console.log('📹 Remote stream received');
                                     this.remoteStream = event.streams[0];
                                     this.displayRemoteStream();
                                 };
-                                
+
                                 // Handle ICE candidates
                                 this.peerConnection.onicecandidate = (event) => {
                                     if (event.candidate) {
@@ -1698,21 +1698,21 @@
                                         this.sendIceCandidate(event.candidate);
                                     }
                                 };
-                                
+
                                 // Listen for ICE candidates
                                 this.listenForIceCandidates();
-                                
+
                                 console.log('✅ Peer connection setup complete');
                             }
-                            
+
                             async sendOffer(offer) {
                                 console.log('📤 Sending offer to Firebase...');
-                                
+
                                 if (!this.database) {
                                     console.error('❌ Firebase database not available');
                                     return;
                                 }
-                                
+
                                 try {
                                     // Use Firebase v9 compat syntax
                                     await this.database.ref(`calls/${this.callId}/offer`).set({
@@ -1721,21 +1721,21 @@
                                         timestamp: Date.now(),
                                         from: window.authUserId || 'unknown'
                                     });
-                                    
+
                                     console.log('✅ Offer sent to Firebase');
                                 } catch (error) {
                                     console.error('❌ Error sending offer:', error);
                                 }
                             }
-                            
+
                             async sendAnswer(answer) {
                                 console.log('📤 Sending answer to Firebase...');
-                                
+
                                 if (!this.database) {
                                     console.error('❌ Firebase database not available');
                                     return;
                                 }
-                                
+
                                 try {
                                     // Use Firebase v9 compat syntax
                                     await this.database.ref(`calls/${this.callId}/answer`).set({
@@ -1744,21 +1744,21 @@
                                         timestamp: Date.now(),
                                         from: window.authUserId || 'unknown'
                                     });
-                                    
+
                                     console.log('✅ Answer sent to Firebase');
                                 } catch (error) {
                                     console.error('❌ Error sending answer:', error);
                                 }
                             }
-                            
+
                             async sendIceCandidate(candidate) {
                                 console.log('🧊 Sending ICE candidate to Firebase...');
-                                
+
                                 if (!this.database) {
                                     console.error('❌ Firebase database not available');
                                     return;
                                 }
-                                
+
                                 try {
                                     // Use Firebase v9 compat syntax
                                     await this.database.ref(`calls/${this.callId}/candidates`).push({
@@ -1768,44 +1768,44 @@
                                         timestamp: Date.now(),
                                         from: window.authUserId || 'unknown'
                                     });
-                                    
+
                                     console.log('✅ ICE candidate sent to Firebase');
                                 } catch (error) {
                                     console.error('❌ Error sending ICE candidate:', error);
                                 }
                             }
-                            
+
                             listenForOffer() {
                                 console.log('👂 Listening for offer...');
-                                
+
                                 if (!this.database) {
                                     console.error('❌ Firebase database not available');
                                     return;
                                 }
-                                
+
                                 // Use Firebase v9 compat syntax
                                 this.database.ref(`calls/${this.callId}/offer`).on('value', async (snapshot) => {
                                     const offerData = snapshot.val();
                                     if (offerData && offerData.sdp) {
                                         console.log('📥 Received offer from Firebase');
-                                        
+
                                         try {
                                             await this.peerConnection.setRemoteDescription(offerData);
-                                            
+
                                             // Mark remote description as set
                                             this.remoteDescriptionSet = true;
                                             console.log('✅ Remote description set, processing buffered ICE candidates...');
-                                            
+
                                             // Process any buffered ICE candidates
                                             await this.processBufferedIceCandidates();
-                                            
+
                                             // Create answer
                                             const answer = await this.peerConnection.createAnswer();
                                             await this.peerConnection.setLocalDescription(answer);
-                                            
+
                                             // Send answer
                                             await this.sendAnswer(answer);
-                                            
+
                                             console.log('✅ Answer created and sent');
                                         } catch (error) {
                                             console.error('❌ Error handling offer:', error);
@@ -1813,32 +1813,32 @@
                                     }
                                 });
                             }
-                            
+
                             listenForAnswer() {
                                 console.log('👂 Listening for answer...');
-                                
+
                                 if (!this.database) {
                                     console.error('❌ Firebase database not available');
                                     return;
                                 }
-                                
+
                                 this.database.ref(`calls/${this.callId}/answer`).on('value', async (snapshot) => {
                                     const answerData = snapshot.val();
                                     if (answerData && answerData.sdp && answerData.from !== window.authUserId) {
                                         console.log('📥 Received answer from Firebase from user:', answerData.from);
-                                        
+
                                         // Only process if we're the initiator and haven't set remote description yet
                                         if (this.isInitiator && !this.remoteDescriptionSet) {
                                             try {
                                                 await this.peerConnection.setRemoteDescription(answerData);
-                                                
+
                                                 // Mark remote description as set
                                                 this.remoteDescriptionSet = true;
                                                 console.log('✅ Remote description set, processing buffered ICE candidates...');
-                                                
+
                                                 // Process any buffered ICE candidates
                                                 await this.processBufferedIceCandidates();
-                                                
+
                                                 console.log('✅ Answer processed successfully');
                                             } catch (error) {
                                                 console.error('❌ Error handling answer:', error);
@@ -1853,20 +1853,20 @@
                                     }
                                 });
                             }
-                            
+
                             listenForIceCandidates() {
                                 console.log('👂 Listening for ICE candidates...');
-                                
+
                                 if (!this.database) {
                                     console.error('❌ Firebase database not available');
                                     return;
                                 }
-                                
+
                                 this.database.ref(`calls/${this.callId}/candidates`).on('child_added', async (snapshot) => {
                                     const candidateData = snapshot.val();
                                     if (candidateData && candidateData.candidate && candidateData.from !== window.authUserId) {
                                         console.log('🧊 Received ICE candidate from Firebase from user:', candidateData.from);
-                                        
+
                                         // Check if remote description is set
                                         if (this.remoteDescriptionSet) {
                                             // Remote description is set, add candidate immediately
@@ -1886,18 +1886,18 @@
                                     }
                                 });
                             }
-                            
+
                             displayRemoteStream() {
                                 const remoteVideo = document.getElementById('remote-video');
                                 const remoteVideoItem = document.getElementById('remote-video-item');
-                                
+
                                 if (remoteVideo && this.remoteStream) {
                                     // Ensure container is visible
                                     if (remoteVideoItem) {
                                         remoteVideoItem.style.display = 'flex';
                                         remoteVideoItem.style.visibility = 'visible';
                                     }
-                                    
+
                                     remoteVideo.srcObject = this.remoteStream;
                                     remoteVideo.style.display = 'block';
                                     remoteVideo.style.visibility = 'visible';
@@ -1906,65 +1906,65 @@
                                     remoteVideo.autoplay = true;
                                     remoteVideo.playsInline = true;
                                     remoteVideo.muted = false;
-                                    
+
                                     // Update connection status
                                     const remoteStatus = document.getElementById('remote-status');
                                     if (remoteStatus) {
                                         remoteStatus.textContent = 'Connected';
                                         remoteStatus.style.color = '#10b981';
                                     }
-                                    
+
                                     // Play the video
                                     remoteVideo.play().catch(e => {
                                         console.log('Remote video play error:', e.name);
                                     });
-                                    
+
                                     console.log('✅ Remote video stream displayed');
                                 }
                             }
-                            
+
                             endCall() {
                                 console.log('🛑 Ending WebRTC call...');
-                                
+
                                 if (this.peerConnection) {
                                     this.peerConnection.close();
                                     this.peerConnection = null;
                                 }
-                                
+
                                 if (this.localStream) {
                                     this.localStream.getTracks().forEach(track => track.stop());
                                     this.localStream = null;
                                 }
-                                
+
                                 this.remoteStream = null;
-                                
+
                                 // Clean up Firebase listeners
                                 if (this.database && this.callId) {
                                     this.database.ref(`calls/${this.callId}`).off();
                                 }
-                                
+
                                 // Reset call state
                                 this.callId = null;
                                 this.partnerId = null;
                                 this.isInitiator = false;
                                 this.iceCandidateBuffer = [];
                                 this.remoteDescriptionSet = false;
-                                
+
                                 console.log('✅ WebRTC call ended');
                             }
                         }
-                        
+
                         // Initialize WebRTC signaling
                         window.webrtcSignaling = new FirebaseWebRTCSignaling();
-                        
+
                         // Auto-setup callee removed (no auto-answer). Incoming offers are handled via Firebase callbacks
-                        
+
                         // openVideoChat will be defined later in the main script
-                        
-                        
+
+
                         // Event listener removed - handled by VideoCallManager to prevent duplicates
                         // VideoCallManager.setupEventListeners() will attach the listener
-                            
+
                             // Add event listener for start call button
                             const startCallBtn = document.getElementById('start-call-btn');
                             if (startCallBtn) {
@@ -1979,7 +1979,7 @@
                                 });
                                 console.log('✅ Start call button event listener added');
                             }
-                            
+
                             // Add event listeners for other video call buttons
                             const endCallBtn = document.getElementById('end-call-btn');
                             if (endCallBtn) {
@@ -1992,7 +1992,7 @@
                                     }
                                 });
                             }
-                            
+
                             const toggleAudioBtn = document.getElementById('toggle-audio-btn');
                             if (toggleAudioBtn) {
                                 toggleAudioBtn.addEventListener('click', function() {
@@ -2004,7 +2004,7 @@
                                     }
                                 });
                             }
-                            
+
                             const toggleVideoBtn = document.getElementById('toggle-video-btn');
                             if (toggleVideoBtn) {
                                 toggleVideoBtn.addEventListener('click', function() {
@@ -2016,7 +2016,7 @@
                                     }
                                 });
                             }
-                            
+
                             const mirrorVideoBtn = document.getElementById('mirror-video-btn');
                             if (mirrorVideoBtn) {
                                 mirrorVideoBtn.addEventListener('click', function() {
@@ -2028,7 +2028,7 @@
                                     }
                                 });
                             }
-                            
+
                             // Add event listener for close video button
                             const closeVideoBtn = document.getElementById('close-video-btn');
                             if (closeVideoBtn) {
@@ -2048,11 +2048,11 @@
                                 });
                                 console.log('✅ Close video button event listener added');
                             }
-                            
+
                             // End call button already has event listener above (line 1973), no need to duplicate
-                            
+
                             // Add event listeners for remaining buttons
-                            
+
                             const screenShareBtn = document.getElementById('screen-share-btn');
                             if (screenShareBtn) {
                                 screenShareBtn.addEventListener('click', function() {
@@ -2064,7 +2064,7 @@
                                     }
                                 });
                             }
-                            
+
                             const maximizeBtn = document.getElementById('maximize-btn');
                             if (maximizeBtn) {
                                 maximizeBtn.addEventListener('click', function() {
@@ -2076,7 +2076,7 @@
                                     }
                                 });
                             }
-                            
+
                             const chatToggleBtn = document.getElementById('chat-toggle-btn');
                             if (chatToggleBtn) {
                                 chatToggleBtn.addEventListener('click', function() {
@@ -2088,33 +2088,33 @@
                                     }
                                 });
                             }
-                            
+
                             // Define video chat functions immediately after DOM is loaded
                             console.log('🔧 Video chat functions are handled by VideoCallManager in app.js');
                             // Note: openVideoChat and closeVideoChat are defined in app.js after VideoCallManager initialization
-                            
+
                             // Consolidated video call functions
                             window.startVideoCall = async function() {
                                 console.log('🚀 Starting video call...');
-                                
+
                                 // Check if we have a local stream
                                 if (!window.localStream) {
                                     console.log('⚠️ No local stream available, trying to initialize camera...');
-                                    
+
                                     try {
                                         // Try to initialize camera if not available
                                         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                                            const stream = await navigator.mediaDevices.getUserMedia({ 
-                                                video: { 
+                                            const stream = await navigator.mediaDevices.getUserMedia({
+                                                video: {
                                                     width: { ideal: 1280 },
                                                     height: { ideal: 720 },
                                                     facingMode: 'user'
                                                 },
                                                 audio: true
                                             });
-                                            
+
                                             window.localStream = stream;
-                                            
+
                                             // Display local video
                                             const localVideo = document.getElementById('local-video');
                                             if (localVideo) {
@@ -2122,7 +2122,7 @@
                                                 localVideo.style.display = 'block';
                                                 localVideo.play();
                                             }
-                                            
+
                                             console.log('✅ Camera initialized successfully');
                                         } else {
                                             throw new Error('Camera not supported');
@@ -2133,9 +2133,9 @@
                                         return;
                                     }
                                 }
-                                
+
                                 console.log('✅ Local stream available, proceeding with call');
-                                
+
                                 // Update UI to show calling state
                                 const modal = document.getElementById('video-chat-modal');
                                 if (modal) {
@@ -2143,14 +2143,14 @@
                                     if (statusElement) {
                                         statusElement.textContent = 'Starting call...';
                                     }
-                                    
+
                                     // Show call controls
                                     const startBtn = document.getElementById('start-call-btn');
                                     const endBtn = document.getElementById('end-call-btn');
                                     if (startBtn) startBtn.style.display = 'none';
                                     if (endBtn) endBtn.style.display = 'inline-block';
                                 }
-                                
+
                                 // If we have a pending incoming offer, treat this as Accept
                                 if (typeof pendingIncomingOffer !== 'undefined' && pendingIncomingOffer && firebaseVideoCall) {
                                     try {
@@ -2198,29 +2198,29 @@
                                     }, 1000);
                                 }
                             };
-                            
+
                             window.startVideoCallFull = async function() {
                                 console.log('🚀 Starting video call with Firebase...');
-                                
+
                                 try {
                                     // Initialize Firebase video call if not already initialized
                                     if (!firebaseVideoCall) {
                                         console.log('🔧 Initializing Firebase video call...');
                                         await initializeVideoCallListenersOnce();
-                                        
+
                                         // Wait a moment for initialization to complete
                                         await new Promise(resolve => setTimeout(resolve, 500));
-                                        
+
                                         if (!firebaseVideoCall) {
                                             console.error('❌ Firebase video call failed to initialize');
                                             alert('Video call service not available. Please refresh the page.');
                                             return;
                                         }
                                     }
-                                    
+
                                     // Get partner ID - use window.partnerId which is set from controller
                                     const partnerId = window.partnerId;
-                                    
+
                                     if (!partnerId || partnerId === null || partnerId === undefined || isNaN(partnerId)) {
                                         console.error('❌ Partner ID not found', {
                                             currentUser: {{ auth()->id() }},
@@ -2231,18 +2231,18 @@
                                         alert('No partner found for this trade. Make sure the trade request has been accepted.');
                                         return;
                                     }
-                                    
+
                                     console.log('📞 Starting call with partner ID:', partnerId);
-                                    
+
                                     // Update UI to show calling state
                                     const statusElement = document.getElementById('video-status');
                                     if (statusElement) {
                                         statusElement.textContent = 'Initializing...';
                                     }
-                                    
+
                                     // Start the call using Firebase
                                     const success = await firebaseVideoCall.startCall(partnerId);
-                                    
+
                                     if (success) {
                                         // Setup local video display
                                         const localVideo = document.getElementById('local-video');
@@ -2253,17 +2253,17 @@
                                             localVideo.autoplay = true;
                                             localVideo.playsInline = true;
                                         }
-                                        
+
                                         // Update status
                                         if (statusElement) {
                                             statusElement.textContent = 'Call in progress...';
                                         }
-                                        
+
                                         console.log('✅ Video call initiated successfully with Firebase');
                                     } else {
                                         throw new Error('Failed to start video call with Firebase');
                                     }
-                                    
+
                                 } catch (error) {
                                     console.error('❌ Error starting video call:', error);
                                     alert('Failed to start video call: ' + error.message);
@@ -2272,26 +2272,26 @@
                                     }
                                 }
                             };
-                            
+
             window.endVideoCall = function() {
                                 console.log('🛑 Ending video call...');
-                                
+
                                 // End Firebase video call
                                 if (window.firebaseVideoCall) {
                                     window.firebaseVideoCall.endCall();
                                 }
-                                
+
                                 // End WebRTC call
                                 if (window.webrtcSignaling) {
                                     window.webrtcSignaling.endCall();
                                 }
-                                
+
                                 // Stop local stream
                                 if (window.localStream) {
                                     window.localStream.getTracks().forEach(track => track.stop());
                                     window.localStream = null;
                                 }
-                                
+
                 // Clear remote video
                                 const remoteVideo = document.getElementById('remote-video');
                                 if (remoteVideo) {
@@ -2310,21 +2310,21 @@
                     try { localVideo.pause(); } catch(e) {}
                     localVideo.srcObject = null;
                 }
-                                
+
                                 // Reset UI
                                 const startBtn = document.getElementById('start-call-btn');
                                 const endBtn = document.getElementById('end-call-btn');
                                 if (startBtn) startBtn.style.display = 'inline-block';
                                 if (endBtn) endBtn.style.display = 'none';
-                                
+
                                 const statusElement = document.getElementById('video-status');
                                 if (statusElement) {
                                     statusElement.textContent = 'Call ended';
                                 }
-                                
+
                                 console.log('✅ Video call ended');
                             };
-                            
+
                         });
                     </script>
 
@@ -2390,7 +2390,7 @@
     <div style="background: white; padding: 24px; border-radius: 8px; width: 500px; max-width: 90%; max-height: 90%; overflow-y: auto;"
         onclick="event.stopPropagation()">
         <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 16px;">Add Task</h3>
-        
+
         <!-- Task Assignment (Read-only, only to partner) -->
         <div style="margin-bottom: 16px;">
             <label style="display: block; margin-bottom: 4px; font-weight: 500;">Assign Task To</label>
@@ -2406,7 +2406,7 @@
                 <input type="text" id="task-title" required aria-label="Task title"
                     style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
             </div>
-            
+
             <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 4px; font-weight: 500;">Description (Optional)</label>
                 <textarea id="task-description" rows="3" aria-label="Task description"
@@ -2419,10 +2419,10 @@
                     <input type="checkbox" id="requires-submission" style="margin-right: 8px;">
                     Require File Submission
                 </label>
-                
+
                 <div id="submission-options" style="display: none; margin-left: 20px; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.875rem;">Required File Types:</label>
-                    
+
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
                         <label style="display: flex; align-items: center; font-size: 0.875rem;">
                             <input type="checkbox" name="file-types" value="images" style="margin-right: 6px;">
@@ -2445,7 +2445,7 @@
                             📊 Excel Files
                         </label>
                     </div>
-                    
+
                     <div style="margin-bottom: 12px;">
                         <label style="display: block; margin-bottom: 4px; font-weight: 500; font-size: 0.875rem;">Submission Instructions:</label>
                         <textarea id="submission-instructions" rows="2" placeholder="Provide specific instructions for what should be submitted..."
@@ -2488,16 +2488,16 @@
     <div style="background: white; padding: 24px; border-radius: 8px; width: 500px; max-width: 90%; max-height: 90%; overflow-y: auto;"
         onclick="event.stopPropagation()">
         <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 16px;">Edit Task</h3>
-        
+
         <form id="edit-task-form">
             <input type="hidden" id="edit-task-id">
-            
+
             <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 4px; font-weight: 500;">Task Title</label>
                 <input type="text" id="edit-task-title" required
                     style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;">
             </div>
-            
+
             <div style="margin-bottom: 16px;">
                 <label style="display: block; margin-bottom: 4px; font-weight: 500;">Description (Optional)</label>
                 <textarea id="edit-task-description" rows="3"
@@ -2510,10 +2510,10 @@
                     <input type="checkbox" id="edit-requires-submission" style="margin-right: 8px;">
                     Require File Submission
                 </label>
-                
+
                 <div id="edit-submission-options" style="display: none; margin-left: 20px; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 500; font-size: 0.875rem;">Required File Types:</label>
-                    
+
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
                         <label style="display: flex; align-items: center; font-size: 0.875rem;">
                             <input type="checkbox" name="edit-file-types" value="image" style="margin-right: 6px;">
@@ -2536,7 +2536,7 @@
                             📊 Excel Files
                         </label>
                     </div>
-                    
+
                     <div style="margin-bottom: 12px;">
                         <label style="display: block; margin-bottom: 4px; font-weight: 500; font-size: 0.875rem;">Submission Instructions:</label>
                         <textarea id="edit-submission-instructions" rows="2" placeholder="Provide specific instructions for what should be submitted..."
@@ -2581,19 +2581,19 @@
         <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 16px; color: #374151;">
             Review Task Submission
         </h3>
-        
+
         <div id="submission-content">
             <!-- Submission details will be loaded here -->
         </div>
 
         <form id="submission-evaluation-form" style="margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
             <input type="hidden" id="evaluation-task-id" name="task_id">
-            
+
             <div style="margin-bottom: 16px;">
                 <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 8px;">
                     Score (0-100)
                 </label>
-                <input type="number" id="evaluation-score" name="score_percentage" min="0" max="100" 
+                <input type="number" id="evaluation-score" name="score_percentage" min="0" max="100"
                        style="width: 100px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.875rem;"
                        placeholder="85" onchange="updateEvaluationStatus()">
                 <small style="display: block; color: #6b7280; margin-top: 4px;">Status is automatically determined: Pass (≥70) or Fail (<70)</small>
@@ -2650,12 +2650,14 @@
             console.log('Current URL:', window.location.href);
             console.log('Base URL:', window.location.origin);
             console.log('Generated message URL:', window.location.origin + '/chat/{{ $trade->id }}/message');
-            
+
             // Additional Echo connection info
             if (window.Echo && window.Echo.connector && window.Echo.connector.pusher) {
                 const pusher = window.Echo.connector.pusher;
                 console.log('Pusher connection state:', pusher.connection.state);
-                console.log('Pusher socket ID:', pusher.socket_id);
+                // Socket ID is available after connection is established
+                const socketId = pusher.connection?.socket_id || pusher.socket_id || 'not available yet';
+                console.log('Pusher socket ID:', socketId);
             }
         }, 2000); // Wait 2 seconds for Echo to load
 
@@ -2669,23 +2671,23 @@ if (window.Echo) {
     });
     console.log('Echo available:', !!window.Echo);
     console.log('✅ Using Pusher for video call signaling (WebSocket fallback disabled)');
-    
+
     // Connection status monitoring
     window.Echo.connector.pusher.connection.bind('connected', function() {
         console.log('✅ Pusher connected successfully');
         updateConnectionStatus('connected');
     });
-    
+
     window.Echo.connector.pusher.connection.bind('disconnected', function() {
         console.log('❌ Pusher disconnected');
         updateConnectionStatus('disconnected');
     });
-    
+
     window.Echo.connector.pusher.connection.bind('error', function(error) {
         console.error('🚨 Pusher connection error:', error);
         updateConnectionStatus('error');
     });
-    
+
     // Additional debugging
     window.Echo.connector.pusher.connection.bind('connecting', function() {
         console.log('🔄 Pusher connecting...');
@@ -2711,25 +2713,25 @@ if (window.Echo) {
     };
 
     // Video chat functions are now defined earlier in DOMContentLoaded event
-    
+
     // startVideoCallFull is now defined earlier in DOMContentLoaded event
-    
+
     // Peer connection creation is now handled by Firebase integration
-    
+
     async function fetchTurnCredentials() {
         try {
             console.log('🔄 Fetching TURN credentials...');
             const apiKey = '511852cda421697270ed9af8b089038b39a7';
             const response = await fetch(`https://skillxchange.metered.live/api/v1/turn/credentials?apiKey=${apiKey}`);
-            
+
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
-            
+
             const iceServers = await response.json();
             console.log('✅ TURN credentials fetched:', iceServers.length, 'servers');
             return iceServers;
-            
+
         } catch (error) {
             console.error('❌ Error fetching TURN credentials:', error);
             // Fallback servers
@@ -2740,18 +2742,18 @@ if (window.Echo) {
             ];
         }
     }
-    
+
     // Video call signaling is now handled by Firebase integration
     // No need for HTTP-based signaling functions
-    
+
     // ICE candidate signaling is now handled by Firebase integration
-    
+
     // endVideoCall function is now defined earlier in DOMContentLoaded event
-    
+
     function getPartnerId() {
         const tradeOwnerId = {{ $trade->user_id }};
         const currentUserId = {{ auth()->id() }};
-        
+
         if (currentUserId === tradeOwnerId) {
             // Current user is the trade owner, get the requester
             const acceptedRequest = {!! json_encode($trade->requests()->where('status', 'accepted')->first() ?: null) !!};
@@ -2761,19 +2763,19 @@ if (window.Echo) {
             return tradeOwnerId;
         }
     }
-    
+
     function generateCallId() {
         return 'call_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
-    
-    
+
+
     function updateCallTimer(time) {
         const timerElement = document.getElementById('call-timer');
         if (timerElement) {
             timerElement.textContent = time;
         }
     }
-    
+
     function startCallTimer() {
         videoCallState.startTime = Date.now();
         videoCallState.timer = setInterval(() => {
@@ -2789,20 +2791,20 @@ if (window.Echo) {
     console.log('🔗 Current user ID: {{ auth()->id() }}');
     console.log('🔗 Echo available:', typeof window.Echo !== 'undefined');
     console.log('🔗 Pusher available:', typeof window.Pusher !== 'undefined');
-    
+
     // Check Echo connection status
     if (window.Echo) {
         console.log('🔗 Echo connection state:', window.Echo.connector.pusher.connection.state);
-        
+
         // Listen for connection events
         window.Echo.connector.pusher.connection.bind('connected', () => {
             console.log('✅ Pusher connected for video calls');
         });
-        
+
         window.Echo.connector.pusher.connection.bind('disconnected', () => {
             console.log('❌ Pusher disconnected');
         });
-        
+
         window.Echo.connector.pusher.connection.bind('error', (error) => {
             console.error('❌ Pusher connection error:', error);
         });
@@ -2813,17 +2815,17 @@ if (window.Echo) {
     // Handle ICE candidate
     async function handleIceCandidate(data) {
         console.log('📞 Handling ICE candidate:', data);
-        
+
         try {
             await videoCallState.peerConnection.addIceCandidate(data.candidate);
-            
+
         } catch (error) {
             console.error('Error handling ICE candidate:', error);
         }
     }
 
     // Duplicate function definitions removed - using the ones defined earlier
-    
+
     // Test function to verify event listening (can be called from browser console)
     window.testVideoCallEvents = function() {
         console.log('🧪 Testing video call event listening...');
@@ -2831,12 +2833,12 @@ if (window.Echo) {
         console.log('🧪 User ID: {{ auth()->id() }}');
         console.log('🧪 Echo available:', typeof window.Echo !== 'undefined');
         console.log('🧪 Pusher available:', typeof window.Pusher !== 'undefined');
-        
+
         if (window.Echo) {
             console.log('🧪 Echo connection state:', window.Echo.connector.pusher.connection.state);
             console.log('🧪 Pusher connection state:', window.Echo.connector.pusher.connection.state);
         }
-        
+
         // Test if we can access the private channel
         try {
             const channel = window.Echo.private('trade.{{ $trade->id }}');
@@ -2845,7 +2847,7 @@ if (window.Echo) {
         } catch (error) {
             console.error('🧪 Error creating private channel:', error);
         }
-        
+
         return {
             tradeId: {{ $trade->id }},
             userId: {{ auth()->id() }},
@@ -2861,7 +2863,7 @@ if (window.Echo) {
 // Function to show video call errors to the user
 function showVideoCallError(message) {
     console.error('📞 Video Call Error:', message);
-    
+
     // Show a user-friendly error message
     const errorDiv = document.createElement('div');
     errorDiv.className = 'bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4';
@@ -2878,7 +2880,7 @@ function showVideoCallError(message) {
             </div>
         </div>
     `;
-    
+
     // Insert the error message at the top of the chat container
     const chatContainer = document.querySelector('.chat-container') || document.querySelector('.bg-white');
     if (chatContainer) {
@@ -2914,9 +2916,9 @@ function stopVideoCallPolling() {
 function updateConnectionStatus(status) {
     const indicator = document.getElementById('status-indicator');
     const text = document.getElementById('status-text');
-    
+
     if (!indicator || !text) return;
-    
+
     switch(status) {
         case 'connected':
             indicator.style.background = '#10b981';
@@ -2945,7 +2947,7 @@ function updateConnectionStatus(status) {
 // Show error message function
 function showError(message) {
     console.error('Error:', message);
-    
+
     // Create error notification
     const errorDiv = document.createElement('div');
     errorDiv.style.cssText = `
@@ -2968,9 +2970,9 @@ function showError(message) {
             <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; font-size: 18px; cursor: pointer; margin-left: auto;">×</button>
         </div>
     `;
-    
+
     document.body.appendChild(errorDiv);
-    
+
     // Auto-remove after 5 seconds
     setTimeout(() => {
         if (errorDiv.parentNode) {
@@ -2982,7 +2984,7 @@ function showError(message) {
 // Show success message function
 function showSuccess(message) {
     console.log('Success:', message);
-    
+
     // Create success notification
     const successDiv = document.createElement('div');
     successDiv.style.cssText = `
@@ -2998,7 +3000,7 @@ function showSuccess(message) {
         max-width: 300px;
         word-wrap: break-word;
     `;
-    
+
     successDiv.innerHTML = `
         <div style="display: flex; align-items: center; gap: 8px;">
             <span>✅</span>
@@ -3006,9 +3008,9 @@ function showSuccess(message) {
             <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; font-size: 18px; cursor: pointer; margin-left: auto;">×</button>
         </div>
     `;
-    
+
     document.body.appendChild(successDiv);
-    
+
     // Auto-remove after 3 seconds
     setTimeout(() => {
         if (successDiv.parentNode) {
@@ -3054,28 +3056,28 @@ function reviewTaskSubmission(taskId) {
 function showSubmissionReviewModal(taskId, task, submission) {
     const modal = document.getElementById('submission-review-modal');
     const contentDiv = document.getElementById('submission-content');
-    
+
     // Set task ID for evaluation form
     document.getElementById('evaluation-task-id').value = taskId;
-    
+
     // Build submission content HTML
     let submissionHtml = `
         <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
             <h4 style="margin: 0 0 8px 0; color: #374151;">Task: ${task.title}</h4>
             <p style="margin: 0; color: #6b7280; font-size: 0.875rem;">${task.description || 'No description provided'}</p>
         </div>
-        
+
         <div style="background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px;">
             <h5 style="margin: 0 0 12px 0; color: #374151;">Submission Details</h5>
-            
+
             <div style="margin-bottom: 12px;">
                 <strong>Submitted by:</strong> ${submission.submitter_name}
             </div>
-            
+
             <div style="margin-bottom: 12px;">
                 <strong>Submitted on:</strong> ${new Date(submission.created_at).toLocaleString()}
             </div>
-            
+
             ${submission.submission_notes ? `
                 <div style="margin-bottom: 12px;">
                     <strong>Notes:</strong>
@@ -3084,7 +3086,7 @@ function showSubmissionReviewModal(taskId, task, submission) {
                     </div>
                 </div>
             ` : ''}
-            
+
             ${submission.file_paths && submission.file_paths.length > 0 ? `
                 <div>
                     <strong>Submitted Files:</strong>
@@ -3092,7 +3094,7 @@ function showSubmissionReviewModal(taskId, task, submission) {
                         ${submission.file_paths.map((filePath, index) => `
                             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                                 <i class="fas fa-file" style="color: #6b7280;"></i>
-                                <a href="/submissions/${submission.id}/files/${index}" target="_blank" 
+                                <a href="/submissions/${submission.id}/files/${index}" target="_blank"
                                    style="color: #3b82f6; text-decoration: none;">
                                     ${filePath.split('/').pop()}
                                 </a>
@@ -3103,10 +3105,10 @@ function showSubmissionReviewModal(taskId, task, submission) {
             ` : '<div style="color: #6b7280; font-style: italic;">No files submitted</div>'}
         </div>
     `;
-    
+
     contentDiv.innerHTML = submissionHtml;
     modal.style.display = 'flex';
-    
+
     // Clear evaluation form
     document.getElementById('submission-evaluation-form').reset();
     document.getElementById('evaluation-task-id').value = taskId;
@@ -3160,12 +3162,12 @@ function viewTaskDetails(taskId) {
 function checkEmptyTaskContainers() {
     const myTasksContainer = document.getElementById('my-tasks');
     const partnerTasksContainer = document.getElementById('partner-tasks');
-    
+
     // Check My Tasks container
     if (myTasksContainer && myTasksContainer.children.length === 0) {
         myTasksContainer.innerHTML = '<div style="color: #6b7280; font-size: 0.875rem; text-align: center; padding: 16px;">No tasks assigned to you</div>';
     }
-    
+
     // Check Partner Tasks container
     if (partnerTasksContainer && partnerTasksContainer.children.length === 0) {
         const partnerName = '{{ $partner->firstname ?? "Partner" }}';
@@ -3211,55 +3213,55 @@ function showTaskSubmissionModal(taskId) {
         <div id="task-submission-modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
             <div style="background: white; padding: 24px; border-radius: 8px; width: 500px; max-width: 90%; max-height: 90%; overflow-y: auto;">
                 <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 16px;">Submit Task Work</h3>
-                
+
                 <form id="task-submission-form" enctype="multipart/form-data">
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 4px; font-weight: 500;">Upload Files</label>
-                        <input type="file" id="task-files" name="files[]" multiple 
+                        <input type="file" id="task-files" name="files[]" multiple
                                style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px;"
                                accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx">
                         <small style="color: #6b7280;">Select files according to task requirements</small>
                     </div>
-                    
+
                     <div style="margin-bottom: 16px;">
                         <label style="display: block; margin-bottom: 4px; font-weight: 500;">Submission Notes</label>
-                        <textarea id="submission-notes" rows="3" 
+                        <textarea id="submission-notes" rows="3"
                                   style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; resize: vertical;"
                                   placeholder="Add any notes about your submission..."></textarea>
                     </div>
-                    
+
                     <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                        <button type="button" onclick="hideTaskSubmissionModal()" 
+                        <button type="button" onclick="hideTaskSubmissionModal()"
                                 style="padding: 8px 16px; border: 1px solid #d1d5db; background: white; border-radius: 4px; cursor: pointer;">Cancel</button>
-                        <button type="submit" 
+                        <button type="submit"
                                 style="padding: 8px 16px; background: #1e40af; color: white; border: none; border-radius: 4px; cursor: pointer;">Submit Work</button>
                     </div>
                 </form>
             </div>
         </div>
     `;
-    
+
     // Add modal to page
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    
+
     // Add form submit handler
     document.getElementById('task-submission-form').addEventListener('submit', function(e) {
         e.preventDefault();
-        
+
         const formData = new FormData();
         const files = document.getElementById('task-files').files;
         const notes = document.getElementById('submission-notes').value;
-        
+
         // Add files to form data
         for (let i = 0; i < files.length; i++) {
             formData.append('files[]', files[i]);
         }
         formData.append('submission_notes', notes);
-        
+
         // Get fresh CSRF token
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
         console.log('Using CSRF token:', csrfToken);
-        
+
         fetch(`/tasks/${taskId}/submit`, {
             method: 'POST',
             headers: {
@@ -3267,7 +3269,7 @@ function showTaskSubmissionModal(taskId) {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
             },
-            body: formData, 
+            body: formData,
             credentials: 'same-origin'
         })
         .then(response => {
@@ -3315,14 +3317,14 @@ function updateEvaluationStatus() {
     const score = parseInt(document.getElementById('evaluation-score').value) || 0;
     const statusBadge = document.getElementById('evaluation-status-badge');
     const statusText = document.getElementById('evaluation-status-text');
-    
+
     if (score === 0 || !document.getElementById('evaluation-score').value) {
         statusText.textContent = '-';
         statusBadge.style.background = '#f3f4f6';
         statusBadge.style.color = '#6b7280';
         return;
     }
-    
+
     // Auto-determine status: >= 70 = Pass, < 70 = Fail
     if (score >= 70) {
         statusText.textContent = 'Pass';
@@ -3338,22 +3340,22 @@ function updateEvaluationStatus() {
 // Submission evaluation form handler
 document.getElementById('submission-evaluation-form').addEventListener('submit', function(e) {
     e.preventDefault();
-    
+
     const taskId = document.getElementById('evaluation-task-id').value;
     const scorePercentage = document.getElementById('evaluation-score').value;
     const feedback = document.getElementById('evaluation-feedback').value;
-    
+
     // Validation
     if (!scorePercentage || scorePercentage < 0 || scorePercentage > 100) {
         showError('Please enter a valid score between 0 and 100.');
         return;
     }
-    
+
     if (!feedback.trim()) {
         showError('Please provide feedback for the submission.');
         return;
     }
-    
+
     fetch(`/tasks/${taskId}/evaluation`, {
         method: 'POST',
         headers: {
@@ -3372,7 +3374,7 @@ document.getElementById('submission-evaluation-form').addEventListener('submit',
         if (data.success) {
             hideSubmissionReviewModal();
             showSuccess('Task evaluation submitted successfully!');
-            
+
             // Refresh the page to show updated task status
             location.reload();
         } else {
@@ -3395,16 +3397,16 @@ window.sessionStartTime = Date.now();
 function showSessionRatingModal(tradeId, ratedUserId, sessionDuration = 0) {
     const modal = document.getElementById('session-rating-modal');
     if (!modal) return;
-    
+
     // Set form data
     document.getElementById('session-rating-trade-id').value = tradeId || '';
     document.getElementById('session-rating-rated-user-id').value = ratedUserId || '';
     document.getElementById('session-rating-duration').value = sessionDuration;
-    
+
     // Reset form
     document.getElementById('session-rating-form').reset();
     resetAllStarRatings();
-    
+
     // Show modal
         modal.style.display = 'block';
     }
@@ -3461,7 +3463,7 @@ async function loadSkillLearningStatus() {
 function updateSkillLearningStatusUI(summary) {
     const statusContainer = document.getElementById('skill-learning-status');
     const completeSection = document.getElementById('complete-session-section');
-    
+
     if (!summary.ready_for_processing) {
         statusContainer.innerHTML = `
             <div style="text-align: center; color: #6b7280; font-size: 0.875rem;">
@@ -3474,7 +3476,7 @@ function updateSkillLearningStatusUI(summary) {
 
     const tradeOwner = summary.trade_owner;
     const requester = summary.requester;
-    
+
     let statusHTML = `
         <div style="space-y: 12px;">
             <div style="padding: 12px; background: white; border-radius: 6px; border: 1px solid #e5e7eb;">
@@ -3496,7 +3498,7 @@ function updateSkillLearningStatusUI(summary) {
                     ${tradeOwner.will_receive_skill ? '✅ Will receive skill' : '❌ Will not receive skill'}
                 </div>
             </div>
-            
+
             <div style="padding: 12px; background: white; border-radius: 6px; border: 1px solid #e5e7eb;">
                 <div style="font-weight: 600; color: #374151; margin-bottom: 8px;">
                     ${requester.user.firstname} ${requester.user.lastname}
@@ -3518,13 +3520,13 @@ function updateSkillLearningStatusUI(summary) {
             </div>
         </div>
     `;
-    
+
     statusContainer.innerHTML = statusHTML;
-    
+
     // Show complete session button if both users have 100% completion or if any user has 100%
     const canComplete = tradeOwner.completion_rate >= 100 || requester.completion_rate >= 100;
     completeSection.style.display = canComplete ? 'block' : 'none';
-    
+
     if (canComplete) {
         const completeBtn = document.getElementById('complete-session-btn');
         if (tradeOwner.completion_rate >= 100 && requester.completion_rate >= 100) {
@@ -3543,11 +3545,11 @@ function updateSkillLearningStatusUI(summary) {
 async function completeSession() {
     const completeBtn = document.getElementById('complete-session-btn');
     const originalText = completeBtn.textContent;
-    
+
     try {
         completeBtn.disabled = true;
         completeBtn.textContent = 'Processing...';
-        
+
         const response = await fetch('{{ route("chat.complete-session", $trade->id) }}', {
             method: 'POST',
             headers: {
@@ -3558,20 +3560,20 @@ async function completeSession() {
         });
 
         const data = await response.json();
-        
+
         if (data.success) {
             showSuccess('Session completed successfully! Skills have been added to profiles.');
-            
+
             // Update the skill learning status
             await loadSkillLearningStatus();
-            
+
             // Update session status
             document.getElementById('session-status').textContent = '✅ Completed';
             document.getElementById('session-status').style.color = '#10b981';
-            
+
             // Hide the complete session button
             document.getElementById('complete-session-section').style.display = 'none';
-            
+
             // Show skill learning results
             if (data.skill_learning_results && data.skill_learning_results.messages) {
                 data.skill_learning_results.messages.forEach(message => {
@@ -3605,13 +3607,13 @@ let timeInterval = setInterval(function() {
         timeInterval = null;
         return;
     }
-    
+
     try {
         const now = new Date();
         if (currentTimeElement && currentTimeElement.textContent !== undefined) {
             currentTimeElement.textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }
-        
+
         // Calculate session duration
         if (sessionDurationElement && sessionDurationElement.parentNode) {
             const diff = Math.floor((now - sessionStart) / 60000);
@@ -3667,15 +3669,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
     // Convert existing messages
     convertMessageTimes();
-    
+
     // Watch for new messages and convert their times
     const observer = new MutationObserver(function(mutations) {
         convertMessageTimes();
     });
-    
+
     const messagesContainer = document.getElementById('messages');
     if (messagesContainer) {
         observer.observe(messagesContainer, {
@@ -3755,7 +3757,7 @@ function endSession() {
     const myTasks = document.querySelectorAll('#my-tasks .task-item').length;
     const partnerTasks = document.querySelectorAll('#partner-tasks .task-item').length;
     const totalTasks = myTasks + partnerTasks;
-    
+
     if (totalTasks === 0) {
         const proceed = confirm('No tasks have been added to this session. Are you sure you want to end the session without any tasks?\n\nIt is recommended to add at least one task to track progress.');
         if (!proceed) {
@@ -3767,7 +3769,7 @@ function endSession() {
             return;
         }
     }
-    
+
     // Final confirmation
     if (confirm('Are you sure you want to end this session? This will process skill learning and update your profile. This action cannot be undone.')) {
         // Call backend API to complete session and process skill learning
@@ -3781,10 +3783,10 @@ function completeSession() {
     const originalText = endButton.textContent;
     endButton.textContent = 'Processing...';
     endButton.disabled = true;
-    
+
     // Get CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
-    
+
     fetch('{{ route("chat.complete-session", $trade->id) }}', {
         method: 'POST',
         headers: {
@@ -3812,19 +3814,19 @@ function completeSession() {
                 successMessage += '\n\nSkills learned and added to your profile!';
             }
             showSuccess(successMessage);
-            
+
             // Show rating modal before redirecting
             setTimeout(() => {
                 // Get the other user ID for rating
                 const currentUserId = {{ auth()->user()->id }};
                 const tradeOwnerId = {{ $trade->user_id }};
-                const otherUserId = currentUserId === tradeOwnerId ? 
-                    {{ $trade->requests()->where('status', 'accepted')->first()->requester_id ?? 'null' }} : 
+                const otherUserId = currentUserId === tradeOwnerId ?
+                    {{ $trade->requests()->where('status', 'accepted')->first()->requester_id ?? 'null' }} :
                     tradeOwnerId;
-                
+
                 // Calculate session duration (if available)
                 const sessionDuration = Math.floor((Date.now() - (window.sessionStartTime || Date.now())) / 1000);
-                
+
                 // Show rating modal with proper parameters
                 if (otherUserId && typeof showSessionRatingModal === 'function') {
                     showSessionRatingModal({{ $trade->id }}, otherUserId, sessionDuration);
@@ -3879,34 +3881,34 @@ function resetVideoChat() {
     document.getElementById('screen-share-btn').style.display = 'none';
     document.getElementById('maximize-btn').style.display = 'none';
     document.getElementById('chat-toggle-btn').style.display = 'none';
-    
+
     // Reset maximize state
     const videoGrid = document.getElementById('video-grid');
     const localVideoItem = document.getElementById('local-video-item');
     const remoteVideoItem = document.getElementById('remote-video-item');
-    
+
     videoGrid.classList.remove('maximized');
     localVideoItem.classList.remove('maximized', 'minimized');
     remoteVideoItem.classList.remove('maximized', 'minimized');
     isMaximized = false;
     maximizedVideo = null;
-    
+
     // Stop screen sharing if active
     if (isScreenSharing) {
         stopScreenShare();
     }
-    
+
     // Reset status indicators
     document.getElementById('local-status').textContent = 'Local';
     document.getElementById('remote-status').textContent = 'Waiting...';
     document.getElementById('remote-status').className = 'connection-status';
-    
+
     // Stop all tracks
     if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
         localStream = null;
     }
-    
+
     // Clear video elements
     document.getElementById('local-video').srcObject = null;
 }
@@ -3917,11 +3919,11 @@ let maximizedVideo = null;
 
 function maximizeVideo(videoType) {
     console.log('⛶ Maximizing video:', videoType);
-    
+
     const videoGrid = document.getElementById('video-grid');
     const localVideoItem = document.getElementById('local-video-item');
     const remoteVideoItem = document.getElementById('remote-video-item');
-    
+
     if (isMaximized && maximizedVideo === videoType) {
         // Restore normal view
         videoGrid.classList.remove('maximized');
@@ -3933,7 +3935,7 @@ function maximizeVideo(videoType) {
     } else {
         // Maximize selected video
         videoGrid.classList.add('maximized');
-        
+
         if (videoType === 'local') {
             localVideoItem.classList.add('maximized');
             remoteVideoItem.classList.add('minimized');
@@ -3941,7 +3943,7 @@ function maximizeVideo(videoType) {
             remoteVideoItem.classList.add('maximized');
             localVideoItem.classList.add('minimized');
         }
-        
+
         isMaximized = true;
         maximizedVideo = videoType;
         console.log('✅ Video maximized:', videoType);
@@ -3973,30 +3975,30 @@ function startScreenShare() {
                 if (localVideo) {
                     localVideo.srcObject = stream;
                 }
-                
+
                 // Replace video track in peer connection if active
                 if (window.peerConnection && localStream) {
                     const videoTrack = stream.getVideoTracks()[0];
-                    const sender = window.peerConnection.getSenders().find(s => 
+                    const sender = window.peerConnection.getSenders().find(s =>
                         s.track && s.track.kind === 'video'
                     );
                     if (sender) {
                         sender.replaceTrack(videoTrack);
                     }
                 }
-                
+
                 isScreenSharing = true;
                 const btn = document.getElementById('screen-share-btn');
                 if (btn) {
                     btn.textContent = '🖥️';
                     btn.title = 'Stop screen share';
                 }
-                
+
                 // Handle screen share end
                 stream.getVideoTracks()[0].addEventListener('ended', () => {
                     stopScreenShare();
                 });
-                
+
                 console.log('✅ Screen sharing started');
             })
             .catch(error => {
@@ -4009,7 +4011,7 @@ function startScreenShare() {
 
 function stopScreenShare() {
     console.log('🖥️ Stopping screen share...');
-    
+
     // Get camera stream back
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
@@ -4018,18 +4020,18 @@ function stopScreenShare() {
                 if (localVideo) {
                     localVideo.srcObject = stream;
                 }
-                
+
                 // Replace video track in peer connection if active
                 if (window.peerConnection) {
                     const videoTrack = stream.getVideoTracks()[0];
-                    const sender = window.peerConnection.getSenders().find(s => 
+                    const sender = window.peerConnection.getSenders().find(s =>
                         s.track && s.track.kind === 'video'
                     );
                     if (sender) {
                         sender.replaceTrack(videoTrack);
                     }
                 }
-                
+
                 window.localStream = stream;
                 console.log('✅ Camera restored');
             })
@@ -4037,14 +4039,14 @@ function stopScreenShare() {
                 console.error('❌ Camera restore error:', error);
             });
     }
-    
+
     isScreenSharing = false;
     const btn = document.getElementById('screen-share-btn');
     if (btn) {
         btn.textContent = '📱';
         btn.title = 'Share screen';
     }
-    
+
     console.log('✅ Screen sharing stopped');
 }
 
@@ -4052,7 +4054,7 @@ function toggleChat() {
     console.log('💬 Toggle chat clicked');
     const chatContainer = document.querySelector('.chat-container');
     const videoContainer = document.querySelector('.video-container');
-    
+
     if (chatContainer && videoContainer) {
         if (chatContainer.style.display === 'none') {
             chatContainer.style.display = 'flex';
@@ -4070,14 +4072,14 @@ let isScreenSharing = false;
 // Load video call fixes
 (function() {
     console.log('🔧 Loading video call fixes...');
-    
+
     // Add CSS for maximized video states
     const style = document.createElement('style');
     style.textContent = `
         .video-grid.maximized {
             position: relative;
         }
-        
+
         .video-item.maximized {
             position: absolute !important;
             top: 0 !important;
@@ -4086,7 +4088,7 @@ let isScreenSharing = false;
             height: 100% !important;
             z-index: 10;
         }
-        
+
         .video-item.minimized {
             position: absolute !important;
             top: 10px !important;
@@ -4097,13 +4099,13 @@ let isScreenSharing = false;
             border: 2px solid #fff;
             border-radius: 8px;
         }
-        
+
         .video-item.minimized video {
             border-radius: 6px;
         }
     `;
     document.head.appendChild(style);
-    
+
     console.log('✅ Video call fixes loaded successfully');
 })();
 
@@ -4121,7 +4123,7 @@ const METERED_API_URL = 'https://skillsxchange.metered.live/api/v1/turn/credenti
 async function initializePeerConnection() {
     // Fetch fresh TURN server credentials
     const iceServers = await fetchTurnCredentials();
-    
+
     // Create RTCPeerConnection with dynamic TURN server configuration
     const configuration = {
         iceServers: iceServers,
@@ -4130,14 +4132,14 @@ async function initializePeerConnection() {
         rtcpMuxPolicy: 'require',
         iceTransportPolicy: 'all'
     };
-    
+
     peerConnection = new RTCPeerConnection(configuration);
-    
+
     // Add local stream tracks to peer connection
     localStream.getTracks().forEach(track => {
         peerConnection.addTrack(track, localStream);
     });
-    
+
     // Handle incoming tracks
     peerConnection.ontrack = (event) => {
         console.log('Received remote stream');
@@ -4172,7 +4174,7 @@ async function initializePeerConnection() {
         document.getElementById('remote-status').className = 'connection-status connected';
         document.getElementById('video-status').textContent = 'Call connected! You can now see and hear each other.';
     };
-    
+
     // Handle ICE candidates
     peerConnection.onicecandidate = async (event) => {
         if (event.candidate) {
@@ -4193,7 +4195,7 @@ async function initializePeerConnection() {
             console.log('ICE gathering completed');
         }
     };
-    
+
     // Handle connection state changes
     peerConnection.onconnectionstatechange = () => {
         // Add null check to prevent errors
@@ -4201,19 +4203,19 @@ async function initializePeerConnection() {
             console.warn('PeerConnection is null in connection state change handler');
             return;
         }
-        
+
         try {
             const state = peerConnection.connectionState;
             if (!state) {
                 console.warn('Connection state is undefined');
                 return;
             }
-            
+
             console.log('Connection state:', state);
-            
+
             const remoteStatusEl = document.getElementById('remote-status');
             const videoStatusEl = document.getElementById('video-status');
-            
+
             if (state === 'connected') {
                 if (remoteStatusEl) {
                     remoteStatusEl.textContent = 'Connected';
@@ -4253,7 +4255,7 @@ async function initializePeerConnection() {
             console.error('Error in connection state change handler:', error);
         }
     };
-    
+
     // Handle ICE gathering state changes
     peerConnection.onicegatheringstatechange = () => {
         // Add null check to prevent errors
@@ -4261,14 +4263,14 @@ async function initializePeerConnection() {
             console.warn('PeerConnection is null in ICE gathering state change handler');
             return;
         }
-        
+
         try {
             const gatheringState = peerConnection.iceGatheringState;
             if (!gatheringState) {
                 console.warn('ICE gathering state is undefined');
                 return;
             }
-            
+
             console.log('ICE gathering state:', gatheringState);
             if (gatheringState === 'complete') {
                 console.log('ICE gathering completed');
@@ -4277,7 +4279,7 @@ async function initializePeerConnection() {
             console.error('Error in ICE gathering state change handler:', error);
         }
     };
-    
+
     // Handle ICE connection state changes
     peerConnection.oniceconnectionstatechange = () => {
         // Add null check to prevent errors
@@ -4285,17 +4287,17 @@ async function initializePeerConnection() {
             console.warn('PeerConnection is null in ICE connection state change handler');
             return;
         }
-        
+
         try {
             const iceState = peerConnection.iceConnectionState;
             if (!iceState) {
                 console.warn('ICE connection state is undefined');
                 return;
             }
-            
+
             console.log('ICE connection state:', iceState);
             const videoStatusEl = document.getElementById('video-status');
-            
+
             if (iceState === 'failed') {
                 console.error('ICE connection failed');
                 if (videoStatusEl) {
@@ -4315,7 +4317,7 @@ async function initializePeerConnection() {
                 // Ensure videos are playing with proper error handling
                 const localVideo = document.getElementById('local-video');
                 const remoteVideo = document.getElementById('remote-video');
-                
+
                 if (localVideo && localVideo.srcObject) {
                     localVideo.play().catch(e => {
                         // Ignore AbortError - it's common when video is reloaded
@@ -4345,7 +4347,7 @@ async function initializePeerConnection() {
             console.error('Error in ICE connection state change handler:', error);
         }
     };
-    
+
     // Handle ICE gathering state changes
     peerConnection.onicegatheringstatechange = () => {
         console.log('ICE gathering state:', peerConnection.iceGatheringState);
@@ -4381,7 +4383,7 @@ async function initializePeerConnection() {
     .desktop-only {
         display: inline-block !important;
     }
-    
+
     .mobile-only {
         display: none !important;
     }
@@ -4392,7 +4394,7 @@ async function initializePeerConnection() {
     .main-content-container {
         flex-direction: row !important;
     }
-    
+
     .chat-panel {
         flex: 1 !important;
         width: 100% !important;
@@ -4402,21 +4404,21 @@ async function initializePeerConnection() {
         max-height: 100vh;
         overflow-y: auto;
     }
-    
+
     .tasks-sidebar {
         display: none !important; /* Completely hidden by default on mobile */
     }
-    
+
     /* Show mobile toggle button */
     .mobile-only {
         display: inline-block !important;
     }
-    
+
     /* Hide desktop close button on mobile */
     .desktop-only {
         display: none !important;
     }
-    
+
     /* Show tasks when toggled - as overlay */
     .tasks-sidebar.show {
         position: fixed !important;
@@ -4429,7 +4431,7 @@ async function initializePeerConnection() {
         display: flex !important;
         flex-direction: column !important;
     }
-    
+
     /* Full screen mode for tasks */
     .tasks-sidebar.fullscreen {
         position: fixed !important;
@@ -4442,7 +4444,7 @@ async function initializePeerConnection() {
         display: flex !important;
         flex-direction: column !important;
     }
-    
+
     /* Make task items more mobile-friendly with more space */
     .task-item {
         margin-bottom: 12px !important;
@@ -4452,13 +4454,13 @@ async function initializePeerConnection() {
         background: #f8fafc !important;
         border: 1px solid #e2e8f0 !important;
     }
-    
+
     .task-item > div {
         flex-direction: column !important;
         align-items: flex-start !important;
         gap: 12px !important;
     }
-    
+
     .task-item > div > div:first-child {
         width: 100% !important;
         flex-direction: row !important;
@@ -4466,7 +4468,7 @@ async function initializePeerConnection() {
         gap: 12px !important;
         margin-bottom: 8px !important;
     }
-    
+
     .task-item > div > div:last-child {
         width: 100% !important;
         justify-content: flex-start !important;
@@ -4474,7 +4476,7 @@ async function initializePeerConnection() {
         gap: 8px !important;
         margin-top: 8px !important;
     }
-    
+
     /* Make buttons larger and more touch-friendly on mobile */
     .task-item button {
         font-size: 0.8rem !important;
@@ -4484,7 +4486,7 @@ async function initializePeerConnection() {
         border-radius: 6px !important;
         font-weight: 500 !important;
     }
-    
+
     /* Adjust task details for mobile */
     .task-item > div:last-child {
         margin-left: 0 !important;
@@ -4492,7 +4494,7 @@ async function initializePeerConnection() {
         flex-direction: column !important;
         gap: 4px !important;
     }
-    
+
     /* Make progress bars more visible on mobile */
     .task-item + div {
         margin-top: 8px !important;
@@ -4512,7 +4514,7 @@ async function initializePeerConnection() {
         position: relative !important;
         z-index: 10 !important;
     }
-    
+
     /* Add a scroll indicator for tasks */
     .tasks-sidebar::after {
         content: "↑ Scroll to see more tasks";
@@ -4526,20 +4528,20 @@ async function initializePeerConnection() {
         border-top: 1px solid #e5e7eb;
         display: block;
     }
-    
+
     /* Improve mobile task interaction */
     .task-item {
         touch-action: manipulation;
         -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
     }
-    
+
     .task-item button {
         touch-action: manipulation;
         -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
         min-height: 32px;
         min-width: 32px;
     }
-    
+
     /* Make dropdown menus more mobile-friendly */
     .dropdown-menu {
         position: absolute !important;
@@ -4556,13 +4558,13 @@ async function initializePeerConnection() {
         margin-right: 12px !important;
         accent-color: #3b82f6 !important;
     }
-    
+
     .task-item span {
         font-size: 1rem !important;
         line-height: 1.5 !important;
         font-weight: 500 !important;
     }
-    
+
     /* Make badges more readable on mobile */
     .task-item .badge {
         font-size: 0.75rem !important;

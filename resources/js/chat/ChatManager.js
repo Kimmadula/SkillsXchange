@@ -9,7 +9,7 @@ export class ChatManager {
         this.messageInput = document.getElementById('message-input');
         this.sendButton = document.getElementById('send-button');
         this.presenceStatus = document.getElementById('presence-status');
-        
+
         // State management
         this.isSending = false;
         // Initialize with count of messages already rendered on page to prevent duplicates
@@ -23,9 +23,9 @@ export class ChatManager {
         this.isPolling = false; // Prevent overlapping requests
         this.lastPollTime = 0; // Track last poll time for debouncing
         this.authFailureCount = 0; // Track authentication failures
-        
+
         // CSRF token
-        this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+        this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
                         document.querySelector('[name="csrf-token"]')?.content;
     }
 
@@ -34,14 +34,14 @@ export class ChatManager {
         if (this.lastMessageCount === 0) {
             this.lastMessageCount = this.getInitialMessageCount();
         }
-        
+
         this.setupEventListeners();
         this.setupEchoListeners();
         this.setupPollingFallback();
         this.formatExistingTimestamps();
         this.scrollToBottom();
     }
-    
+
     getInitialMessageCount() {
         // Count messages already rendered on the page
         if (this.messagesContainer) {
@@ -62,7 +62,7 @@ export class ChatManager {
                 // Already formatted by server, keep it
                 return;
             }
-            
+
             const timestamp = element.getAttribute('data-timestamp');
             if (timestamp) {
                 try {
@@ -143,7 +143,7 @@ export class ChatManager {
         ['click', 'keypress', 'mousemove', 'scroll'].forEach(event => {
             document.addEventListener(event, () => {
                 this.lastActivity = Date.now();
-                
+
                 // If user becomes active and polling is slow, speed it up
                 if (this.pollingFrequency > 5000) {
                     this.pollingFrequency = 5000;
@@ -158,14 +158,14 @@ export class ChatManager {
         input.type = 'file';
         input.accept = 'image/*';
         input.multiple = false;
-        
+
         input.onchange = (e) => {
             const file = e.target.files[0];
             if (file) {
                 this.uploadFile(file, 'image');
             }
         };
-        
+
         input.click();
     }
 
@@ -173,14 +173,14 @@ export class ChatManager {
         const input = document.createElement('input');
         input.type = 'file';
         input.multiple = false;
-        
+
         input.onchange = (e) => {
             const file = e.target.files[0];
             if (file) {
                 this.uploadFile(file, 'file');
             }
         };
-        
+
         input.click();
     }
 
@@ -206,7 +206,7 @@ export class ChatManager {
             formData.append('message', ''); // Empty message for file-only messages
 
             const url = `/chat/${this.tradeId}/message`;
-            
+
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -230,7 +230,7 @@ export class ChatManager {
                 // Just add it to UI - the server response should have the formatted message
                 const messageText = data.message?.message || (type === 'image' ? `[IMAGE:${file.name}]` : `[FILE:${file.name}]`);
                 const currentUserName = document.querySelector('[data-user-name]')?.getAttribute('data-user-name') || 'You';
-                
+
                 // If it's an image, create a preview URL for immediate display
                 if (type === 'image' && file) {
                     const reader = new FileReader();
@@ -242,7 +242,7 @@ export class ChatManager {
                 } else {
                     this.addMessage(messageText, currentUserName, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), true);
                 }
-                
+
                 // Clear input if needed
                 if (this.messageInput) {
                     this.messageInput.value = '';
@@ -273,13 +273,13 @@ export class ChatManager {
         if (this.messagePollingInterval) {
             clearInterval(this.messagePollingInterval);
             this.messagePollingInterval = null;
-            console.log('🔄 Stopped polling, switching to real-time WebSocket');
+            console.log('🔄 Stopped polling, switching to Pusher real-time');
         }
 
         // Connection status listeners
         if (this.echo.connector?.pusher?.connection) {
             this.echo.connector.pusher.connection.bind('connected', () => {
-                console.log('✅ Pusher connected - using real-time WebSocket');
+                console.log('✅ Pusher connected - real-time messaging enabled');
                 this.updateConnectionStatus('connected');
             });
 
@@ -307,12 +307,19 @@ export class ChatManager {
             });
         }
 
-        // Listen for new messages via real-time WebSocket
-        try {
-            this.echo.channel(`trade-${this.tradeId}`)
-                .listen('new-message', (data) => {
-                    console.log('📨 Received new message via WebSocket:', data);
-                    
+        // Listen for new messages via Pusher (real-time)
+        // Wait for Pusher to be connected before setting up listener
+        const setupMessageListener = () => {
+            try {
+                const channelName = `trade-${this.tradeId}`;
+                const channel = this.echo.channel(channelName);
+
+                console.log('📡 Setting up listener for channel:', channelName);
+
+                // Set up the listener - Echo will handle subscription automatically for public channels
+                channel.listen('new-message', (data) => {
+                    console.log('📨 Received new message via Pusher:', data);
+
                     // Only add if it's not from the current user (to avoid duplicates)
                     if (data.message.sender_id !== this.userId) {
                         this.addMessage(data.message, data.sender_name, data.timestamp, false);
@@ -327,14 +334,61 @@ export class ChatManager {
                         }
                     }
                 });
-            
-            console.log('✅ Real-time message listener set up via Pusher/Echo');
-        } catch (error) {
-            console.error('❌ Error setting up Echo listener:', error);
-            // Fallback to polling if Echo listener setup fails
-            if (!this.messagePollingInterval) {
-                this.startSmartMessagePolling();
+
+                // Verify subscription after a short delay
+                setTimeout(() => {
+                    const pusherChannel = this.echo.connector?.pusher?.channels?.channels?.[channelName];
+                    if (pusherChannel) {
+                        console.log('✅ Channel subscription confirmed:', channelName);
+                    } else {
+                        console.warn('⚠️ Channel subscription not confirmed yet:', channelName);
+                    }
+                }, 1000);
+
+                console.log('✅ Pusher message listener set up successfully');
+            } catch (error) {
+                console.error('❌ Error setting up Echo listener:', error);
+                // Fallback to polling if Echo listener setup fails
+                if (!this.messagePollingInterval) {
+                    this.startSmartMessagePolling();
+                }
             }
+        };
+
+        // Wait for connection if not already connected
+        if (this.echo.connector?.pusher?.connection?.state === 'connected') {
+            setupMessageListener();
+        } else {
+            // Wait for connection before setting up listener
+            const waitForConnection = () => {
+                if (this.echo.connector?.pusher?.connection?.state === 'connected') {
+                    console.log('✅ Pusher connected, setting up message listener...');
+                    setupMessageListener();
+                } else {
+                    console.log('⏳ Waiting for Pusher connection...',
+                        this.echo.connector?.pusher?.connection?.state);
+                    setTimeout(waitForConnection, 500);
+                }
+            };
+
+            // Start waiting, but timeout after 10 seconds
+            const connectionTimeout = setTimeout(() => {
+                console.warn('⚠️ Pusher connection timeout, using polling fallback');
+                if (!this.messagePollingInterval) {
+                    this.startSmartMessagePolling();
+                }
+            }, 10000);
+
+            // Clear timeout if connection succeeds
+            const originalBind = this.echo.connector?.pusher?.connection?.bind;
+            if (originalBind) {
+                this.echo.connector.pusher.connection.bind('connected', () => {
+                    clearTimeout(connectionTimeout);
+                    setupMessageListener();
+                });
+            }
+
+            waitForConnection();
         }
     }
 
@@ -345,19 +399,19 @@ export class ChatManager {
             console.log('🔄 Laravel Echo not available, starting smart message polling fallback...');
             this.startSmartMessagePolling();
         } else {
-            console.log('✅ Using real-time WebSocket (Pusher/Echo) for messages - no polling needed');
+            console.log('✅ Using Pusher for real-time messages - no polling needed');
         }
     }
 
     async sendMessage() {
         const message = this.messageInput?.value.trim();
-        
+
         if (!message || this.isSending) {
             return;
         }
 
         this.isSending = true;
-        
+
         // Show loading state
         const originalText = this.sendButton?.textContent;
         if (this.sendButton) {
@@ -378,7 +432,7 @@ export class ChatManager {
 
         try {
             const url = `/chat/${this.tradeId}/message`;
-            
+
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
@@ -402,7 +456,7 @@ export class ChatManager {
                 console.log('✅ Message sent successfully');
                 // Update the temporary message with the real one and mark it as confirmed
                 this.updateMessageInChat(tempId, data.message);
-                
+
                 // Update timestamp with server-formatted time
                 const messageElement = document.querySelector(`[data-temp-id="${tempId}"]`);
                 if (messageElement && (data.message?.display_time || data.message?.created_at)) {
@@ -428,7 +482,7 @@ export class ChatManager {
                 this.sendButton.disabled = false;
                 this.sendButton.textContent = originalText || 'Send';
             }
-            
+
             // Prevent rapid sending (300ms cooldown)
             setTimeout(() => {
                 this.isSending = false;
@@ -442,7 +496,7 @@ export class ChatManager {
             const messageText = typeof message === 'string' ? message : message.message;
             const existingMessages = this.messagesContainer?.querySelectorAll('.message');
             const lastMessage = existingMessages?.[existingMessages.length - 1];
-            
+
             if (lastMessage) {
                 const lastMessageText = lastMessage.querySelector('.message-text')?.textContent;
                 if (lastMessageText === messageText) {
@@ -459,19 +513,19 @@ export class ChatManager {
 
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${isOwn ? 'own' : ''}`;
-        
+
         // Add message ID if available to prevent duplicates
         if (message && typeof message === 'object' && message.id) {
             messageDiv.setAttribute('data-message-id', message.id);
         }
-        
+
         if (tempId) {
             messageDiv.setAttribute('data-temp-id', tempId);
         }
 
         // Handle both string messages and message objects
         const messageText = typeof message === 'string' ? message : message.message;
-        
+
         // Always convert to user's local timezone for consistency
         // Server times are in UTC, but we want to show user's local time
         let messageTime;
@@ -590,14 +644,14 @@ export class ChatManager {
         const messageElement = document.querySelector(`[data-temp-id="${tempId}"]`);
         if (!messageElement) return;
 
-        const time = new Date(message.created_at).toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit' 
+        const time = new Date(message.created_at).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
         });
 
         const messageText = message.message;
         const messageBubble = messageElement.querySelector('.message-bubble');
-        
+
         if (messageBubble) {
             messageBubble.innerHTML = `
                 <div class="message-text">${this.escapeHtml(messageText)}</div>
@@ -622,7 +676,7 @@ export class ChatManager {
     updateConnectionStatus(status) {
         const statusDot = this.presenceStatus?.querySelector('.status-dot');
         const statusText = this.presenceStatus?.querySelector('span:last-child');
-        
+
         if (!statusDot || !statusText) return;
 
         switch(status) {
@@ -653,13 +707,13 @@ export class ChatManager {
         if (this.messagePollingInterval) {
             clearInterval(this.messagePollingInterval);
         }
-        
+
         // Enforce minimum frequency
         const actualFrequency = Math.max(this.pollingFrequency, this.minPollingFrequency);
         const actualFrequencyMs = Math.min(actualFrequency, this.maxPollingFrequency);
-        
+
         console.log(`🔄 Starting message polling at ${actualFrequencyMs}ms interval`);
-        
+
         this.messagePollingInterval = setInterval(() => {
             this.checkForNewMessages();
         }, actualFrequencyMs);
@@ -669,26 +723,26 @@ export class ChatManager {
         // Debounce: Prevent overlapping requests
         const now = Date.now();
         const timeSinceLastPoll = now - this.lastPollTime;
-        
+
         if (this.isPolling) {
             console.log('⏸️ Polling already in progress, skipping...');
             return;
         }
-        
+
         // Enforce minimum time between polls (debounce)
         if (timeSinceLastPoll < this.minPollingFrequency) {
             const waitTime = this.minPollingFrequency - timeSinceLastPoll;
             console.log(`⏳ Debouncing: waiting ${waitTime}ms before next poll`);
             return;
         }
-        
+
         this.isPolling = true;
         this.lastPollTime = now;
-        
+
         try {
             // Get CSRF token for the request
             const csrfToken = this.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            
+
             const response = await fetch(`/chat/${this.tradeId}/messages`, {
                 method: 'GET',
                 credentials: 'same-origin', // Include cookies for session
@@ -698,7 +752,7 @@ export class ChatManager {
                     'X-CSRF-TOKEN': csrfToken || '' // Include CSRF token
                 }
             });
-            
+
             // Handle auth errors gracefully
             if (response.status === 401 || response.status === 403) {
                 console.warn('⚠️ Authentication failed for message polling - session may have expired');
@@ -717,11 +771,11 @@ export class ChatManager {
                 this.isPolling = false;
                 return;
             }
-            
+
             // Reset auth failure count on success
             if (response.ok) {
                 this.authFailureCount = 0;
-                
+
                 // Update CSRF token from response headers if available
                 const newCsrfToken = response.headers.get('X-CSRF-TOKEN');
                 if (newCsrfToken) {
@@ -733,7 +787,7 @@ export class ChatManager {
                     }
                 }
             }
-            
+
             if (!response.ok) {
                 // If it's a 401/403, we already handled it above
                 if (response.status === 401 || response.status === 403) {
@@ -741,9 +795,9 @@ export class ChatManager {
                 }
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            
+
             const data = await response.json();
-            
+
             if (data.success) {
                 // If lastMessageCount is still 0, initialize it with current count
                 // This handles cases where initialization didn't work properly
@@ -752,12 +806,12 @@ export class ChatManager {
                     console.log(`📊 Initialized message count: ${this.lastMessageCount}`);
                     return; // Don't add messages on first poll if they're already rendered
                 }
-                
+
                 if (data.count > this.lastMessageCount) {
                     // Get only the new messages
                     const newMessages = data.messages.slice(this.lastMessageCount);
                     this.lastMessageCount = data.count;
-                    
+
                     // Reset activity tracking
                     this.lastActivity = Date.now();
                     this.consecutiveEmptyPolls = 0;
@@ -768,8 +822,8 @@ export class ChatManager {
                         const existingMessage = this.messagesContainer?.querySelector(`[data-message-id="${msg.id}"]`);
                         if (!existingMessage) {
                             if (msg.sender_id !== this.userId) {
-                                const senderName = msg.sender ? 
-                                    `${msg.sender.firstname} ${msg.sender.lastname}` : 
+                                const senderName = msg.sender ?
+                                    `${msg.sender.firstname} ${msg.sender.lastname}` :
                                     this.partnerName;
                                 const timestamp = msg.display_time || (msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
                                 this.addMessage(msg, senderName, timestamp, false);
@@ -778,7 +832,7 @@ export class ChatManager {
                             console.log(`⏭️ Skipping duplicate message ID: ${msg.id}`);
                         }
                     });
-                    
+
                     console.log(`📨 Received ${newMessages.length} new messages`);
                 } else if (data.count < this.lastMessageCount) {
                     // Message count decreased (unlikely but handle it)
@@ -787,7 +841,7 @@ export class ChatManager {
                 }
             } else {
                 this.consecutiveEmptyPolls++;
-                
+
                 // Adjust frequency based on empty polls (slow down if many empty polls)
                 if (this.consecutiveEmptyPolls > 10) {
                     const oldFrequency = this.pollingFrequency;
@@ -801,7 +855,7 @@ export class ChatManager {
         } catch (error) {
             console.error('Error checking for new messages:', error);
             this.consecutiveEmptyPolls++;
-            
+
             // Slow down on errors
             if (this.consecutiveEmptyPolls % 5 === 0) {
                 const oldFrequency = this.pollingFrequency;
@@ -834,20 +888,20 @@ export class ChatManager {
             opacity: 0;
             transition: opacity 0.3s ease;
         `;
-        
+
         // Position the overlay relative to chat messages
         this.messagesContainer.style.position = 'relative';
         this.messagesContainer.appendChild(flashOverlay);
-        
+
         // Trigger flash animation
         setTimeout(() => {
             flashOverlay.style.opacity = '1';
         }, 50);
-        
+
         setTimeout(() => {
             flashOverlay.style.opacity = '0';
         }, 150);
-        
+
         // Remove overlay after animation
         setTimeout(() => {
             if (flashOverlay.parentNode) {
@@ -860,7 +914,7 @@ export class ChatManager {
         const indicator = document.getElementById('new-message-indicator');
         if (indicator) {
             indicator.style.display = 'inline-block';
-            
+
             // Hide after 3 seconds
             setTimeout(() => {
                 indicator.style.display = 'none';
@@ -883,21 +937,21 @@ export class ChatManager {
         if (!this.messageInput) {
             return;
         }
-        
+
         const currentValue = this.messageInput.value;
         const cursorPosition = this.messageInput.selectionStart || currentValue.length;
-        
+
         // Insert emoji at cursor position
         const newValue = currentValue.slice(0, cursorPosition) + emoji + currentValue.slice(cursorPosition);
         this.messageInput.value = newValue;
-        
+
         // Set cursor position after the emoji
         const newCursorPosition = cursorPosition + emoji.length;
         this.messageInput.setSelectionRange(newCursorPosition, newCursorPosition);
-        
+
         // Focus back to input
         this.messageInput.focus();
-        
+
         // Hide emoji picker
         const picker = document.getElementById('emoji-picker');
         if (picker) {
@@ -913,7 +967,7 @@ export class ChatManager {
 
     showError(message) {
         console.error('Error:', message);
-        
+
         // Create error notification
         const errorDiv = document.createElement('div');
         errorDiv.style.cssText = `
@@ -929,9 +983,9 @@ export class ChatManager {
             animation: slideIn 0.3s ease;
         `;
         errorDiv.textContent = message;
-        
+
         document.body.appendChild(errorDiv);
-        
+
         // Remove after 5 seconds
         setTimeout(() => {
             errorDiv.style.opacity = '0';
@@ -949,7 +1003,7 @@ export class ChatManager {
         if (this.messagePollingInterval) {
             clearInterval(this.messagePollingInterval);
         }
-        
+
         if (this.echo) {
             this.echo.leave(`trade-${this.tradeId}`);
         }
