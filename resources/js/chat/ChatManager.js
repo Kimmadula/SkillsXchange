@@ -326,9 +326,17 @@ export class ChatManager {
                 console.log('📡 Channel created:', channelName);
 
                 // Set up the listener - Echo will handle subscription automatically for public channels
+                // The listen() call automatically subscribes to the channel
                 channel.listen('new-message', (data) => {
                     console.log('📨 Received new message via Pusher:', data);
                     console.log('📨 Message data:', JSON.stringify(data, null, 2));
+                    console.log('📨 Full event data:', data);
+
+                    // Validate data structure
+                    if (!data || !data.message) {
+                        console.error('❌ Invalid message data received:', data);
+                        return;
+                    }
 
                     // Only add if it's not from the current user (to avoid duplicates)
                     if (data.message.sender_id !== this.userId) {
@@ -347,19 +355,7 @@ export class ChatManager {
                     }
                 });
 
-                // Verify subscription after a short delay
-                setTimeout(() => {
-                    const pusherChannel = this.echo.connector?.pusher?.channels?.channels?.[channelName];
-                    if (pusherChannel) {
-                        console.log('✅ Channel subscription confirmed:', channelName);
-                        console.log('✅ Channel state:', pusherChannel.subscribed ? 'subscribed' : 'not subscribed');
-                    } else {
-                        console.warn('⚠️ Channel subscription not confirmed yet:', channelName);
-                        console.warn('⚠️ Available channels:', Object.keys(this.echo.connector?.pusher?.channels?.channels || {}));
-                    }
-                }, 1000);
-
-                console.log('✅ Pusher message listener set up successfully');
+                console.log('✅ Message listener set up for event: new-message');
             } catch (error) {
                 console.error('❌ Error setting up Echo listener:', error);
                 console.error('❌ Error stack:', error.stack);

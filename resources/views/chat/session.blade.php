@@ -656,21 +656,10 @@
 
     // Broadcast user presence
     function broadcastUserPresence(action) {
-        if (typeof window.Echo !== 'undefined') {
-            try {
-                // Send presence event to the trade channel
-                window.Echo.channel('trade-{{ $trade->id }}')
-                    .whisper('presence', {
-                        user_id: window.authUserId,
-                        user_name: '{{ (Auth::user()->firstname ?? "") . " " . (Auth::user()->lastname ?? "") }}',
-                        action: action, // 'joined' or 'left'
-                        timestamp: Date.now()
-                    });
-                console.log('📡 Broadcasted presence:', action);
-            } catch (error) {
-                console.error('Error broadcasting presence:', error);
-            }
-        }
+        // Note: whisper() only works on Presence Channels, not regular channels
+        // For now, we'll skip presence broadcasting on regular channels
+        // If presence is needed, consider using a Presence Channel or regular events
+        console.log('📡 Presence action (not broadcasted on regular channel):', action);
     }
 
     // Check initial presence status
@@ -712,15 +701,9 @@
                     .listen('user-left', function(data) {
                         console.log('User left:', data);
                         handleUserLeft(data);
-                    })
-                    .listenForWhisper('presence', function(data) {
-                        console.log('Presence whisper received:', data);
-                        if (data.action === 'joined') {
-                            handleUserJoined(data);
-                        } else if (data.action === 'left') {
-                            handleUserLeft(data);
-                        }
                     });
+                // Note: listenForWhisper() only works on Presence Channels
+                // Removed whisper listener since we're using a regular public channel
 
                 console.log('✅ Presence listeners initialized');
             } catch (error) {
