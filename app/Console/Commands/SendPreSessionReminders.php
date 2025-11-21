@@ -3,10 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Models\Trade;
+use App\Notifications\PreSessionReminder;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class SendPreSessionReminders extends Command
@@ -79,47 +79,22 @@ class SendPreSessionReminders extends Command
                     $cacheKey = "reminder:pre_session:trade:{$trade->id}:user:{$user->id}:min:{$minutesBefore}";
                     if (Cache::add($cacheKey, true, now()->addHours(6))) { // prevent duplicates for 6h
                         try {
-                            // Check if notification already exists
-                            $exists = DB::table('user_notifications')
-                                ->where('user_id', $user->id)
-                                ->where('type', 'pre_session_reminder')
-                                ->where('data', 'like', '%"trade_id":' . $trade->id . '%')
-                                ->where('data', 'like', '%"minutes_before":' . $minutesBefore . '%')
-                                ->exists();
-
-                            if (!$exists) {
-                                DB::table('user_notifications')->insert([
-                                    'user_id' => $user->id,
-                                    'type' => 'pre_session_reminder',
-                                    'data' => json_encode([
-                                        'trade_id' => $trade->id,
-                                        'minutes_before' => $minutesBefore,
-                                        'message' => "Your session starts in {$minutesBefore} minutes.",
-                                        'start_date' => $trade->start_date,
-                                        'available_from' => $trade->available_from,
-                                        'offering_skill' => optional($trade->offeringSkill)->name,
-                                        'looking_skill' => optional($trade->lookingSkill)->name,
-                                    ]),
-                                    'read' => false,
-                                    'created_at' => now(),
-                                    'updated_at' => now(),
-                                ]);
-                                $this->info("    ✓ Reminder sent to User ID {$user->id}");
-                                $totalRemindersSent++;
-                            } else {
-                                $this->info("    - Reminder already exists for User ID {$user->id}, skipping");
-                            }
+                            // Send email notification instead of storing in database
+                            $user->notify(new PreSessionReminder($trade, $minutesBefore));
+                            $this->info("    ✓ Email reminder sent to {$user->email} (User ID {$user->id})");
+                            $totalRemindersSent++;
                         } catch (\Throwable $e) {
-                            $this->error("    ✗ Failed to send reminder to User ID {$user->id}: {$e->getMessage()}");
-                            Log::warning('Pre-session reminder notify failed', [
+                            $this->error("    ✗ Failed to send email reminder to {$user->email}: {$e->getMessage()}");
+                            Log::warning('Pre-session reminder email failed', [
                                 'trade_id' => $trade->id,
                                 'user_id' => $user->id,
+                                'user_email' => $user->email,
                                 'minutes_before' => $minutesBefore,
                                 'error' => $e->getMessage(),
                             ]);
                         }
                     } else {
-                        $this->info("    - Reminder already in cache for User ID {$user->id}, skipping");
+                        $this->info("    - Reminder already sent to User ID {$user->id}, skipping");
                     }
                 }
             }

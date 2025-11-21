@@ -3,10 +3,10 @@
 namespace App\Console\Commands;
 
 use App\Models\Trade;
+use App\Notifications\SessionExpirationWarning;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class SendExpirationWarnings extends Command
@@ -47,36 +47,15 @@ class SendExpirationWarnings extends Command
                     $cacheKey = "reminder:expiration:trade:{$trade->id}:user:{$user->id}:hrs:{$hoursBefore}";
                     if (Cache::add($cacheKey, true, now()->addDays(2))) { // prevent duplicates for 48h
                         try {
-                            // Check if notification already exists
-                            $exists = DB::table('user_notifications')
-                                ->where('user_id', $user->id)
-                                ->where('type', 'session_expiration_warning')
-                                ->where('data', 'like', '%"trade_id":' . $trade->id . '%')
-                                ->where('data', 'like', '%"hours_before":' . $hoursBefore . '%')
-                                ->exists();
-
-                            if (!$exists) {
-                                DB::table('user_notifications')->insert([
-                                    'user_id' => $user->id,
-                                    'type' => 'session_expiration_warning',
-                                    'data' => json_encode([
-                                        'trade_id' => $trade->id,
-                                        'hours_before' => $hoursBefore,
-                                        'message' => "Your session will expire in {$hoursBefore} hours.",
-                                        'end_date' => $trade->end_date,
-                                        'available_to' => $trade->available_to,
-                                        'offering_skill' => optional($trade->offeringSkill)->name,
-                                        'looking_skill' => optional($trade->lookingSkill)->name,
-                                    ]),
-                                    'read' => false,
-                                    'created_at' => now(),
-                                    'updated_at' => now(),
-                                ]);
-                            }
+                            // Send email notification instead of storing in database
+                            $user->notify(new SessionExpirationWarning($trade, $hoursBefore));
+                            $this->info("    ✓ Expiration warning email sent to {$user->email} (User ID {$user->id})");
                         } catch (\Throwable $e) {
-                            Log::warning('Expiration warning notify failed', [
+                            $this->error("    ✗ Failed to send expiration warning email to {$user->email}: {$e->getMessage()}");
+                            Log::warning('Expiration warning email failed', [
                                 'trade_id' => $trade->id,
                                 'user_id' => $user->id,
+                                'user_email' => $user->email,
                                 'hours_before' => $hoursBefore,
                                 'error' => $e->getMessage(),
                             ]);
@@ -87,6 +66,7 @@ class SendExpirationWarnings extends Command
         }
 
         $this->info('Expiration warnings processing completed.');
+        $this->info('All warnings sent via email.');
         return Command::SUCCESS;
     }
 }

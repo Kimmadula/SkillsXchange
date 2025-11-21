@@ -17,7 +17,6 @@ class TaskEvaluation extends Model
         'grade',
         'status',
         'feedback',
-        'improvement_notes',
         'skills_to_add',
         'skills_added',
         'evaluated_at',
@@ -98,31 +97,23 @@ class TaskEvaluation extends Model
         };
     }
 
+    /**
+     * Get grade letter (for backward compatibility with old records)
+     * Returns the stored grade if exists, otherwise returns score percentage
+     */
     public function getGradeLetterAttribute()
     {
-        // If grade is explicitly set, use it
+        // For backward compatibility: return stored grade if exists
         if ($this->grade) {
             return $this->grade;
         }
         
-        // Otherwise, calculate from score_percentage
-        if (!$this->score_percentage) {
-            return 'N/A';
+        // For new records: return score percentage as string
+        if ($this->score_percentage !== null) {
+            return (string) $this->score_percentage;
         }
-
-        return match(true) {
-            $this->score_percentage >= 95 => 'A+',
-            $this->score_percentage >= 90 => 'A',
-            $this->score_percentage >= 85 => 'A-',
-            $this->score_percentage >= 80 => 'B+',
-            $this->score_percentage >= 75 => 'B',
-            $this->score_percentage >= 70 => 'B-',
-            $this->score_percentage >= 65 => 'C+',
-            $this->score_percentage >= 60 => 'C',
-            $this->score_percentage >= 55 => 'C-',
-            $this->score_percentage >= 50 => 'D',
-            default => 'F'
-        };
+        
+        return 'N/A';
     }
     
     /**
@@ -188,25 +179,6 @@ class TaskEvaluation extends Model
             ->toArray();
     }
     
-    /**
-     * Calculate letter grade from score percentage
-     */
-    protected function calculateGradeFromScore($score)
-    {
-        return match(true) {
-            $score >= 95 => 'A+',
-            $score >= 90 => 'A',
-            $score >= 85 => 'A-',
-            $score >= 80 => 'B+',
-            $score >= 75 => 'B',
-            $score >= 70 => 'B-',
-            $score >= 65 => 'C+',
-            $score >= 60 => 'C',
-            $score >= 55 => 'C-',
-            $score >= 50 => 'D',
-            default => 'F'
-        };
-    }
 
     /**
      * Boot method to handle model events
@@ -220,16 +192,16 @@ class TaskEvaluation extends Model
                 $evaluation->evaluated_at = now();
             }
             
-            // Auto-calculate grade from score_percentage if not set
-            if ($evaluation->score_percentage && !$evaluation->grade) {
-                $evaluation->grade = $evaluation->calculateGradeFromScore($evaluation->score_percentage);
+            // Auto-calculate status from score_percentage if not set
+            if ($evaluation->score_percentage !== null && !$evaluation->status) {
+                $evaluation->status = $evaluation->score_percentage >= 70 ? 'pass' : 'fail';
             }
         });
         
         static::updating(function ($evaluation) {
-            // Auto-calculate grade from score_percentage if score changed and grade not explicitly set
-            if ($evaluation->isDirty('score_percentage') && !$evaluation->grade) {
-                $evaluation->grade = $evaluation->calculateGradeFromScore($evaluation->score_percentage);
+            // Auto-calculate status from score_percentage if score changed and status not explicitly set
+            if ($evaluation->isDirty('score_percentage') && !$evaluation->isDirty('status')) {
+                $evaluation->status = $evaluation->score_percentage >= 70 ? 'pass' : 'fail';
             }
         });
 

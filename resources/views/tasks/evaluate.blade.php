@@ -112,36 +112,25 @@
                                     <!-- Score Input -->
                                     <div class="mb-4">
                                         <label for="score_percentage" class="form-label fw-semibold">
-                                            Score <span class="text-danger">*</span>
+                                            Score (0-100) <span class="text-danger">*</span>
                                         </label>
-                                        <div class="input-group">
-                                            <input type="number" name="score_percentage" id="score_percentage" 
-                                                   class="form-control @error('score_percentage') is-invalid @enderror" 
-                                                   value="{{ old('score_percentage') }}" 
-                                                   min="0" max="{{ $task->max_score }}" required>
-                                            <span class="input-group-text">/ {{ $task->max_score }}</span>
-                                        </div>
-                                        <small class="text-muted">
-                                            Passing score: {{ $task->passing_score }} ({{ round(($task->passing_score / $task->max_score) * 100) }}%)
-                                        </small>
+                                        <input type="number" name="score_percentage" id="score_percentage" 
+                                               class="form-control @error('score_percentage') is-invalid @enderror" 
+                                               value="{{ old('score_percentage') }}" 
+                                               min="0" max="100" required>
+                                        <small class="text-muted">Enter a score from 0 to 100. Status will be automatically determined: Pass (≥70) or Fail (<70)</small>
                                         @error('score_percentage')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
                                     </div>
 
-                                    <!-- Status Override -->
+                                    <!-- Status Display (Read-only) -->
                                     <div class="mb-4">
-                                        <label for="status" class="form-label fw-semibold">Status Override</label>
-                                        <select name="status" id="status" class="form-select @error('status') is-invalid @enderror">
-                                            <option value="auto">Auto (based on score)</option>
-                                            <option value="pass" {{ old('status') == 'pass' ? 'selected' : '' }}>Force Pass</option>
-                                            <option value="fail" {{ old('status') == 'fail' ? 'selected' : '' }}>Force Fail</option>
-                                            <option value="needs_improvement" {{ old('status') == 'needs_improvement' ? 'selected' : '' }}>Needs Improvement</option>
-                                        </select>
-                                        <small class="text-muted">Override automatic pass/fail based on score</small>
-                                        @error('status')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+                                        <label class="form-label fw-semibold">Status</label>
+                                        <div id="statusDisplay" class="p-3 rounded text-center fw-bold" style="background: #f3f4f6; color: #6b7280;">
+                                            <span id="statusText">-</span>
+                                        </div>
+                                        <small class="text-muted">Status is automatically calculated based on score</small>
                                     </div>
 
                                     <!-- Feedback -->
@@ -155,16 +144,6 @@
                                         @enderror
                                     </div>
 
-                                    <!-- Improvement Notes -->
-                                    <div class="mb-4">
-                                        <label for="improvement_notes" class="form-label fw-semibold">Improvement Notes</label>
-                                        <textarea name="improvement_notes" id="improvement_notes" rows="3" 
-                                                  class="form-control @error('improvement_notes') is-invalid @enderror"
-                                                  placeholder="Suggestions for improvement (if needed)...">{{ old('improvement_notes') }}</textarea>
-                                        @error('improvement_notes')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
-                                    </div>
 
                                     <!-- Skills Information -->
                                     @if($task->hasAssociatedSkills())
@@ -216,40 +195,35 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const scoreInput = document.getElementById('score_percentage');
-    const statusSelect = document.getElementById('status');
-    const maxScore = {{ $task->max_score }};
-    const passingScore = {{ $task->passing_score }};
+    const statusDisplay = document.getElementById('statusDisplay');
+    const statusText = document.getElementById('statusText');
     
-    // Auto-update status based on score
+    // Update status display when score changes
     scoreInput.addEventListener('input', function() {
-        const score = parseInt(this.value);
+        const score = parseInt(this.value) || 0;
         
-        if (statusSelect.value === 'auto') {
-            // Visual feedback for score
-            if (score >= passingScore) {
-                this.classList.remove('border-danger');
-                this.classList.add('border-success');
-            } else {
-                this.classList.remove('border-success');
-                this.classList.add('border-danger');
-            }
+        // Validate score range
+        if (score < 0 || score > 100) {
+            statusText.textContent = '-';
+            statusDisplay.style.background = '#f3f4f6';
+            statusDisplay.style.color = '#6b7280';
+            this.classList.remove('border-success', 'border-danger');
+            return;
         }
         
-        // Update percentage display
-        const percentage = Math.round((score / maxScore) * 100);
-        const percentageDisplay = document.getElementById('percentage-display');
-        if (percentageDisplay) {
-            percentageDisplay.textContent = percentage + '%';
-        }
-    });
-    
-    // Reset border color when status is manually changed
-    statusSelect.addEventListener('change', function() {
-        if (this.value !== 'auto') {
-            scoreInput.classList.remove('border-success', 'border-danger');
+        // Auto-determine status: >= 70 = Pass, < 70 = Fail
+        if (score >= 70) {
+            statusText.textContent = 'Pass';
+            statusDisplay.style.background = '#10b981';
+            statusDisplay.style.color = '#ffffff';
+            this.classList.remove('border-danger');
+            this.classList.add('border-success');
         } else {
-            // Re-trigger score validation
-            scoreInput.dispatchEvent(new Event('input'));
+            statusText.textContent = 'Fail';
+            statusDisplay.style.background = '#ef4444';
+            statusDisplay.style.color = '#ffffff';
+            this.classList.remove('border-success');
+            this.classList.add('border-danger');
         }
     });
     
@@ -257,21 +231,18 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelector('form').addEventListener('submit', function(e) {
         const score = parseInt(scoreInput.value);
         
-        if (isNaN(score) || score < 0 || score > maxScore) {
+        if (isNaN(score) || score < 0 || score > 100) {
             e.preventDefault();
-            alert(`Please enter a valid score between 0 and ${maxScore}.`);
+            alert('Please enter a valid score between 0 and 100.');
             scoreInput.focus();
             return false;
         }
-        
-        // Confirmation for failing grades
-        if (score < passingScore && statusSelect.value === 'auto') {
-            if (!confirm(`This score (${score}) is below the passing score (${passingScore}). The task will be marked as failed. Continue?`)) {
-                e.preventDefault();
-                return false;
-            }
-        }
     });
+    
+    // Initialize status display if score is pre-filled
+    if (scoreInput.value) {
+        scoreInput.dispatchEvent(new Event('input'));
+    }
 });
 </script>
 @endsection

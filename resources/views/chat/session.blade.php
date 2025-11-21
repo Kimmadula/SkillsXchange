@@ -2591,23 +2591,21 @@
             
             <div style="margin-bottom: 16px;">
                 <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 8px;">
-                    Score (0-100%)
+                    Score (0-100)
                 </label>
                 <input type="number" id="evaluation-score" name="score_percentage" min="0" max="100" 
                        style="width: 100px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.875rem;"
-                       placeholder="85">
+                       placeholder="85" onchange="updateEvaluationStatus()">
+                <small style="display: block; color: #6b7280; margin-top: 4px;">Status is automatically determined: Pass (≥70) or Fail (<70)</small>
             </div>
 
             <div style="margin-bottom: 16px;">
                 <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 8px;">
                     Status
                 </label>
-                <select id="evaluation-status" name="status" 
-                        style="width: 200px; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.875rem;">
-                    <option value="pass">Pass</option>
-                    <option value="needs_improvement">Needs Improvement</option>
-                    <option value="fail">Fail</option>
-                </select>
+                <div id="evaluation-status-badge" style="display: inline-block; padding: 8px 16px; border-radius: 4px; font-weight: 600; font-size: 0.875rem; background: #f3f4f6; color: #6b7280;">
+                    <span id="evaluation-status-text">-</span>
+                </div>
             </div>
 
             <div style="margin-bottom: 16px;">
@@ -2617,15 +2615,6 @@
                 <textarea id="evaluation-feedback" name="feedback"
                     style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.875rem; resize: vertical; min-height: 80px;"
                     placeholder="Provide feedback on the submitted work..."></textarea>
-            </div>
-
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 8px;">
-                    Improvement Notes (Optional)
-                </label>
-                <textarea id="evaluation-improvement-notes" name="improvement_notes"
-                    style="width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.875rem; resize: vertical; min-height: 60px;"
-                    placeholder="Specific suggestions for improvement..."></textarea>
             </div>
 
             <div style="display: flex; gap: 12px; justify-content: flex-end;">
@@ -3321,15 +3310,38 @@ function hideTaskSubmissionModal() {
 
 // Duplicate showSuccess and showError functions removed - using the ones defined earlier
 
+// Update evaluation status display
+function updateEvaluationStatus() {
+    const score = parseInt(document.getElementById('evaluation-score').value) || 0;
+    const statusBadge = document.getElementById('evaluation-status-badge');
+    const statusText = document.getElementById('evaluation-status-text');
+    
+    if (score === 0 || !document.getElementById('evaluation-score').value) {
+        statusText.textContent = '-';
+        statusBadge.style.background = '#f3f4f6';
+        statusBadge.style.color = '#6b7280';
+        return;
+    }
+    
+    // Auto-determine status: >= 70 = Pass, < 70 = Fail
+    if (score >= 70) {
+        statusText.textContent = 'Pass';
+        statusBadge.style.background = '#10b981';
+        statusBadge.style.color = '#ffffff';
+    } else {
+        statusText.textContent = 'Fail';
+        statusBadge.style.background = '#ef4444';
+        statusBadge.style.color = '#ffffff';
+    }
+}
+
 // Submission evaluation form handler
 document.getElementById('submission-evaluation-form').addEventListener('submit', function(e) {
     e.preventDefault();
     
     const taskId = document.getElementById('evaluation-task-id').value;
     const scorePercentage = document.getElementById('evaluation-score').value;
-    const status = document.getElementById('evaluation-status').value;
     const feedback = document.getElementById('evaluation-feedback').value;
-    const improvementNotes = document.getElementById('evaluation-improvement-notes').value;
     
     // Validation
     if (!scorePercentage || scorePercentage < 0 || scorePercentage > 100) {
@@ -3352,9 +3364,7 @@ document.getElementById('submission-evaluation-form').addEventListener('submit',
         },
         body: JSON.stringify({
             score_percentage: parseInt(scorePercentage),
-            status: status,
-            feedback: feedback,
-            improvement_notes: improvementNotes
+            feedback: feedback
         })
     })
     .then(response => response.json())

@@ -228,28 +228,19 @@
                 <input type="hidden" id="gradeTaskId" name="task_id">
                 
                 <div class="form-group" style="margin-bottom: 20px;">
-                    <label for="gradeScore" style="display: block; margin-bottom: 8px; font-weight: 600;">Score (0-<span id="maxScoreDisplay">100</span>)</label>
+                    <label for="gradeScore" style="display: block; margin-bottom: 8px; font-weight: 600;">Score (0-100)</label>
                     <input type="number" id="gradeScore" name="score_percentage" min="0" max="100" required 
                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;"
-                           onchange="updateGradeDisplay()">
-                    <small style="color: #6b7280; display: block; margin-top: 4px;">Enter a score from 0 to <span id="maxScoreDisplay2">100</span></small>
+                           onchange="updateStatusDisplay()">
+                    <small style="color: #6b7280; display: block; margin-top: 4px;">Enter a score from 0 to 100</small>
                 </div>
                 
                 <div class="form-group" style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Calculated Grade</label>
-                    <div id="calculatedGrade" style="font-size: 24px; font-weight: bold; color: #3b82f6; padding: 10px; background: #eff6ff; border-radius: 4px; text-align: center;">
-                        -
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Status</label>
+                    <div id="statusBadge" style="padding: 10px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 16px;">
+                        <span id="statusText">-</span>
                     </div>
-                </div>
-                
-                <div class="form-group" style="margin-bottom: 20px;">
-                    <label for="gradeStatus" style="display: block; margin-bottom: 8px; font-weight: 600;">Status</label>
-                    <select id="gradeStatus" name="status" required 
-                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;">
-                        <option value="pass">Pass</option>
-                        <option value="fail">Fail</option>
-                        <option value="needs_improvement">Needs Improvement</option>
-                    </select>
+                    <small style="color: #6b7280; display: block; margin-top: 4px;">Status is automatically determined: Pass (≥70) or Fail (<70)</small>
                 </div>
                 
                 <div class="form-group" style="margin-bottom: 20px;">
@@ -257,13 +248,6 @@
                     <textarea id="gradeFeedback" name="feedback" rows="4" 
                               style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; resize: vertical;"
                               placeholder="Provide feedback on the submitted work..."></textarea>
-                </div>
-                
-                <div class="form-group" style="margin-bottom: 20px;">
-                    <label for="gradeImprovementNotes" style="display: block; margin-bottom: 8px; font-weight: 600;">Improvement Notes (Optional)</label>
-                    <textarea id="gradeImprovementNotes" name="improvement_notes" rows="3" 
-                              style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; resize: vertical;"
-                              placeholder="Suggestions for improvement..."></textarea>
                 </div>
             </form>
         </div>
@@ -611,13 +595,10 @@ function openGradeTaskModal(taskId, isEdit = false) {
             // If editing, populate form with existing evaluation
             if (isEdit && task.evaluation && task.evaluation.has_been_graded) {
                 const eval = task.evaluation;
-                // Convert percentage back to raw score for display
-                const rawScore = Math.round((eval.score_percentage / 100) * currentGradingMaxScore);
-                document.getElementById('gradeScore').value = rawScore;
-                document.getElementById('gradeStatus').value = eval.status || 'pass';
+                // Use score_percentage directly (0-100)
+                document.getElementById('gradeScore').value = eval.score_percentage || '';
                 document.getElementById('gradeFeedback').value = eval.feedback || '';
-                document.getElementById('gradeImprovementNotes').value = eval.improvement_notes || '';
-                updateGradeDisplay();
+                updateStatusDisplay();
                 
                 // Update modal title and button
                 document.querySelector('#gradeTaskModal .modal-title').textContent = 'Edit Grade';
@@ -626,7 +607,10 @@ function openGradeTaskModal(taskId, isEdit = false) {
                 // Reset form for new grade
                 document.getElementById('gradeTaskForm').reset();
                 document.getElementById('gradeTaskId').value = taskId;
-                document.getElementById('calculatedGrade').textContent = '-';
+                document.getElementById('gradeScore').value = '';
+                document.getElementById('statusText').textContent = '-';
+                document.getElementById('statusBadge').style.background = '#f3f4f6';
+                document.getElementById('statusBadge').style.color = '#6b7280';
                 document.querySelector('#gradeTaskModal .modal-title').textContent = 'Grade Task';
                 document.getElementById('submitGradeBtn').innerHTML = '<i class="fas fa-check" style="margin-right: 4px;"></i>Submit Grade';
             }
@@ -647,35 +631,27 @@ function closeGradeTaskModal(event) {
     }
 }
 
-function updateGradeDisplay() {
+function updateStatusDisplay() {
     const score = parseInt(document.getElementById('gradeScore').value) || 0;
-    const maxScore = currentGradingMaxScore;
-    const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
     
-    let grade = '-';
-    if (score > 0) {
-        if (percentage >= 95) grade = 'A+';
-        else if (percentage >= 90) grade = 'A';
-        else if (percentage >= 85) grade = 'A-';
-        else if (percentage >= 80) grade = 'B+';
-        else if (percentage >= 75) grade = 'B';
-        else if (percentage >= 70) grade = 'B-';
-        else if (percentage >= 65) grade = 'C+';
-        else if (percentage >= 60) grade = 'C';
-        else if (percentage >= 55) grade = 'C-';
-        else if (percentage >= 50) grade = 'D';
-        else grade = 'F';
+    if (score === 0 || !document.getElementById('gradeScore').value) {
+        statusText.textContent = '-';
+        statusBadge.style.background = '#f3f4f6';
+        statusBadge.style.color = '#6b7280';
+        return;
     }
     
-    document.getElementById('calculatedGrade').textContent = grade;
-    
-    // Update status based on score
-    const passingPercentage = window.currentGradingPassingPercentage || 70;
-    const statusSelect = document.getElementById('gradeStatus');
-    if (percentage >= passingPercentage && statusSelect.value === 'fail') {
-        statusSelect.value = 'pass';
-    } else if (percentage < passingPercentage && statusSelect.value === 'pass') {
-        statusSelect.value = 'fail';
+    // Auto-determine status: >= 70 = Pass, < 70 = Fail
+    if (score >= 70) {
+        statusText.textContent = 'Pass';
+        statusBadge.style.background = '#10b981';
+        statusBadge.style.color = '#ffffff';
+    } else {
+        statusText.textContent = 'Fail';
+        statusBadge.style.background = '#ef4444';
+        statusBadge.style.color = '#ffffff';
     }
 }
 
@@ -690,11 +666,18 @@ function submitGrade() {
     const form = document.getElementById('gradeTaskForm');
     const formData = new FormData(form);
     const score = parseInt(document.getElementById('gradeScore').value) || 0;
-    const maxScore = currentGradingMaxScore;
-    const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
     
-    // Update score_percentage to be percentage
-    formData.set('score_percentage', percentage);
+    // Validate score is between 0-100
+    if (score < 0 || score > 100) {
+        alert('Score must be between 0 and 100');
+        return;
+    }
+    
+    // Set score_percentage (0-100)
+    formData.set('score_percentage', score);
+    
+    // Remove status from form data - it will be auto-calculated on server
+    formData.delete('status');
     
     fetch(`/tasks/${currentGradingTaskId}/evaluation`, {
         method: 'POST',

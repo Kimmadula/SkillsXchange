@@ -15,17 +15,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // Run session expiration every hour
-        $schedule->command('sessions:expire')->hourly();
-
-        // Pre-session reminders (run every 15 minutes)
-        $schedule->command('notifications:send-pre-session-reminders')->everyFifteenMinutes();
-
-        // Expiration warnings (run hourly)
-        $schedule->command('notifications:send-expiration-warnings')->hourly();
-
-        // Expire premium subscriptions (run daily at midnight)
-        $schedule->command('premium:expire')->daily();
+        // Scheduled tasks removed - no cron service configured
+        // Commands can still be run manually via: php artisan [command-name]
     }
 
     /**

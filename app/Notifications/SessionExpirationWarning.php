@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class SessionExpirationWarning extends Notification implements ShouldQueue
@@ -21,7 +22,27 @@ class SessionExpirationWarning extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['mail'];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        $endDateTime = $this->trade->end_date . ' ' . $this->trade->available_to;
+        $offeringSkill = optional($this->trade->offeringSkill)->name ?? 'N/A';
+        $lookingSkill = optional($this->trade->lookingSkill)->name ?? 'N/A';
+        
+        return (new MailMessage)
+            ->subject("Session Expiring Soon: {$this->hoursBefore} hours remaining - SkillsXchange")
+            ->greeting("Hello {$notifiable->firstname}!")
+            ->line("Your skill exchange session is expiring soon!")
+            ->line("**Session Details:**")
+            ->line("• **Expires in:** {$this->hoursBefore} hours")
+            ->line("• **End Date & Time:** {$endDateTime}")
+            ->line("• **Offering Skill:** {$offeringSkill}")
+            ->line("• **Looking For:** {$lookingSkill}")
+            ->action('View Session', url("/trades/{$this->trade->id}/session"))
+            ->line("Make sure to complete your session before it expires!")
+            ->line('If you have any questions, feel free to contact us.');
     }
 
     public function toArray(object $notifiable): array

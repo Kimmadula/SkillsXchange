@@ -125,13 +125,7 @@ services:
         value: "true"
       - key: FIREBASE_EMAIL_VERIFICATION_REQUIRED
         value: "true"
-      # ✅ Cron Secret Token (for external cron service security)
-      - key: CRON_SECRET_TOKEN
-        generateValue: true
 
   # ✅ WebSocket service removed - Firebase handles video call signaling
   # Firebase Realtime Database provides real-time communication
   # No additional services needed for video calling
-  # 
-  # Note: Laravel scheduler is triggered via HTTP endpoint /cron/schedule
-  # Use a free external cron service (e.g., cron-job.org) to call this endpoint every minute

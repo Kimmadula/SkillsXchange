@@ -184,9 +184,9 @@
                             <div class="col-md-4">
                                 <div class="text-center">
                                     <div class="display-6 fw-bold text-{{ $evaluation->status_color }}">
-                                        {{ $evaluation->grade_letter }}
+                                        {{ $evaluation->score_percentage }}%
                                     </div>
-                                    <div class="text-muted">Grade</div>
+                                    <div class="text-muted">Score</div>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -205,14 +205,6 @@
                         </div>
                         @endif
 
-                        @if($evaluation->improvement_notes)
-                        <div class="mb-3">
-                            <h6 class="text-muted mb-2">Improvement Notes</h6>
-                            <div class="bg-warning bg-opacity-10 p-3 rounded">
-                                <p class="mb-0">{{ $evaluation->improvement_notes }}</p>
-                            </div>
-                        </div>
-                        @endif
 
                         @if($evaluation->hasSkillsToAdd())
                         <div class="mb-3">

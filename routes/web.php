@@ -936,48 +936,6 @@ Route::get('/api/skills/search', [\App\Http\Controllers\SkillController::class, 
 // PayMongo Webhook (no auth required - must be outside auth middleware)
 Route::post('/webhooks/paymongo', [\App\Http\Controllers\TokenController::class, 'webhook'])->name('webhooks.paymongo');
 
-// Laravel Scheduler Endpoint (for external cron services)
-// This endpoint runs the Laravel scheduler when called by external cron services
-Route::get('/cron/schedule', function (Request $request) {
-    // Security: Check for secret token
-    $secretToken = env('CRON_SECRET_TOKEN', 'change-this-secret-token-in-production');
-    $providedToken = $request->query('token') ?? $request->header('X-Cron-Token');
-    
-    if ($providedToken !== $secretToken) {
-        Log::warning('Unauthorized cron schedule attempt', [
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent()
-        ]);
-        return response()->json(['error' => 'Unauthorized'], 401);
-    }
-    
-    // Run the scheduler
-    try {
-        Artisan::call('schedule:run');
-        $output = Artisan::output();
-        
-        Log::info('Cron schedule executed successfully', [
-            'output' => $output
-        ]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Scheduler executed successfully',
-            'output' => $output
-        ]);
-    } catch (\Exception $e) {
-        Log::error('Cron schedule execution failed', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        
-        return response()->json([
-            'success' => false,
-            'error' => $e->getMessage()
-        ], 500);
-    }
-})->name('cron.schedule');
-
 // Admin routes available at /admin
 
 require __DIR__.'/auth.php';

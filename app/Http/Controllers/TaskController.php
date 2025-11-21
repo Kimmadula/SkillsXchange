@@ -207,7 +207,7 @@ class TaskController extends Controller
                     ] : null,
                     'evaluation' => $evaluation ? [
                         'score_percentage' => $evaluation->score_percentage,
-                        'grade' => $evaluation->grade_letter,
+                        'score' => $evaluation->score_percentage,
                         'status' => $evaluation->status,
                         'feedback' => $evaluation->feedback,
                         'checked_at' => $evaluation->checked_at ? $evaluation->checked_at->toISOString() : null,
@@ -662,10 +662,8 @@ class TaskController extends Controller
 
         try {
             $request->validate([
-                'score_percentage' => 'required|integer|min:0|max:100', // Percentage is always 0-100
-                'status' => 'required|in:pass,fail,needs_improvement',
-                'feedback' => 'nullable|string|max:2000',
-                'improvement_notes' => 'nullable|string|max:2000'
+                'score_percentage' => 'required|integer|min:0|max:100', // Score is 0-100
+                'feedback' => 'nullable|string|max:2000'
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             if ($request->ajax() || $request->wantsJson()) {
@@ -697,26 +695,16 @@ class TaskController extends Controller
                 return redirect()->back()->with('error', 'You must view the submission before grading it.');
             }
             
-            // Determine pass/fail based on score
-            // Convert passing_score to percentage for comparison
-            $passingPercentage = $task->max_score > 0 ? round(($task->passing_score / $task->max_score) * 100) : 70;
-            $status = $request->score_percentage >= $passingPercentage ? 'pass' : 'fail';
-            if ($request->status === 'needs_improvement') {
-                $status = 'needs_improvement';
-            }
-
-            // Calculate grade from score
-            $grade = $this->calculateGradeFromScore($request->score_percentage);
+            // Automatically determine pass/fail based on score (>= 70 = pass, < 70 = fail)
+            $status = $request->score_percentage >= 70 ? 'pass' : 'fail';
 
             // Update existing evaluation or create new one
             if ($existingEvaluation && $existingEvaluation->status === 'pending') {
                 $evaluation = $existingEvaluation;
                 $evaluation->update([
                     'score_percentage' => $request->score_percentage,
-                    'grade' => $grade,
                     'status' => $status,
                     'feedback' => $request->feedback,
-                    'improvement_notes' => $request->improvement_notes,
                     'evaluated_at' => now() // Set evaluated_at when grading
                 ]);
             } else {
@@ -726,10 +714,8 @@ class TaskController extends Controller
                     'submission_id' => $latestSubmission?->id,
                     'evaluated_by' => $user->id,
                     'score_percentage' => $request->score_percentage,
-                    'grade' => $grade,
                     'status' => $status,
                     'feedback' => $request->feedback,
-                    'improvement_notes' => $request->improvement_notes,
                     'viewed_at' => $existingEvaluation?->viewed_at ?? now(),
                     'evaluated_at' => now()
                 ]);
@@ -856,10 +842,9 @@ class TaskController extends Controller
                 'evaluation' => $evaluation ? [
                     'id' => $evaluation->id,
                     'score_percentage' => $evaluation->score_percentage,
-                    'grade' => $evaluation->grade_letter,
+                    'score' => $evaluation->score_percentage,
                     'status' => $evaluation->status,
                     'feedback' => $evaluation->feedback,
-                    'improvement_notes' => $evaluation->improvement_notes,
                     'checked_at' => $evaluation->checked_at ? $evaluation->checked_at->toISOString() : null,
                     'has_been_viewed' => $hasBeenViewed,
                     'has_been_graded' => $hasBeenGraded
@@ -875,25 +860,6 @@ class TaskController extends Controller
         }
     }
     
-    /**
-     * Calculate letter grade from score percentage (0-100)
-     */
-    private function calculateGradeFromScore($percentage)
-    {
-        return match(true) {
-            $percentage >= 95 => 'A+',
-            $percentage >= 90 => 'A',
-            $percentage >= 85 => 'A-',
-            $percentage >= 80 => 'B+',
-            $percentage >= 75 => 'B',
-            $percentage >= 70 => 'B-',
-            $percentage >= 65 => 'C+',
-            $percentage >= 60 => 'C',
-            $percentage >= 55 => 'C-',
-            $percentage >= 50 => 'D',
-            default => 'F'
-        };
-    }
     
     /**
      * Mark submission as viewed by evaluator (AJAX)
@@ -976,7 +942,7 @@ class TaskController extends Controller
                     'latest_evaluation' => $task->latestEvaluation ? [
                         'id' => $task->latestEvaluation->id,
                         'score_percentage' => $task->latestEvaluation->score_percentage,
-                        'grade' => $task->latestEvaluation->grade_letter,
+                        'score' => $task->latestEvaluation->score_percentage,
                         'status' => $task->latestEvaluation->status,
                         'feedback' => $task->latestEvaluation->feedback,
                         'checked_at' => $task->latestEvaluation->checked_at ? $task->latestEvaluation->checked_at->toISOString() : null,
