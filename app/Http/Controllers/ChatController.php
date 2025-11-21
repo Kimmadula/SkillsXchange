@@ -19,7 +19,7 @@ class ChatController extends Controller
     public function show(Trade $trade)
     {
         $user = Auth::user();
-        
+
         // Add debugging information
         Log::info('Chat access attempt', [
             'user_id' => $user->id ?? 'not_authenticated',
@@ -31,7 +31,7 @@ class ChatController extends Controller
             'session_id' => session()->getId(),
             'url' => request()->url()
         ]);
-        
+
         // Check if user is authenticated
         if (!$user || !Auth::check()) {
             Log::warning('Unauthenticated user trying to access chat', [
@@ -39,25 +39,25 @@ class ChatController extends Controller
                 'auth_check' => Auth::check(),
                 'session_id' => session()->getId()
             ]);
-            
+
             // Redirect to login
             return redirect()->route('login')->with('error', 'Please log in to access chat.');
         }
-        
+
         // Allow admin users to access chat functionality for support and monitoring
         // Removed admin restriction to enable chat access for all user roles
-        
+
         // Check if user is part of this trade
         $isTradeOwner = $trade->user_id === $user->id;
         $hasAcceptedRequest = $trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists();
-        
+
         Log::info('Trade authorization check', [
             'is_trade_owner' => $isTradeOwner,
             'has_accepted_request' => $hasAcceptedRequest,
             'user_id' => $user->id,
             'trade_id' => $trade->id
         ]);
-        
+
         // Trade owner can always access chat, or user must have accepted request
         if (!$isTradeOwner && !$hasAcceptedRequest) {
             Log::warning('Unauthorized chat access attempt', [
@@ -65,7 +65,7 @@ class ChatController extends Controller
                 'trade_id' => $trade->id,
                 'trade_owner' => $trade->user_id
             ]);
-            
+
             // Redirect back with error message
             return redirect()->route('trades.ongoing')->with('error', 'You are not authorized to access this chat.');
         }
@@ -73,7 +73,7 @@ class ChatController extends Controller
         // Get the other user (trade partner)
         if ($trade->user_id === $user->id) {
             $acceptedRequest = $trade->requests()->where('status', 'accepted')->first();
-            
+
             Log::info('Looking for accepted request for trade owner', [
                 'trade_id' => $trade->id,
                 'user_id' => $user->id,
@@ -82,7 +82,7 @@ class ChatController extends Controller
                 'total_requests' => $trade->requests()->count(),
                 'accepted_requests_count' => $trade->requests()->where('status', 'accepted')->count()
             ]);
-            
+
             if (!$acceptedRequest) {
                 Log::warning('No accepted request found for trade', [
                     'trade_id' => $trade->id,
@@ -90,7 +90,7 @@ class ChatController extends Controller
                     'total_requests' => $trade->requests()->count(),
                     'accepted_requests_count' => $trade->requests()->where('status', 'accepted')->count()
                 ]);
-                
+
                 // Try to find any request with different status values
                 $anyRequest = $trade->requests()->first();
                 if ($anyRequest) {
@@ -149,15 +149,15 @@ class ChatController extends Controller
     {
         try {
             $user = Auth::user();
-            
+
             Log::info('Chat message attempt', [
                 'user_id' => $user->id,
                 'trade_id' => $trade->id,
                 'message' => $request->message
             ]);
-            
+
             // Check if user is part of this trade
-            if ($trade->user_id !== $user->id && 
+            if ($trade->user_id !== $user->id &&
                 !$trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists()) {
                 Log::warning('Unauthorized chat access attempt', [
                     'user_id' => $user->id,
@@ -168,22 +168,22 @@ class ChatController extends Controller
 
             // Handle file upload if present
             $messageText = $request->input('message', '');
-            
+
             if ($request->hasFile('file')) {
                 $file = $request->file('file');
                 $type = $request->input('type', 'file');
-                
+
                 // Validate file
                 $maxSize = 10 * 1024 * 1024; // 10MB
                 if ($file->getSize() > $maxSize) {
                     return response()->json(['error' => 'File size must be less than 10MB'], 400);
                 }
-                
+
                 // Store file
                 $fileName = $file->getClientOriginalName();
                 $filePath = $file->store('chat-files', 'public');
                 $fileUrl = asset('storage/' . $filePath);
-                
+
                 // Update message text to include file reference with URL
                 if ($type === 'image') {
                     $messageText = $messageText ?: "[IMAGE:{$fileName}|{$fileUrl}]";
@@ -191,7 +191,7 @@ class ChatController extends Controller
                     $messageText = $messageText ?: "[FILE:{$fileName}|{$fileUrl}]";
                 }
             }
-            
+
             // Validate message (required if no file)
             if (empty($messageText) && !$request->hasFile('file')) {
                 return response()->json(['error' => 'Message is required'], 422);
@@ -207,7 +207,7 @@ class ChatController extends Controller
             ]);
 
             $message->load('sender');
-            
+
             Log::info('Message created successfully', [
                 'message_id' => $message->id,
                 'trade_id' => $trade->id
@@ -215,19 +215,27 @@ class ChatController extends Controller
 
             // Broadcast message using Laravel events
             try {
+                // Log Pusher configuration for debugging
                 Log::info('Attempting to broadcast message', [
                     'message_id' => $message->id,
-                    'trade_id' => $trade->id
+                    'trade_id' => $trade->id,
+                    'pusher_key' => config('broadcasting.connections.pusher.key'),
+                    'pusher_cluster' => config('broadcasting.connections.pusher.options.cluster'),
+                    'pusher_app_id' => config('broadcasting.connections.pusher.app_id'),
+                    'env_cluster' => env('PUSHER_APP_CLUSTER'),
                 ]);
-                
+
                 event(new MessageSent($message, $trade->id));
-                
+
                 Log::info('Message broadcasted successfully');
             } catch (\Exception $e) {
                 Log::error('Broadcasting failed: ' . $e->getMessage(), [
                     'message_id' => $message->id,
                     'trade_id' => $trade->id,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
+                    'pusher_key' => config('broadcasting.connections.pusher.key'),
+                    'pusher_cluster' => config('broadcasting.connections.pusher.options.cluster'),
+                    'env_cluster' => env('PUSHER_APP_CLUSTER'),
                 ]);
                 // Continue even if broadcasting fails
             }
@@ -255,9 +263,9 @@ class ChatController extends Controller
     {
         try {
             $user = Auth::user();
-            
+
             // Check if user is part of this trade
-            if ($trade->user_id !== $user->id && 
+            if ($trade->user_id !== $user->id &&
                 !$trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists()) {
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
@@ -349,7 +357,7 @@ class ChatController extends Controller
                 ]);
                 return response()->json(['error' => 'Unauthenticated'], 401);
             }
-            
+
             // Add logging for debugging session issues
             Log::info('Chat messages request', [
                 'trade_id' => $trade->id,
@@ -358,11 +366,11 @@ class ChatController extends Controller
                 'session_driver' => config('session.driver'),
                 'url' => request()->url()
             ]);
-            
+
             $user = Auth::user();
-            
+
             // Check if user is part of this trade
-            if ($trade->user_id !== $user->id && 
+            if ($trade->user_id !== $user->id &&
                 !$trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists()) {
                 Log::warning('Unauthorized chat access attempt', [
                     'user_id' => $user->id,
@@ -379,21 +387,21 @@ class ChatController extends Controller
                 $m->setAttribute('display_time', $m->created_at ? $m->created_at->format('g:i A') : null);
                 return $m;
             });
-            
+
             Log::info('Messages retrieved successfully', [
                 'trade_id' => $trade->id,
                 'message_count' => $messages->count()
             ]);
-            
+
             $response = response()->json([
                 'success' => true,
                 'count' => $messages->count(),
                 'messages' => $messages
             ]);
-            
+
             // Add CSRF token to response headers for client to update
             $response->header('X-CSRF-TOKEN', csrf_token());
-            
+
             return $response;
         } catch (\Exception $e) {
             Log::error('Get messages error: ' . $e->getMessage(), [
@@ -411,7 +419,7 @@ class ChatController extends Controller
     {
         try {
             $user = Auth::user();
-            
+
             // Check if user is assigned to this task
             if ($task->assigned_to !== $user->id) {
                 return response()->json(['error' => 'Unauthorized'], 403);
@@ -452,7 +460,7 @@ class ChatController extends Controller
     {
         try {
             $user = Auth::user();
-            
+
             // Check if user is the creator of this task (only the creator can verify)
             if ($task->created_by !== $user->id) {
                 return response()->json(['error' => 'Only the task creator can verify completion'], 403);
@@ -501,15 +509,15 @@ class ChatController extends Controller
     {
         try {
             $user = Auth::user();
-            
+
             // Check if user is part of this trade
-            if ($trade->user_id !== $user->id && 
+            if ($trade->user_id !== $user->id &&
                 !$trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists()) {
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
 
             $skillLearningService = new SkillLearningService();
-            
+
             // Check if trade is ready for skill learning processing
             if (!$skillLearningService->isTradeReadyForSkillLearning($trade)) {
                 return response()->json([
@@ -520,7 +528,7 @@ class ChatController extends Controller
 
             // Process skill learning
             $results = $skillLearningService->processSkillLearning($trade);
-            
+
             // Update trade status to closed
             $trade->update(['status' => 'closed']);
 
@@ -542,9 +550,9 @@ class ChatController extends Controller
     {
         try {
             $user = Auth::user();
-            
+
             // Check if user is part of this trade
-            if ($trade->user_id !== $user->id && 
+            if ($trade->user_id !== $user->id &&
                 !$trade->requests()->where('requester_id', $user->id)->where('status', 'accepted')->exists()) {
                 return response()->json(['error' => 'Unauthorized'], 403);
             }
