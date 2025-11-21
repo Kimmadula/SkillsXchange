@@ -3213,6 +3213,9 @@ function submitTaskWork(taskId) {
     showTaskSubmissionModal(taskId);
 }
 
+// Make it available globally
+window.submitTaskWork = submitTaskWork;
+
 function showTaskSubmissionModal(taskId) {
     // Create modal HTML
     const modalHtml = `

@@ -190,6 +190,10 @@ class TaskController extends Controller
                     'passing_score' => $task->passing_score,
                     'completed' => $task->completed,
                     'created_at' => $task->created_at,
+                    'created_by' => $task->created_by,
+                    'assigned_to' => $task->assigned_to,
+                    'can_be_submitted' => $task->canBeSubmitted() && $task->assigned_to === $user->id,
+                    'can_be_started' => $task->canBeStarted() && $task->assigned_to === $user->id,
                     'creator' => $task->creator ? [
                         'firstname' => $task->creator->firstname,
                         'lastname' => $task->creator->lastname

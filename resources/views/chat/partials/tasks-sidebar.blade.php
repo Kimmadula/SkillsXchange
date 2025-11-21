@@ -180,7 +180,7 @@
                 <div class="detail-value" id="detailCreatedAt"></div>
             </div>
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer" id="taskDetailsModalFooter">
             <button class="modal-btn btn-secondary" onclick="closeTaskDetails()">Close</button>
         </div>
     </div>
@@ -256,6 +256,34 @@ function showTaskDetails(taskId) {
                 '<span style="color: #10b981; font-weight: 600;">✓ Yes</span>' : 
                 '<span style="color: #6b7280;">✗ No</span>';
             document.getElementById('detailCreatedAt').textContent = task.created_at ? new Date(task.created_at).toLocaleString() : 'Unknown';
+            
+            // Update modal footer with action buttons
+            const footer = document.getElementById('taskDetailsModalFooter');
+            let footerHtml = '';
+            
+            // Check if user can submit this task
+            if (task.can_be_submitted) {
+                footerHtml = `
+                    <button class="modal-btn btn-success" onclick="submitTaskWork(${task.id})" style="margin-right: 8px;">
+                        <i class="fas fa-upload" style="margin-right: 4px;"></i>Submit Work
+                    </button>
+                    <button class="modal-btn btn-secondary" onclick="closeTaskDetails()">Close</button>
+                `;
+            } else if (task.can_be_started) {
+                footerHtml = `
+                    <form action="/tasks/${task.id}/start" method="POST" style="display: inline; margin-right: 8px;">
+                        <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="modal-btn btn-primary">
+                            <i class="fas fa-play" style="margin-right: 4px;"></i>Start Task
+                        </button>
+                    </form>
+                    <button class="modal-btn btn-secondary" onclick="closeTaskDetails()">Close</button>
+                `;
+            } else {
+                footerHtml = '<button class="modal-btn btn-secondary" onclick="closeTaskDetails()">Close</button>';
+            }
+            
+            footer.innerHTML = footerHtml;
             
             // Show modal
             document.getElementById('taskDetailsModal').style.display = 'flex';

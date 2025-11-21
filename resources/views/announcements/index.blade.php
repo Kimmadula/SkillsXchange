@@ -39,7 +39,7 @@
                             {{ \Carbon\Carbon::parse($announcement->created_at)->diffForHumans() }}
                         </span>
                         @if(!$announcement->isReadBy(Auth::user()))
-                            <form method="POST" action="{{ route('announcements.mark-read', $announcement->id) }}" style="margin:0;">
+                            <form method="POST" action="{{ route('announcements.mark-read', $announcement->id) }}" class="mark-read-form" data-announcement-id="{{ $announcement->id }}" style="margin:0;">
                                 @csrf
                                 <button type="submit" style="padding:4px 8px; background:#2563eb; color:#fff; border:none; border-radius:4px; font-size:0.75rem; cursor:pointer;">
                                     Mark as Read
@@ -68,4 +68,59 @@
         </div>
     @endif
 </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle mark as read form submissions via AJAX
+    document.querySelectorAll('.mark-read-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const form = e.target;
+            const button = form.querySelector('button[type="submit"]');
+            const originalText = button.textContent;
+            const announcementId = form.getAttribute('data-announcement-id');
+            
+            // Disable button and show loading state
+            button.disabled = true;
+            button.textContent = 'Marking...';
+            
+            // Get CSRF token
+            const csrfToken = form.querySelector('input[name="_token"]').value;
+            
+            // Submit via AJAX
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Replace form with "Read" badge
+                    const readBadge = document.createElement('span');
+                    readBadge.style.cssText = 'padding:4px 8px; background:#10b981; color:#fff; border-radius:4px; font-size:0.75rem;';
+                    readBadge.textContent = '✓ Read';
+                    form.parentElement.replaceChild(readBadge, form);
+                } else {
+                    // Re-enable button on error
+                    button.disabled = false;
+                    button.textContent = originalText;
+                    alert('Failed to mark announcement as read. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                button.disabled = false;
+                button.textContent = originalText;
+                alert('An error occurred. Please try again.');
+            });
+        });
+    });
+});
+</script>
 @endsection
