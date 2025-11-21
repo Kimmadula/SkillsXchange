@@ -657,9 +657,17 @@
     // Broadcast user presence
     function broadcastUserPresence(action) {
         // Note: whisper() only works on Presence Channels, not regular channels
-        // For now, we'll skip presence broadcasting on regular channels
-        // If presence is needed, consider using a Presence Channel or regular events
-        console.log('📡 Presence action (not broadcasted on regular channel):', action);
+        // Since we're using a regular public channel, presence broadcasting is disabled
+        // This prevents the "whisper() is not a function" error
+        // Presence functionality can be implemented later using Presence Channels if needed
+        try {
+            // Silently skip - no error needed
+            if (window.DEBUG_PRESENCE) {
+                console.log('📡 Presence action (not broadcasted on regular channel):', action);
+            }
+        } catch (error) {
+            // Silently ignore any errors
+        }
     }
 
     // Check initial presence status

@@ -15,6 +15,7 @@ export class ChatManager {
         // Initialize with count of messages already rendered on page to prevent duplicates
         this.lastMessageCount = window.initialMessageCount || this.getInitialMessageCount();
         this.messagePollingInterval = null;
+        this.messageListenerSetup = false; // Prevent duplicate listener setup
         this.pollingFrequency = 5000; // Start with 5 seconds (optimized)
         this.minPollingFrequency = 5000; // Never poll faster than 5 seconds
         this.maxPollingFrequency = 15000; // Never poll slower than 15 seconds
@@ -308,98 +309,107 @@ export class ChatManager {
         }
 
         // Listen for new messages via Pusher (real-time)
-        // Wait for Pusher to be connected before setting up listener
-        const setupMessageListener = () => {
-            try {
-                const channelName = `trade-${this.tradeId}`;
-                console.log('📡 Setting up listener for channel:', channelName);
-                console.log('📡 Echo available:', !!this.echo);
-                console.log('📡 Pusher connector:', !!this.echo.connector?.pusher);
+        // Laravel Echo automatically handles channel subscription for public channels
+        const channelName = `trade-${this.tradeId}`;
 
-                const channel = this.echo.channel(channelName);
+        // Prevent duplicate listener setup
+        if (this.messageListenerSetup) {
+            console.log('⚠️ Message listener already set up, skipping...');
+            return;
+        }
 
-                // Verify channel was created
-                if (!channel) {
-                    throw new Error('Failed to create channel');
-                }
+        try {
+            console.log('📡 Setting up message listener for channel:', channelName);
 
-                console.log('📡 Channel created:', channelName);
+            // Get or create the channel - Echo handles subscription automatically
+            const channel = this.echo.channel(channelName);
 
-                // Set up the listener - Echo will handle subscription automatically for public channels
-                // The listen() call automatically subscribes to the channel
-                channel.listen('new-message', (data) => {
-                    console.log('📨 Received new message via Pusher:', data);
-                    console.log('📨 Message data:', JSON.stringify(data, null, 2));
-                    console.log('📨 Full event data:', data);
-
-                    // Validate data structure
-                    if (!data || !data.message) {
-                        console.error('❌ Invalid message data received:', data);
-                        return;
-                    }
-
-                    // Only add if it's not from the current user (to avoid duplicates)
-                    if (data.message.sender_id !== this.userId) {
-                        console.log('📨 Adding message from other user:', data.message.sender_id, 'vs current:', this.userId);
-                        this.addMessage(data.message, data.sender_name, data.timestamp, false);
-                    } else {
-                        console.log('📨 Message from current user, updating timestamp if needed');
-                        // For our own messages, just update the timestamp if needed
-                        const existingMessage = document.querySelector('[data-confirmed="true"]');
-                        if (existingMessage) {
-                            const timestampElement = existingMessage.querySelector('.message-time');
-                            if (timestampElement && data.timestamp) {
-                                timestampElement.textContent = data.timestamp;
-                            }
-                        }
-                    }
-                });
-
-                console.log('✅ Message listener set up for event: new-message');
-            } catch (error) {
-                console.error('❌ Error setting up Echo listener:', error);
-                console.error('❌ Error stack:', error.stack);
-                // Fallback to polling if Echo listener setup fails
-                if (!this.messagePollingInterval) {
-                    this.startSmartMessagePolling();
-                }
+            if (!channel) {
+                throw new Error('Failed to create channel');
             }
-        };
 
-        // Wait for connection if not already connected
-        if (this.echo.connector?.pusher?.connection?.state === 'connected') {
-            setupMessageListener();
-        } else {
-            // Wait for connection before setting up listener
-            const waitForConnection = () => {
-                if (this.echo.connector?.pusher?.connection?.state === 'connected') {
-                    console.log('✅ Pusher connected, setting up message listener...');
-                    setupMessageListener();
+            console.log('📡 Channel created:', channelName);
+
+            // Set up the listener - this automatically subscribes to the channel
+            // The event name must match broadcastAs() in MessageSent.php: 'new-message'
+            channel.listen('new-message', (data) => {
+                console.log('📨 Received new message via Pusher:', data);
+
+                // Validate data structure
+                if (!data) {
+                    console.error('❌ No data received');
+                    return;
+                }
+
+                // Handle both possible data structures
+                let messageData, senderName, timestamp;
+
+                if (data.message) {
+                    // Standard structure from broadcastWith()
+                    messageData = data.message;
+                    senderName = data.sender_name || (messageData.sender?.firstname + ' ' + messageData.sender?.lastname);
+                    timestamp = data.timestamp || (messageData.created_at ? new Date(messageData.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '');
+                } else if (data.id) {
+                    // Direct message object structure
+                    messageData = data;
+                    senderName = data.sender_name || (data.sender?.firstname + ' ' + data.sender?.lastname);
+                    timestamp = data.timestamp || (data.created_at ? new Date(data.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '');
                 } else {
-                    console.log('⏳ Waiting for Pusher connection...',
-                        this.echo.connector?.pusher?.connection?.state);
-                    setTimeout(waitForConnection, 500);
+                    console.error('❌ Invalid message data structure:', data);
+                    return;
                 }
-            };
 
-            // Start waiting, but timeout after 10 seconds
-            const connectionTimeout = setTimeout(() => {
-                console.warn('⚠️ Pusher connection timeout, using polling fallback');
-                if (!this.messagePollingInterval) {
-                    this.startSmartMessagePolling();
+                if (!messageData || !messageData.id) {
+                    console.error('❌ Invalid message data - missing ID:', messageData);
+                    return;
                 }
-            }, 10000);
 
-            // Clear timeout if connection succeeds
-            const originalBind = this.echo.connector?.pusher?.connection?.bind;
-            if (originalBind) {
-                this.echo.connector.pusher.connection.bind('connected', () => {
-                    clearTimeout(connectionTimeout);
-                    setupMessageListener();
+                const isOwnMessage = messageData.sender_id === this.userId;
+
+                // Check if message already exists (by ID) to prevent duplicates
+                const existingMessage = this.messagesContainer?.querySelector(`[data-message-id="${messageData.id}"]`);
+                if (existingMessage) {
+                    console.log('📨 Message already exists, updating timestamp:', messageData.id);
+                    // Update timestamp if needed
+                    const timestampElement = existingMessage.querySelector('.message-time');
+                    if (timestampElement && timestamp) {
+                        timestampElement.textContent = timestamp;
+                    }
+                    return;
+                }
+
+                // Add the message
+                console.log('📨 Adding new message via Pusher:', {
+                    id: messageData.id,
+                    sender: messageData.sender_id,
+                    isOwn: isOwnMessage
                 });
-            }
+                this.addMessage(messageData, senderName, timestamp, isOwnMessage);
+            });
 
-            waitForConnection();
+            // Mark as set up to prevent duplicates
+            this.messageListenerSetup = true;
+            console.log('✅ Message listener set up successfully for event: new-message');
+
+            // Verify listener is working after a short delay
+            setTimeout(() => {
+                const pusherChannel = this.echo.connector?.pusher?.channels?.channels?.[channelName];
+                if (pusherChannel) {
+                    console.log('✅ Channel subscription confirmed:', channelName);
+                } else {
+                    console.warn('⚠️ Channel subscription not yet confirmed, but listener is set up');
+                }
+            }, 2000);
+
+        } catch (error) {
+            console.error('❌ Error setting up Echo listener:', error);
+            console.error('❌ Error details:', error.message, error.stack);
+
+            // Fallback to polling if Echo listener setup fails
+            if (!this.messagePollingInterval) {
+                console.log('🔄 Falling back to message polling...');
+                this.startSmartMessagePolling();
+            }
         }
     }
 
@@ -468,13 +478,20 @@ export class ChatManager {
                 // Update the temporary message with the real one and mark it as confirmed
                 this.updateMessageInChat(tempId, data.message);
 
-                // Update timestamp with server-formatted time
+                // Update timestamp with server-formatted time and set message ID
                 const messageElement = document.querySelector(`[data-temp-id="${tempId}"]`);
-                if (messageElement && (data.message?.display_time || data.message?.created_at)) {
-                    const serverTime = data.message.display_time || new Date(data.message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    const timestampElement = messageElement.querySelector('.message-time');
-                    if (timestampElement) {
-                        timestampElement.textContent = serverTime;
+                if (messageElement && data.message) {
+                    // Set the message ID to prevent duplicates from Pusher
+                    if (data.message.id) {
+                        messageElement.setAttribute('data-message-id', data.message.id);
+                    }
+                    // Update timestamp
+                    if (data.message.display_time || data.message.created_at) {
+                        const serverTime = data.message.display_time || new Date(data.message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const timestampElement = messageElement.querySelector('.message-time');
+                        if (timestampElement) {
+                            timestampElement.textContent = serverTime;
+                        }
                     }
                     messageElement.setAttribute('data-confirmed', 'true');
                     messageElement.removeAttribute('data-temp-id');
