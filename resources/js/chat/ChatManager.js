@@ -312,18 +312,30 @@ export class ChatManager {
         const setupMessageListener = () => {
             try {
                 const channelName = `trade-${this.tradeId}`;
+                console.log('📡 Setting up listener for channel:', channelName);
+                console.log('📡 Echo available:', !!this.echo);
+                console.log('📡 Pusher connector:', !!this.echo.connector?.pusher);
+
                 const channel = this.echo.channel(channelName);
 
-                console.log('📡 Setting up listener for channel:', channelName);
+                // Verify channel was created
+                if (!channel) {
+                    throw new Error('Failed to create channel');
+                }
+
+                console.log('📡 Channel created:', channelName);
 
                 // Set up the listener - Echo will handle subscription automatically for public channels
                 channel.listen('new-message', (data) => {
                     console.log('📨 Received new message via Pusher:', data);
+                    console.log('📨 Message data:', JSON.stringify(data, null, 2));
 
                     // Only add if it's not from the current user (to avoid duplicates)
                     if (data.message.sender_id !== this.userId) {
+                        console.log('📨 Adding message from other user:', data.message.sender_id, 'vs current:', this.userId);
                         this.addMessage(data.message, data.sender_name, data.timestamp, false);
                     } else {
+                        console.log('📨 Message from current user, updating timestamp if needed');
                         // For our own messages, just update the timestamp if needed
                         const existingMessage = document.querySelector('[data-confirmed="true"]');
                         if (existingMessage) {
@@ -340,14 +352,17 @@ export class ChatManager {
                     const pusherChannel = this.echo.connector?.pusher?.channels?.channels?.[channelName];
                     if (pusherChannel) {
                         console.log('✅ Channel subscription confirmed:', channelName);
+                        console.log('✅ Channel state:', pusherChannel.subscribed ? 'subscribed' : 'not subscribed');
                     } else {
                         console.warn('⚠️ Channel subscription not confirmed yet:', channelName);
+                        console.warn('⚠️ Available channels:', Object.keys(this.echo.connector?.pusher?.channels?.channels || {}));
                     }
                 }, 1000);
 
                 console.log('✅ Pusher message listener set up successfully');
             } catch (error) {
                 console.error('❌ Error setting up Echo listener:', error);
+                console.error('❌ Error stack:', error.stack);
                 // Fallback to polling if Echo listener setup fails
                 if (!this.messagePollingInterval) {
                     this.startSmartMessagePolling();
