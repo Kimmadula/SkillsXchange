@@ -183,7 +183,7 @@
             <div id="detailGradeSection" style="display: none;">
                 <div class="detail-row">
                     <div class="detail-group">
-                        <label class="detail-label">Grade</label>
+                        <label class="detail-label">Status</label>
                         <div class="detail-value" id="detailGrade"></div>
                     </div>
                     <div class="detail-group">
@@ -228,19 +228,30 @@
                 <input type="hidden" id="gradeTaskId" name="task_id">
                 
                 <div class="form-group" style="margin-bottom: 20px;">
-                    <label for="gradeScore" style="display: block; margin-bottom: 8px; font-weight: 600;">Score (0-100)</label>
+                    <label for="gradeScore" style="display: block; margin-bottom: 8px; font-weight: 600;">Score (0-<span id="maxScoreDisplay">100</span>)</label>
                     <input type="number" id="gradeScore" name="score_percentage" min="0" max="100" required 
                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;"
                            onchange="updateStatusDisplay()">
-                    <small style="color: #6b7280; display: block; margin-top: 4px;">Enter a score from 0 to 100</small>
+                    <small style="color: #6b7280; display: block; margin-top: 4px;">Enter a score from 0 to <span id="maxScoreDisplay2">100</span></small>
                 </div>
                 
                 <div class="form-group" style="margin-bottom: 20px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Status</label>
-                    <div id="statusBadge" style="padding: 10px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 16px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Status Preview</label>
+                    <div id="statusBadge" style="padding: 12px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 18px; border: 2px solid #ddd;">
                         <span id="statusText">-</span>
                     </div>
-                    <small style="color: #6b7280; display: block; margin-top: 4px;">Status is automatically determined: Pass (≥70) or Fail (<70)</small>
+                    <small style="color: #6b7280; display: block; margin-top: 4px;">Status is automatically determined: Pass (≥70%) or Fail (<70%)</small>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label for="gradeStatus" style="display: block; margin-bottom: 8px; font-weight: 600;">Final Status</label>
+                    <select id="gradeStatus" name="status" required 
+                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;"
+                            onchange="updateStatusDisplay()">
+                        <option value="pass">Pass</option>
+                        <option value="fail">Fail</option>
+                    </select>
+                    <small style="color: #6b7280; display: block; margin-top: 4px;">You can override the auto-determined status if needed</small>
                 </div>
                 
                 <div class="form-group" style="margin-bottom: 20px;">
@@ -331,14 +342,16 @@ function showTaskDetails(taskId) {
                 '<span style="color: #6b7280;">✗ No</span>';
             document.getElementById('detailCreatedAt').textContent = task.created_at ? new Date(task.created_at).toLocaleString() : 'Unknown';
             
-            // Show grade and checked date if graded
+            // Show status and checked date if graded
             const gradeSection = document.getElementById('detailGradeSection');
             if (task.evaluation && task.evaluation.has_been_graded) {
                 gradeSection.style.display = 'block';
                 const gradeEl = document.getElementById('detailGrade');
-                const grade = task.evaluation.grade || 'N/A';
+                const status = task.evaluation.status || 'N/A';
+                const statusText = status === 'pass' ? 'Pass' : status === 'fail' ? 'Fail' : 'Needs Improvement';
+                const statusColor = status === 'pass' ? '#10b981' : status === 'fail' ? '#ef4444' : '#f59e0b';
                 const score = task.evaluation.score_percentage || 0;
-                gradeEl.innerHTML = `<span style="font-size: 20px; font-weight: bold; color: #3b82f6;">${grade}</span> <span style="color: #6b7280; margin-left: 8px;">(${score}%)</span>`;
+                gradeEl.innerHTML = `<span style="font-size: 20px; font-weight: bold; color: ${statusColor};">${statusText}</span> <span style="color: #6b7280; margin-left: 8px;">(${score}%)</span>`;
                 
                 const checkedAtEl = document.getElementById('detailCheckedAt');
                 if (task.evaluation.checked_at) {
@@ -469,27 +482,50 @@ function viewPartnerWork(taskId) {
             
             submission.file_paths.forEach((filePath, index) => {
                 const fileName = filePath.split('/').pop();
-                const fileUrl = `/storage/${filePath}`;
-                content += `
-                    <a href="${fileUrl}" target="_blank" style="display: inline-flex; align-items: center; padding: 8px 12px; background: #eff6ff; border-radius: 4px; text-decoration: none; color: #3b82f6;">
-                        <i class="fas fa-file" style="margin-right: 8px;"></i>${fileName}
-                        <i class="fas fa-external-link-alt" style="margin-left: 8px; font-size: 12px;"></i>
-                    </a>
-                `;
+                // Use download route for file access
+                const fileUrl = `/submissions/${submission.id}/files/${index}`;
+                const viewUrl = submission.file_view_urls && submission.file_view_urls[index] ? submission.file_view_urls[index] : fileUrl;
+                const isImage = fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                const isVideo = fileName.match(/\.(mp4|webm|ogg)$/i);
+                
+                if (isImage) {
+                    // For images, show preview with download option
+                    content += `
+                        <div style="margin-bottom: 8px;">
+                            <a href="${viewUrl}" target="_blank" style="display: inline-flex; align-items: center; padding: 8px 12px; background: #eff6ff; border-radius: 4px; text-decoration: none; color: #3b82f6; margin-right: 8px;">
+                                <i class="fas fa-image" style="margin-right: 8px;"></i>${fileName}
+                                <i class="fas fa-external-link-alt" style="margin-left: 8px; font-size: 12px;"></i>
+                            </a>
+                            <a href="${fileUrl}" download style="display: inline-flex; align-items: center; padding: 8px 12px; background: #10b981; border-radius: 4px; text-decoration: none; color: white;">
+                                <i class="fas fa-download" style="margin-right: 4px;"></i>Download
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    // For other files, show download link
+                    content += `
+                        <a href="${fileUrl}" download style="display: inline-flex; align-items: center; padding: 8px 12px; background: #eff6ff; border-radius: 4px; text-decoration: none; color: #3b82f6;">
+                            <i class="fas fa-file" style="margin-right: 8px;"></i>${fileName}
+                            <i class="fas fa-download" style="margin-left: 8px; font-size: 12px;"></i>
+                        </a>
+                    `;
+                }
             });
             
             content += `</div></div>`;
         }
         
-        // Show existing grade if already graded
+        // Show existing evaluation if already graded
         if (evaluation && evaluation.has_been_graded) {
+            const statusColor = evaluation.status === 'pass' ? '#10b981' : evaluation.status === 'fail' ? '#ef4444' : '#f59e0b';
+            const statusText = evaluation.status === 'pass' ? 'Pass' : evaluation.status === 'fail' ? 'Fail' : 'Needs Improvement';
             content += `
-                <div style="margin-top: 20px; padding: 16px; background: #f0f9ff; border-radius: 4px; border-left: 4px solid #3b82f6;">
-                    <h5 style="margin-bottom: 12px; color: #1e40af;">Current Grade</h5>
+                <div style="margin-top: 20px; padding: 16px; background: #f0f9ff; border-radius: 4px; border-left: 4px solid ${statusColor};">
+                    <h5 style="margin-bottom: 12px; color: #1e40af;">Current Evaluation</h5>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
                         <div>
-                            <label style="font-weight: 600; display: block; margin-bottom: 4px; color: #6b7280;">Grade:</label>
-                            <div style="font-size: 24px; font-weight: bold; color: #3b82f6;">${evaluation.grade || 'N/A'}</div>
+                            <label style="font-weight: 600; display: block; margin-bottom: 4px; color: #6b7280;">Status:</label>
+                            <div style="font-size: 20px; font-weight: bold; color: ${statusColor};">${statusText}</div>
                         </div>
                         <div>
                             <label style="font-weight: 600; display: block; margin-bottom: 4px; color: #6b7280;">Score:</label>
@@ -597,22 +633,25 @@ function openGradeTaskModal(taskId, isEdit = false) {
                 const eval = task.evaluation;
                 // Use score_percentage directly (0-100)
                 document.getElementById('gradeScore').value = eval.score_percentage || '';
+                document.getElementById('gradeStatus').value = eval.status || 'pass';
                 document.getElementById('gradeFeedback').value = eval.feedback || '';
+                document.getElementById('gradeImprovementNotes').value = eval.improvement_notes || '';
                 updateStatusDisplay();
                 
                 // Update modal title and button
-                document.querySelector('#gradeTaskModal .modal-title').textContent = 'Edit Grade';
-                document.getElementById('submitGradeBtn').innerHTML = '<i class="fas fa-save" style="margin-right: 4px;"></i>Update Grade';
+                document.querySelector('#gradeTaskModal .modal-title').textContent = 'Edit Evaluation';
+                document.getElementById('submitGradeBtn').innerHTML = '<i class="fas fa-save" style="margin-right: 4px;"></i>Update Evaluation';
             } else {
-                // Reset form for new grade
+                // Reset form for new evaluation
                 document.getElementById('gradeTaskForm').reset();
                 document.getElementById('gradeTaskId').value = taskId;
                 document.getElementById('gradeScore').value = '';
                 document.getElementById('statusText').textContent = '-';
-                document.getElementById('statusBadge').style.background = '#f3f4f6';
+                document.getElementById('statusBadge').style.backgroundColor = '#f3f4f6';
                 document.getElementById('statusBadge').style.color = '#6b7280';
-                document.querySelector('#gradeTaskModal .modal-title').textContent = 'Grade Task';
-                document.getElementById('submitGradeBtn').innerHTML = '<i class="fas fa-check" style="margin-right: 4px;"></i>Submit Grade';
+                document.getElementById('statusBadge').style.border = '2px solid #ddd';
+                document.querySelector('#gradeTaskModal .modal-title').textContent = 'Evaluate Task';
+                document.getElementById('submitGradeBtn').innerHTML = '<i class="fas fa-check" style="margin-right: 4px;"></i>Submit Evaluation';
             }
         
         // Show modal
@@ -633,26 +672,38 @@ function closeGradeTaskModal(event) {
 
 function updateStatusDisplay() {
     const score = parseInt(document.getElementById('gradeScore').value) || 0;
+    const maxScore = currentGradingMaxScore;
+    const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+    const statusSelect = document.getElementById('gradeStatus');
     const statusBadge = document.getElementById('statusBadge');
     const statusText = document.getElementById('statusText');
     
     if (score === 0 || !document.getElementById('gradeScore').value) {
         statusText.textContent = '-';
-        statusBadge.style.background = '#f3f4f6';
+        statusBadge.style.backgroundColor = '#f3f4f6';
         statusBadge.style.color = '#6b7280';
+        statusBadge.style.border = '2px solid #ddd';
         return;
     }
     
-    // Auto-determine status: >= 70 = Pass, < 70 = Fail
-    if (score >= 70) {
-        statusText.textContent = 'Pass';
-        statusBadge.style.background = '#10b981';
-        statusBadge.style.color = '#ffffff';
+    // Auto-update status based on score
+    const passingPercentage = window.currentGradingPassingPercentage || 70;
+    if (percentage >= passingPercentage) {
+        statusSelect.value = 'pass';
     } else {
-        statusText.textContent = 'Fail';
-        statusBadge.style.background = '#ef4444';
-        statusBadge.style.color = '#ffffff';
+        statusSelect.value = 'fail';
     }
+    
+    // Update status badge display
+    const status = statusSelect.value;
+    const statusDisplay = status === 'pass' ? 'Pass' : 'Fail';
+    const statusColor = status === 'pass' ? '#10b981' : '#ef4444';
+    const bgColor = status === 'pass' ? '#d1fae5' : '#fee2e2';
+    
+    statusText.textContent = statusDisplay;
+    statusBadge.style.backgroundColor = bgColor;
+    statusBadge.style.color = statusColor;
+    statusBadge.style.border = `2px solid ${statusColor}`;
 }
 
 function submitGrade() {

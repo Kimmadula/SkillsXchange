@@ -789,11 +789,14 @@ class TaskController extends Controller
         }
 
         $filePath = $filePaths[$fileIndex];
-        if (!Storage::exists($filePath)) {
+        
+        // Check if file exists in public storage
+        if (!Storage::disk('public')->exists($filePath)) {
             abort(404, 'File not found on storage.');
         }
 
-        return Storage::download($filePath);
+        $fullPath = storage_path('app/public/' . $filePath);
+        return response()->download($fullPath);
     }
 
     /**
@@ -837,6 +840,12 @@ class TaskController extends Controller
                     'submitter_name' => $submission->submitter->firstname . ' ' . $submission->submitter->lastname,
                     'submission_notes' => $submission->submission_notes,
                     'file_paths' => $submission->file_paths,
+                    'file_urls' => array_map(function($path) use ($submission) {
+                        return route('submissions.download', ['submission' => $submission->id, 'fileIndex' => array_search($path, $submission->file_paths)]);
+                    }, $submission->file_paths),
+                    'file_view_urls' => array_map(function($path) {
+                        return Storage::url($path);
+                    }, $submission->file_paths),
                     'created_at' => $submission->created_at->toISOString()
                 ],
                 'evaluation' => $evaluation ? [
