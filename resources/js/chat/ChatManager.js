@@ -237,11 +237,11 @@ export class ChatManager {
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         window.tempImageData = e.target.result;
-                        this.addMessage(messageText, currentUserName, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), true);
+                        this.addMessage(messageText, currentUserName, new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true}), true);
                     };
                     reader.readAsDataURL(file);
                 } else {
-                    this.addMessage(messageText, currentUserName, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), true);
+                    this.addMessage(messageText, currentUserName, new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true}), true);
                 }
 
                 // Clear input if needed
@@ -281,6 +281,12 @@ export class ChatManager {
         if (this.echo.connector?.pusher?.connection) {
             this.echo.connector.pusher.connection.bind('connected', () => {
                 console.log('✅ Pusher connected - real-time messaging enabled');
+                // Stop polling when Pusher successfully connects
+                if (this.messagePollingInterval) {
+                    clearInterval(this.messagePollingInterval);
+                    this.messagePollingInterval = null;
+                    console.log('🔄 Stopped polling - Pusher is now connected');
+                }
                 this.updateConnectionStatus('connected');
             });
 
@@ -347,12 +353,12 @@ export class ChatManager {
                 if (data.message) {
                     // Standard structure from broadcastWith()
                     messageData = data.message;
-                    senderName = data.sender_name || (messageData.sender?.firstname + ' ' + messageData.sender?.lastname);
+                    senderName = data.sender_name || (messageData.sender ? `${messageData.sender.firstname || ''} ${messageData.sender.lastname || ''}`.trim() : '');
                     timestamp = data.timestamp || (messageData.created_at ? new Date(messageData.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '');
                 } else if (data.id) {
                     // Direct message object structure
                     messageData = data;
-                    senderName = data.sender_name || (data.sender?.firstname + ' ' + data.sender?.lastname);
+                    senderName = data.sender_name || (data.sender ? `${data.sender.firstname || ''} ${data.sender.lastname || ''}`.trim() : '');
                     timestamp = data.timestamp || (data.created_at ? new Date(data.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '');
                 } else {
                     console.error('❌ Invalid message data structure:', data);
@@ -416,11 +422,17 @@ export class ChatManager {
     setupPollingFallback() {
         // Only start polling if Echo is not available
         // This is a fallback - real-time WebSocket is preferred
+        // Don't start polling if Echo exists (even if still connecting) - let Pusher connection handlers manage polling
         if (!this.echo) {
             console.log('🔄 Laravel Echo not available, starting smart message polling fallback...');
             this.startSmartMessagePolling();
         } else {
-            console.log('✅ Using Pusher for real-time messages - no polling needed');
+            console.log('✅ Using Pusher for real-time messages - polling will only start if Pusher fails');
+            // Ensure polling is stopped if Echo exists (Pusher will handle fallback if needed)
+            if (this.messagePollingInterval) {
+                clearInterval(this.messagePollingInterval);
+                this.messagePollingInterval = null;
+            }
         }
     }
 
@@ -443,7 +455,7 @@ export class ChatManager {
         // Add message to UI immediately (optimistic update)
         const tempId = 'temp_' + Date.now();
         const currentUserName = document.querySelector('[data-user-name]')?.getAttribute('data-user-name') || 'You';
-        this.addMessage(message, currentUserName, new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), true, tempId);
+        this.addMessage(message, currentUserName, new Date().toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit', hour12: true}), true, tempId);
 
         // Clear input
         if (this.messageInput) {
@@ -487,7 +499,7 @@ export class ChatManager {
                     }
                     // Update timestamp
                     if (data.message.display_time || data.message.created_at) {
-                        const serverTime = data.message.display_time || new Date(data.message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const serverTime = data.message.display_time || new Date(data.message.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
                         const timestampElement = messageElement.querySelector('.message-time');
                         if (timestampElement) {
                             timestampElement.textContent = serverTime;
@@ -567,7 +579,7 @@ export class ChatManager {
                     minute: '2-digit',
                     hour12: true
                 });
-            } catch (e) {
+            } catch {
                 // Fallback to current time if parsing fails
                 messageTime = new Date().toLocaleTimeString('en-US', {
                     hour: 'numeric',
@@ -576,16 +588,30 @@ export class ChatManager {
                 });
             }
         } else if (timestamp) {
-            // Use provided timestamp (should be ISO string)
-            try {
-                const date = new Date(timestamp);
-                messageTime = date.toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                });
-            } catch (e) {
-                messageTime = timestamp; // Fallback to raw timestamp
+            // Use provided timestamp - could be ISO string or already formatted string
+            // Check if it's already a formatted time string (contains AM/PM or matches time pattern)
+            if (typeof timestamp === 'string' && (timestamp.match(/\d{1,2}:\d{2}\s?(AM|PM)/i) || timestamp.match(/^\d{1,2}:\d{2}$/))) {
+                // Already formatted, use as-is
+                messageTime = timestamp;
+            } else {
+                // Try to parse as ISO date string
+                try {
+                    const date = new Date(timestamp);
+                    // Check if date is valid
+                    if (!isNaN(date.getTime())) {
+                        messageTime = date.toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                        });
+                    } else {
+                        // Invalid date, use timestamp as-is
+                        messageTime = timestamp;
+                    }
+                } catch {
+                    // Parsing failed, use timestamp as-is
+                    messageTime = timestamp;
+                }
             }
         } else {
             // Last resort - current time
@@ -603,10 +629,12 @@ export class ChatManager {
             const match = messageText.match(/\[IMAGE:(.+?)(?:\|(.+?))?\]/);
             const fileName = match?.[1] || 'image';
             const fileUrl = match?.[2] || window.tempImageData || '#';
+            const escapedFileUrl = fileUrl.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const escapedFileUrlForJs = fileUrl.replace(/'/g, "\\'");
             messageContent = `
                 <div class="message-bubble">
                     <div class="message-text">
-                        <img src="${fileUrl}" alt="${fileName}" class="chat-image" onerror="this.style.display='none'" style="max-width: 200px; border-radius: 8px; cursor: pointer;" onclick="window.open('${fileUrl}', '_blank')">
+                        <img src="${escapedFileUrl}" alt="${this.escapeHtml(fileName)}" class="chat-image" onerror="this.style.display='none'" style="max-width: 200px; border-radius: 8px; cursor: pointer;" onclick="window.open('${escapedFileUrlForJs}', '_blank')">
                         <div style="font-size: 0.75rem; opacity: 0.8; margin-top: 4px;">${this.escapeHtml(fileName)}</div>
                     </div>
                     <div class="message-time">${messageTime}</div>
@@ -672,9 +700,10 @@ export class ChatManager {
         const messageElement = document.querySelector(`[data-temp-id="${tempId}"]`);
         if (!messageElement) return;
 
-        const time = new Date(message.created_at).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit'
+        const time = new Date(message.created_at).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
         });
 
         const messageText = message.message;
@@ -853,7 +882,7 @@ export class ChatManager {
                                 const senderName = msg.sender ?
                                     `${msg.sender.firstname} ${msg.sender.lastname}` :
                                     this.partnerName;
-                                const timestamp = msg.display_time || (msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
+                                const timestamp = msg.display_time || (msg.created_at ? new Date(msg.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : '');
                                 this.addMessage(msg, senderName, timestamp, false);
                             }
                         } else {
