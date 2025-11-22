@@ -479,9 +479,9 @@ export class TaskManager {
             statusBadge = `<span class="task-tag tag-status">${statusText}</span>`;
         }
 
-        // Edit/Delete buttons for creators
+        // Edit/Delete buttons for creators (only if no submissions exist)
         let actionButtons = '';
-        if (isCreatedByMe) {
+        if (isCreatedByMe && !task.has_submission) {
             actionButtons = `
                 <div class="task-actions" style="display:flex; gap:6px; margin-left:auto;" onclick="event.stopPropagation()">
                     <button onclick="editTask(${task.id})" title="Edit Task"

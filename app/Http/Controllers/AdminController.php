@@ -1502,17 +1502,20 @@ class AdminController extends Controller
     }
 
     /**
-     * Approve a user (AJAX endpoint)
+     * Approve a user (handles both AJAX and regular requests)
      */
     public function approveUser(User $user)
     {
         try {
             // Prevent admins from being modified
             if ($user->role === 'admin') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot modify admin users.'
-                ], 403);
+                if (request()->ajax() || request()->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cannot modify admin users.'
+                    ], 403);
+                }
+                return redirect()->back()->with('error', 'Cannot modify admin users.');
             }
 
             $user->is_verified = true;
@@ -1524,16 +1527,22 @@ class AdminController extends Controller
                 'user_id' => $user->id
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => "User {$user->name} has been approved successfully.",
-                'user' => [
-                    'id' => $user->id,
-                    'is_verified' => $user->is_verified,
-                    'name' => $user->name,
-                    'email' => $user->email
-                ]
-            ]);
+            // Return JSON for AJAX requests
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "User {$user->name} has been approved successfully.",
+                    'user' => [
+                        'id' => $user->id,
+                        'is_verified' => $user->is_verified,
+                        'name' => $user->name,
+                        'email' => $user->email
+                    ]
+                ]);
+            }
+
+            // Redirect for regular form submissions
+            return redirect()->route('admin.users.show', $user)->with('success', "User {$user->name} has been approved successfully.");
 
         } catch (\Exception $e) {
             Log::error('Error approving user', [
@@ -1542,25 +1551,32 @@ class AdminController extends Controller
                 'admin_user' => auth()->user()->email
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred while approving the user.'
-            ], 500);
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An error occurred while approving the user.'
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'An error occurred while approving the user.');
         }
     }
 
     /**
-     * Deny/Revoke user verification (AJAX endpoint)
+     * Deny/Revoke user verification (handles both AJAX and regular requests)
      */
     public function denyUser(User $user)
     {
         try {
             // Prevent admins from being modified
             if ($user->role === 'admin') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot modify admin users.'
-                ], 403);
+                if (request()->ajax() || request()->wantsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cannot modify admin users.'
+                    ], 403);
+                }
+                return redirect()->back()->with('error', 'Cannot modify admin users.');
             }
 
             $wasVerified = $user->is_verified;
@@ -1577,16 +1593,22 @@ class AdminController extends Controller
                 'was_verified' => $wasVerified
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => "{$actionPast} for user {$user->name}.",
-                'user' => [
-                    'id' => $user->id,
-                    'is_verified' => $user->is_verified,
-                    'name' => $user->name,
-                    'email' => $user->email
-                ]
-            ]);
+            // Return JSON for AJAX requests
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "{$actionPast} for user {$user->name}.",
+                    'user' => [
+                        'id' => $user->id,
+                        'is_verified' => $user->is_verified,
+                        'name' => $user->name,
+                        'email' => $user->email
+                    ]
+                ]);
+            }
+
+            // Redirect for regular form submissions
+            return redirect()->route('admin.users.show', $user)->with('success', "{$actionPast} for user {$user->name}.");
 
         } catch (\Exception $e) {
             Log::error('Error denying/revoking user', [
@@ -1595,10 +1617,14 @@ class AdminController extends Controller
                 'admin_user' => auth()->user()->email
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred while processing the request.'
-            ], 500);
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An error occurred while processing the request.'
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'An error occurred while processing the request.');
         }
     }
 

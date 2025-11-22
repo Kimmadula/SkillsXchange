@@ -174,6 +174,7 @@
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         @if($task->created_by === Auth::id())
+                                        @if(!$task->submissions()->exists())
                                         <a href="{{ route('tasks.edit', $task) }}"
                                             class="btn btn-sm btn-outline-secondary">
                                             <i class="fas fa-edit"></i>
@@ -187,6 +188,7 @@
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
+                                        @endif
                                         @endif
                                     </div>
                                 </div>

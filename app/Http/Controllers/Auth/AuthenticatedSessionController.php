@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Providers\RouteServiceProvider;
+use App\Services\SessionReminderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -67,6 +68,15 @@ class AuthenticatedSessionController extends Controller
         }
 
         $request->session()->regenerate();
+
+        // Check for session reminders on login
+        try {
+            $reminderService = new SessionReminderService();
+            $reminderService->checkAndCreateReminders();
+        } catch (\Exception $e) {
+            // Log error but don't block login
+            \Log::error('Session reminder check failed on login: ' . $e->getMessage());
+        }
 
         // For regular users, redirect to dashboard
         return redirect()->route('dashboard');

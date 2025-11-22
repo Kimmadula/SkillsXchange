@@ -115,8 +115,8 @@ class ChatController extends Controller
         $messages = $trade->messages()->with('sender')->orderBy('created_at', 'asc')->get();
 
         // Get tasks
-        $myTasks = $trade->tasks()->where('assigned_to', $user->id)->get();
-        $partnerTasks = $trade->tasks()->where('assigned_to', $partner->id)->get();
+        $myTasks = $trade->tasks()->where('assigned_to', $user->id)->with('submissions')->get();
+        $partnerTasks = $trade->tasks()->where('assigned_to', $partner->id)->with('submissions')->get();
 
         // Calculate progress
         $myProgress = $myTasks->count() > 0 ? ($myTasks->where('completed', true)->count() / $myTasks->count()) * 100 : 0;
@@ -518,15 +518,16 @@ class ChatController extends Controller
 
             $skillLearningService = new SkillLearningService();
 
-            // Check if trade is ready for skill learning processing
+            // Check if trade is ready for completion (all tasks evaluated)
+            // Note: Users can end session even if tasks don't pass, but skills won't be awarded
             if (!$skillLearningService->isTradeReadyForSkillLearning($trade)) {
                 return response()->json([
-                    'error' => 'Session is not ready for completion. Please ensure all tasks are completed.',
+                    'error' => 'Session is not ready for completion. Please ensure all tasks are evaluated.',
                     'ready_for_processing' => false
                 ], 400);
             }
 
-            // Process skill learning
+            // Process skill learning (will only award skills if all tasks passed)
             $results = $skillLearningService->processSkillLearning($trade);
 
             // Update trade status to closed

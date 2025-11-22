@@ -189,7 +189,9 @@ class TradeTask extends Model
 
     public function canBeSubmitted()
     {
-        return in_array($this->current_status, ['assigned', 'in_progress']) && $this->requires_submission;
+        // Allow submission if task is assigned/in_progress, or if already submitted (for resubmission)
+        // Partners can edit/resubmit their work even after submission
+        return in_array($this->current_status, ['assigned', 'in_progress', 'submitted', 'evaluated']) && $this->requires_submission;
     }
 
     public function canBeEvaluated()

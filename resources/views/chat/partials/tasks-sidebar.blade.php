@@ -48,7 +48,7 @@
                                     @endif
                                 </div>
                             </div>
-                            @if(Auth::id() === $task->created_by)
+                            @if(Auth::id() === $task->created_by && !$task->submissions()->exists())
                                 <div class="task-actions" style="display:flex; gap:6px; margin-left:auto;" onclick="event.stopPropagation()">
                                     <button onclick="editTask({{ $task->id }})" title="Edit Task"
                                             style="background:#3b82f6;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:.75rem;cursor:pointer;">
@@ -104,7 +104,7 @@
                                     @endif
                                 </div>
                             </div>
-                            @if(Auth::id() === $task->created_by)
+                            @if(Auth::id() === $task->created_by && !$task->submissions()->exists())
                                 <div class="task-actions" style="display:flex; gap:6px; margin-left:auto;" onclick="event.stopPropagation()">
                                     <button onclick="editTask({{ $task->id }})" title="Edit Task"
                                             style="background:#3b82f6;color:#fff;border:none;border-radius:4px;padding:4px 8px;font-size:.75rem;cursor:pointer;">
@@ -244,14 +244,11 @@
                 </div>
                 
                 <div class="form-group" style="margin-bottom: 20px;">
-                    <label for="gradeStatus" style="display: block; margin-bottom: 8px; font-weight: 600;">Final Status</label>
-                    <select id="gradeStatus" name="status" required 
-                            style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;"
-                            onchange="updateStatusDisplay()">
-                        <option value="pass">Pass</option>
-                        <option value="fail">Fail</option>
-                    </select>
-                    <small style="color: #6b7280; display: block; margin-top: 4px;">You can override the auto-determined status if needed</small>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Final Status</label>
+                    <div id="finalStatusBadge" style="padding: 12px; border-radius: 4px; text-align: center; font-weight: 600; font-size: 18px; border: 2px solid #ddd; background-color: #f3f4f6; color: #6b7280;">
+                        <span id="finalStatusText">-</span>
+                    </div>
+                    <small style="color: #6b7280; display: block; margin-top: 4px;">Status is automatically determined: Pass (≥70) or Fail (<70)</small>
                 </div>
                 
                 <div class="form-group" style="margin-bottom: 20px;">
@@ -367,8 +364,8 @@ function showTaskDetails(taskId) {
             const footer = document.getElementById('taskDetailsModalFooter');
             let footerHtml = '';
             
-            // Check if user can grade this task (creator viewing submitted work)
-            if (task.can_be_graded && task.has_submission) {
+            // Check if user can view submission (creator viewing submitted work - available even after grading)
+            if (task.can_view_submission) {
                 footerHtml = `
                     <button class="modal-btn btn-info" onclick="viewPartnerWork(${task.id})" style="margin-right: 8px;">
                         <i class="fas fa-eye" style="margin-right: 4px;"></i>View Work
@@ -633,9 +630,7 @@ function openGradeTaskModal(taskId, isEdit = false) {
                 const eval = task.evaluation;
                 // Use score_percentage directly (0-100)
                 document.getElementById('gradeScore').value = eval.score_percentage || '';
-                document.getElementById('gradeStatus').value = eval.status || 'pass';
                 document.getElementById('gradeFeedback').value = eval.feedback || '';
-                document.getElementById('gradeImprovementNotes').value = eval.improvement_notes || '';
                 updateStatusDisplay();
                 
                 // Update modal title and button
@@ -646,10 +641,26 @@ function openGradeTaskModal(taskId, isEdit = false) {
                 document.getElementById('gradeTaskForm').reset();
                 document.getElementById('gradeTaskId').value = taskId;
                 document.getElementById('gradeScore').value = '';
-                document.getElementById('statusText').textContent = '-';
-                document.getElementById('statusBadge').style.backgroundColor = '#f3f4f6';
-                document.getElementById('statusBadge').style.color = '#6b7280';
-                document.getElementById('statusBadge').style.border = '2px solid #ddd';
+                
+                // Reset status displays
+                const statusText = document.getElementById('statusText');
+                const statusBadge = document.getElementById('statusBadge');
+                const finalStatusText = document.getElementById('finalStatusText');
+                const finalStatusBadge = document.getElementById('finalStatusBadge');
+                
+                if (statusText) statusText.textContent = '-';
+                if (statusBadge) {
+                    statusBadge.style.backgroundColor = '#f3f4f6';
+                    statusBadge.style.color = '#6b7280';
+                    statusBadge.style.border = '2px solid #ddd';
+                }
+                if (finalStatusText) finalStatusText.textContent = '-';
+                if (finalStatusBadge) {
+                    finalStatusBadge.style.backgroundColor = '#f3f4f6';
+                    finalStatusBadge.style.color = '#6b7280';
+                    finalStatusBadge.style.border = '2px solid #ddd';
+                }
+                
                 document.querySelector('#gradeTaskModal .modal-title').textContent = 'Evaluate Task';
                 document.getElementById('submitGradeBtn').innerHTML = '<i class="fas fa-check" style="margin-right: 4px;"></i>Submit Evaluation';
             }
@@ -672,38 +683,46 @@ function closeGradeTaskModal(event) {
 
 function updateStatusDisplay() {
     const score = parseInt(document.getElementById('gradeScore').value) || 0;
-    const maxScore = currentGradingMaxScore;
-    const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-    const statusSelect = document.getElementById('gradeStatus');
     const statusBadge = document.getElementById('statusBadge');
     const statusText = document.getElementById('statusText');
+    const finalStatusBadge = document.getElementById('finalStatusBadge');
+    const finalStatusText = document.getElementById('finalStatusText');
+    
+    // Check if elements exist
+    if (!statusBadge || !statusText || !finalStatusBadge || !finalStatusText) {
+        return;
+    }
     
     if (score === 0 || !document.getElementById('gradeScore').value) {
         statusText.textContent = '-';
         statusBadge.style.backgroundColor = '#f3f4f6';
         statusBadge.style.color = '#6b7280';
         statusBadge.style.border = '2px solid #ddd';
+        
+        finalStatusText.textContent = '-';
+        finalStatusBadge.style.backgroundColor = '#f3f4f6';
+        finalStatusBadge.style.color = '#6b7280';
+        finalStatusBadge.style.border = '2px solid #ddd';
         return;
     }
     
-    // Auto-update status based on score
-    const passingPercentage = window.currentGradingPassingPercentage || 70;
-    if (percentage >= passingPercentage) {
-        statusSelect.value = 'pass';
-    } else {
-        statusSelect.value = 'fail';
-    }
-    
-    // Update status badge display
-    const status = statusSelect.value;
+    // Auto-determine status: >= 70 = Pass, < 70 = Fail
+    const status = score >= 70 ? 'pass' : 'fail';
     const statusDisplay = status === 'pass' ? 'Pass' : 'Fail';
     const statusColor = status === 'pass' ? '#10b981' : '#ef4444';
     const bgColor = status === 'pass' ? '#d1fae5' : '#fee2e2';
     
+    // Update Status Preview badge
     statusText.textContent = statusDisplay;
     statusBadge.style.backgroundColor = bgColor;
     statusBadge.style.color = statusColor;
     statusBadge.style.border = `2px solid ${statusColor}`;
+    
+    // Update Final Status badge (same values)
+    finalStatusText.textContent = statusDisplay;
+    finalStatusBadge.style.backgroundColor = bgColor;
+    finalStatusBadge.style.color = statusColor;
+    finalStatusBadge.style.border = `2px solid ${statusColor}`;
 }
 
 function submitGrade() {

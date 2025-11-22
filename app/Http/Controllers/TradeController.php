@@ -137,8 +137,12 @@ class TradeController extends Controller
         }
 
         // Get all user's open trades for filtering (check before requiring)
+        // Exclude trades that have accepted requests (they're no longer available for matching)
         $userOpenTrades = Trade::where('user_id', $user->id)
             ->where('status', 'open')
+            ->whereDoesntHave('requests', function($query) {
+                $query->where('status', 'accepted');
+            })
             ->with(['offeringSkill', 'lookingSkill'])
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
@@ -154,9 +158,13 @@ class TradeController extends Controller
         }
 
         // Get all open trades from other users
+        // Exclude trades that have accepted requests (they're no longer available for matching)
         $trades = Trade::with(['user', 'offeringSkill', 'lookingSkill'])
             ->where('user_id', '!=', $user->id)
             ->where('status', 'open')
+            ->whereDoesntHave('requests', function($query) {
+                $query->where('status', 'accepted');
+            })
             ->get()
             ->map(function($trade) use ($user) {
                 // Check if this trade is compatible with user's skill (and find which user trade matches)

@@ -30,14 +30,17 @@
             <div class="d-flex gap-2">
                 @if($task->created_by === Auth::id())
                     <!-- Task Creator Actions -->
+                    @if(!$task->submissions()->exists())
                     <a href="{{ route('tasks.edit', $task) }}" class="btn btn-outline-primary btn-sm">
                         <i class="fas fa-edit me-1"></i>Edit
                     </a>
+                    @endif
                     @if($task->canBeEvaluated())
                     <a href="{{ route('tasks.evaluate', $task) }}" class="btn btn-success btn-sm">
                         <i class="fas fa-star me-1"></i>Evaluate
                     </a>
                     @endif
+                    @if(!$task->submissions()->exists())
                     <form action="{{ route('tasks.destroy', $task) }}" method="POST" class="d-inline" 
                           onsubmit="return confirm('Are you sure you want to delete this task?')">
                         @csrf
@@ -46,6 +49,7 @@
                             <i class="fas fa-trash me-1"></i>Delete
                         </button>
                     </form>
+                    @endif
                 @elseif($task->assigned_to === Auth::id())
                     <!-- Task Assignee Actions -->
                     @if($task->canBeStarted())
@@ -57,9 +61,15 @@
                     </form>
                     @endif
                     @if($task->canBeSubmitted())
-                    <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#submitModal">
-                        <i class="fas fa-upload me-1"></i>Submit Work
-                    </button>
+                        @if($task->latestSubmission && $task->latestSubmission->submitted_by === Auth::id())
+                        <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#submitModal">
+                            <i class="fas fa-edit me-1"></i>Edit Submission
+                        </button>
+                        @else
+                        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#submitModal">
+                            <i class="fas fa-upload me-1"></i>Submit Work
+                        </button>
+                        @endif
                     @endif
                 @endif
             </div>
@@ -313,16 +323,26 @@
 
 <!-- Submit Work Modal -->
 @if($task->assigned_to === Auth::id() && $task->canBeSubmitted())
+@php
+    $existingSubmission = $task->latestSubmission && $task->latestSubmission->submitted_by === Auth::id() ? $task->latestSubmission : null;
+@endphp
 <div class="modal fade" id="submitModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form action="{{ route('tasks.submit', $task) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title">Submit Your Work</h5>
+                    <h5 class="modal-title">{{ $existingSubmission ? 'Edit Your Submission' : 'Submit Your Work' }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    @if($existingSubmission)
+                    <div class="alert alert-info">
+                        <h6 class="alert-heading"><i class="fas fa-info-circle me-1"></i>Editing Submission</h6>
+                        <p class="mb-0">You can update your submission. Uploading new files will replace the existing ones.</p>
+                    </div>
+                    @endif
+
                     @if($task->submission_instructions)
                     <div class="alert alert-info">
                         <h6 class="alert-heading">Instructions:</h6>
@@ -337,23 +357,41 @@
                     </div>
                     @endif
 
+                    @if($existingSubmission && $existingSubmission->file_paths)
+                    <div class="mb-3">
+                        <label class="form-label">Current Files:</label>
+                        <div class="list-group">
+                            @foreach($existingSubmission->file_paths as $index => $filePath)
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-file me-2"></i>{{ basename($filePath) }}</span>
+                                <a href="{{ route('submissions.download', ['submission' => $existingSubmission->id, 'fileIndex' => $index]) }}" 
+                                   class="btn btn-sm btn-outline-primary" target="_blank">
+                                    <i class="fas fa-download"></i> View
+                                </a>
+                            </div>
+                            @endforeach
+                        </div>
+                        <small class="text-muted">Upload new files to replace these</small>
+                    </div>
+                    @endif
+
                     <div class="mb-3">
                         <label for="submission_notes" class="form-label">Notes (Optional)</label>
                         <textarea name="submission_notes" id="submission_notes" rows="4" 
-                                  class="form-control" placeholder="Add any notes about your submission..."></textarea>
+                                  class="form-control" placeholder="Add any notes about your submission...">{{ $existingSubmission ? $existingSubmission->submission_notes : '' }}</textarea>
                     </div>
 
                     <div class="mb-3">
-                        <label for="files" class="form-label">Upload Files</label>
+                        <label for="files" class="form-label">{{ $existingSubmission ? 'Upload New Files (Optional)' : 'Upload Files' }}</label>
                         <input type="file" name="files[]" id="files" class="form-control" multiple 
                                accept="{{ $task->hasAllowedFileTypes() ? $task->getAcceptAttribute() : '*' }}">
-                        <small class="text-muted">Maximum 10 files, 50MB each</small>
+                        <small class="text-muted">Maximum 10 files, 50MB each{{ $existingSubmission ? '. Leave empty to keep existing files.' : '' }}</small>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-upload me-1"></i>Submit Work
+                    <button type="submit" class="btn {{ $existingSubmission ? 'btn-warning' : 'btn-success' }}">
+                        <i class="fas {{ $existingSubmission ? 'fa-save' : 'fa-upload' }} me-1"></i>{{ $existingSubmission ? 'Update Submission' : 'Submit Work' }}
                     </button>
                 </div>
             </form>

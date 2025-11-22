@@ -47,8 +47,12 @@ class SkillLearningService
             $results['trade_owner_completion_rate'] = $tradeOwnerCompletionRate;
             $results['requester_completion_rate'] = $requesterCompletionRate;
 
+            // Check if all tasks passed for trade owner
+            $tradeOwnerAllPassed = $this->allTasksPassed($trade, $tradeOwner->id);
+            
             // Process skill learning for trade owner (learner of looking_skill)
-            if ($tradeOwnerCompletionRate >= 100) {
+            // Skills can only be acquired if ALL tasks have 'pass' status
+            if ($tradeOwnerAllPassed) {
                 $skillAdded = $this->addSkillToUser($tradeOwner, $trade->looking_skill_id, $trade, $tradeOwnerCompletionRate);
                 $results['trade_owner_skill_added'] = $skillAdded;
                 
@@ -58,11 +62,15 @@ class SkillLearningService
                     $results['messages'][] = "Skill '{$trade->lookingSkill->name}' already exists for {$tradeOwner->firstname} {$tradeOwner->lastname}";
                 }
             } else {
-                $results['messages'][] = "Trade owner completion rate ({$tradeOwnerCompletionRate}%) below 100% - no skill added";
+                $results['messages'][] = "Trade owner did not pass all tasks - no skill added. All tasks must have 'pass' status to acquire skills.";
             }
 
+            // Check if all tasks passed for requester
+            $requesterAllPassed = $this->allTasksPassed($trade, $requester->id);
+            
             // Process skill learning for requester (learner of offering_skill)
-            if ($requesterCompletionRate >= 100) {
+            // Skills can only be acquired if ALL tasks have 'pass' status
+            if ($requesterAllPassed) {
                 $skillAdded = $this->addSkillToUser($requester, $trade->offering_skill_id, $trade, $requesterCompletionRate);
                 $results['requester_skill_added'] = $skillAdded;
                 
@@ -72,7 +80,7 @@ class SkillLearningService
                     $results['messages'][] = "Skill '{$trade->offeringSkill->name}' already exists for {$requester->firstname} {$requester->lastname}";
                 }
             } else {
-                $results['messages'][] = "Requester completion rate ({$requesterCompletionRate}%) below 100% - no skill added";
+                $results['messages'][] = "Requester did not pass all tasks - no skill added. All tasks must have 'pass' status to acquire skills.";
             }
 
             Log::info('Skill learning processed', [
@@ -115,6 +123,40 @@ class SkillLearningService
         $completionRate = ($completedTasks->count() / $userTasks->count()) * 100;
         
         return round($completionRate, 2);
+    }
+
+    /**
+     * Check if all tasks assigned to a user have passed status
+     * 
+     * @param Trade $trade
+     * @param int $userId
+     * @return bool
+     */
+    private function allTasksPassed(Trade $trade, int $userId): bool
+    {
+        // Get all tasks assigned to this user in this trade
+        $userTasks = $trade->tasks()->where('assigned_to', $userId)->get();
+        
+        if ($userTasks->isEmpty()) {
+            return false; // No tasks means can't pass
+        }
+
+        // Check if all tasks have evaluations with 'pass' status
+        foreach ($userTasks as $task) {
+            $evaluation = $task->latestEvaluation;
+            
+            // If task has no evaluation, it hasn't passed
+            if (!$evaluation) {
+                return false;
+            }
+            
+            // If evaluation status is not 'pass', return false
+            if ($evaluation->status !== 'pass') {
+                return false;
+            }
+        }
+        
+        return true; // All tasks have passed
     }
 
     /**
@@ -181,6 +223,7 @@ class SkillLearningService
 
     /**
      * Check if a trade session is ready for skill learning processing
+     * Note: Session can be ended even if tasks don't pass, but skills won't be awarded
      * 
      * @param Trade $trade
      * @return bool
@@ -199,9 +242,10 @@ class SkillLearningService
             return false;
         }
 
-        // Check if all tasks are completed (verification no longer required)
+        // Check if all tasks are completed (evaluated)
+        // Allow session to end even if tasks don't pass
         $incompleteTasks = $trade->tasks()
-            ->where('completed', false)
+            ->whereNotIn('current_status', ['evaluated', 'completed'])
             ->exists();
 
         // If there are incomplete tasks, the session is not ready
@@ -230,6 +274,10 @@ class SkillLearningService
 
         $tradeOwnerCompletionRate = $this->calculateCompletionRate($trade, $tradeOwner->id);
         $requesterCompletionRate = $this->calculateCompletionRate($trade, $requester->id);
+        
+        // Check if all tasks passed for each user
+        $tradeOwnerAllPassed = $this->allTasksPassed($trade, $tradeOwner->id);
+        $requesterAllPassed = $this->allTasksPassed($trade, $requester->id);
 
         $readyForProcessing = $this->isTradeReadyForSkillLearning($trade);
 
@@ -239,13 +287,15 @@ class SkillLearningService
                 'user' => $tradeOwner,
                 'completion_rate' => $tradeOwnerCompletionRate,
                 'skill_to_learn' => $trade->lookingSkill,
-                'will_receive_skill' => $tradeOwnerCompletionRate >= 100
+                'will_receive_skill' => $tradeOwnerAllPassed, // Only if all tasks passed
+                'all_tasks_passed' => $tradeOwnerAllPassed
             ],
             'requester' => [
                 'user' => $requester,
                 'completion_rate' => $requesterCompletionRate,
                 'skill_to_learn' => $trade->offeringSkill,
-                'will_receive_skill' => $requesterCompletionRate >= 100
+                'will_receive_skill' => $requesterAllPassed, // Only if all tasks passed
+                'all_tasks_passed' => $requesterAllPassed
             ]
         ];
     }

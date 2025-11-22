@@ -196,6 +196,7 @@ class TaskController extends Controller
                     'can_be_submitted' => $task->canBeSubmitted() && $task->assigned_to === $user->id,
                     'can_be_started' => $task->canBeStarted() && $task->assigned_to === $user->id,
                     'can_be_graded' => $task->canBeEvaluated() && $task->created_by === $user->id,
+                    'can_view_submission' => $task->created_by === $user->id && $task->latestSubmission !== null,
                     'has_submission' => $task->latestSubmission !== null,
                     'creator' => $task->creator ? [
                         'firstname' => $task->creator->firstname,
@@ -232,6 +233,11 @@ class TaskController extends Controller
             return redirect()->back()->with('error', 'You can only edit tasks you created.');
         }
 
+        // Check if task has submissions - cannot edit if partner already submitted
+        if ($task->submissions()->exists()) {
+            return redirect()->back()->with('error', 'Cannot edit task. Partner has already submitted work for this task.');
+        }
+
         $task->load(['trade', 'assignee']);
         
         // Get available skills for task association
@@ -262,6 +268,14 @@ class TaskController extends Controller
                 return response()->json(['error' => 'You can only edit tasks you created.'], 403);
             }
             return redirect()->back()->with('error', 'You can only edit tasks you created.');
+        }
+
+        // Check if task has submissions - cannot edit if partner already submitted
+        if ($task->submissions()->exists()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['error' => 'Cannot edit task. Partner has already submitted work for this task.'], 400);
+            }
+            return redirect()->back()->with('error', 'Cannot edit task. Partner has already submitted work for this task.');
         }
 
         try {
@@ -410,6 +424,14 @@ class TaskController extends Controller
             return redirect()->back()->with('error', 'You can only delete tasks you created.');
         }
 
+        // Check if task has submissions - cannot delete if partner already submitted
+        if ($task->submissions()->exists()) {
+            if (request()->wantsJson()) {
+                return response()->json(['error' => 'Cannot delete task. Partner has already submitted work for this task.'], 400);
+            }
+            return redirect()->back()->with('error', 'Cannot delete task. Partner has already submitted work for this task.');
+        }
+
         try {
             // Store task info before deletion for broadcasting
             $taskId = $task->id;
@@ -556,9 +578,21 @@ class TaskController extends Controller
         try {
             $filePaths = [];
             $fileTypes = [];
+            $existingSubmission = $task->latestSubmission && $task->latestSubmission->submitted_by === $user->id 
+                ? $task->latestSubmission 
+                : null;
 
             // Handle file uploads
             if ($request->hasFile('files')) {
+                // Delete old files if editing
+                if ($existingSubmission && $existingSubmission->file_paths) {
+                    foreach ($existingSubmission->file_paths as $oldPath) {
+                        if (Storage::disk('public')->exists($oldPath)) {
+                            Storage::disk('public')->delete($oldPath);
+                        }
+                    }
+                }
+
                 foreach ($request->file('files') as $file) {
                     $path = $file->store('task_submissions/' . $task->id, 'public');
                     $filePaths[] = $path;
@@ -573,19 +607,34 @@ class TaskController extends Controller
                         $fileTypes[] = 'document';
                     }
                 }
+            } elseif ($existingSubmission && $existingSubmission->file_paths) {
+                // Keep existing files if no new files uploaded
+                $filePaths = $existingSubmission->file_paths;
+                $fileTypes = is_array($existingSubmission->file_types) 
+                    ? $existingSubmission->file_types 
+                    : [$existingSubmission->file_types ?? 'mixed'];
             }
 
-            // Create submission
+            // Mark all previous submissions as not latest
+            TaskSubmission::where('task_id', $task->id)
+                ->where('submitted_by', $user->id)
+                ->update(['is_latest' => false]);
+
+            // Create new submission (or update if editing)
             $submission = TaskSubmission::create([
                 'task_id' => $task->id,
                 'submitted_by' => $user->id,
                 'submission_notes' => $request->submission_notes,
                 'file_paths' => $filePaths,
-                'file_types' => count(array_unique($fileTypes)) > 1 ? 'mixed' : ($fileTypes[0] ?? 'mixed')
+                'file_types' => count(array_unique($fileTypes)) > 1 ? 'mixed' : ($fileTypes[0] ?? 'mixed'),
+                'is_latest' => true,
+                'submitted_at' => now()
             ]);
 
-            // Update task status
-            $task->updateStatus('submitted');
+            // Update task status to submitted (if not already)
+            if ($task->current_status !== 'submitted') {
+                $task->updateStatus('submitted');
+            }
 
             // Broadcast task updated event
             broadcast(new TaskUpdated($task, $task->trade_id));

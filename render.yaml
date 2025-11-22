@@ -18,6 +18,8 @@ services:
         generateValue: true
       - key: APP_DEBUG
         value: false
+      - key: APP_TIMEZONE
+        value: Asia/Manila
       - key: APP_URL
         value: https://skillsxchange.site
       - key: LOG_CHANNEL
